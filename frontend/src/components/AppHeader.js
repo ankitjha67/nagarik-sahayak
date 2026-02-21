@@ -1,7 +1,7 @@
 import { IndianFlag } from "./IndianFlag";
-import { Menu } from "lucide-react";
+import { Menu, RotateCcw } from "lucide-react";
 
-export const AppHeader = ({ title = "नागरिक सहायक", showBack, onBack, onMenuClick }) => (
+export const AppHeader = ({ title = "नागरिक सहायक", showBack, onBack, onMenuClick, onNewChat }) => (
   <header
     data-testid="app-header"
     className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3"
@@ -29,10 +29,20 @@ export const AppHeader = ({ title = "नागरिक सहायक", showBa
       <IndianFlag size={30} />
       <h1
         data-testid="header-title"
-        className="text-xl font-bold text-[#000080] font-['Mukta'] tracking-tight"
+        className="text-xl font-bold text-[#000080] font-['Mukta'] tracking-tight flex-1"
       >
         {title}
       </h1>
+      {onNewChat && (
+        <button
+          data-testid="new-chat-btn"
+          onClick={onNewChat}
+          title="नई चैट शुरू करें"
+          className="p-2 text-[#000080] hover:bg-[#FFF0E0] hover:text-[#FF9933] rounded-lg transition-all"
+        >
+          <RotateCcw size={18} />
+        </button>
+      )}
     </div>
   </header>
 );
