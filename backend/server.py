@@ -1146,6 +1146,59 @@ async def demo_toggle():
     return {"demo_mode": DEMO_MODE}
 
 
+# --- PDF Upload for RAG ---
+
+UPLOADS_DIR = PDF_DIR  # reuse the same directory
+
+@api_router.post("/upload-pdf")
+async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("")):
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+    file_bytes = await file.read()
+    if len(file_bytes) > 10 * 1024 * 1024:  # 10MB limit
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+    pdf_id = str(uuid.uuid4())
+    safe_name = file.filename.replace(" ", "_")
+    pdf_path = UPLOADS_DIR / f"{pdf_id}.pdf"
+    with open(pdf_path, "wb") as f:
+        f.write(file_bytes)
+    pdf_url = f"/api/pdf/{pdf_id}"
+    logger.info(f"PDF uploaded: {safe_name} -> {pdf_id} by user {user_id}")
+    if _agnost_key:
+        try:
+            agnost.track(user_id=user_id or "api", agent_name="nagarik_tool",
+                input=safe_name, output=pdf_url,
+                properties={"tool": "upload_pdf", "filename": safe_name, "size": len(file_bytes)},
+                success=True, latency=0)
+        except Exception:
+            pass
+    return {"success": True, "pdf_id": pdf_id, "pdf_url": pdf_url, "filename": safe_name,
+        "size": len(file_bytes)}
+
+
+# --- New Chat / Reset Profiler ---
+
+@api_router.post("/chat/reset")
+async def reset_chat(req: dict = {}):
+    user_id = req.get("user_id", "")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+    # Reset user profile (clear profiler progress)
+    try:
+        await prisma.user.update(where={"id": user_id}, data={
+            "profile": json.dumps({})
+        })
+    except Exception as e:
+        logger.error(f"Profile reset failed: {e}")
+    # Delete chat logs for this user
+    try:
+        await prisma.chatlog.delete_many(where={"userId": user_id})
+    except Exception as e:
+        logger.error(f"Chat history clear failed: {e}")
+    logger.info(f"Chat reset for user {user_id}")
+    return {"success": True, "message": "Chat reset. Profile cleared."}
+
+
 # --- Mount ---
 
 app.include_router(api_router)
