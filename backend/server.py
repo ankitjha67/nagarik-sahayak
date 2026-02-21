@@ -790,7 +790,7 @@ async def profiler_agent_respond(user_id: str, content: str) -> dict:
 
             content = f"धन्यवाद! आपकी प्रोफाइल पूरी हो गई।\n\n{matcher_result['summary']}"
             if pdf_url:
-                content += f"\n\nPDF रिपोर्ट तैयार है! नीचे डाउनलोड करें।"
+                content += "\n\nPDF रिपोर्ट तैयार है! नीचे डाउनलोड करें।"
 
             return {
                 "content": content,
