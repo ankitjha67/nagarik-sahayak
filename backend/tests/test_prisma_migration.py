@@ -153,9 +153,11 @@ class TestProfileAPI:
     
     @pytest.fixture(scope="class")
     def user_id(self):
-        """Create user with complete profile"""
-        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": "9999777703"})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": "9999777703", "otp": "1234"})
+        """Create user with complete profile using unique phone"""
+        import time
+        phone = f"7777{int(time.time()) % 1000000:06d}"
+        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
         uid = response.json()["user_id"]
         
         # Complete profiler flow
