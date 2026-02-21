@@ -25,6 +25,8 @@ if _agnost_key:
     agnost.init(_agnost_key)
     logging.getLogger(__name__).info("Agnost tracking initialized")
 
+DEMO_MODE = os.environ.get("DEMO_MODE", "").lower() in ("true", "1", "yes")
+
 AUDIO_DIR = ROOT_DIR / "audio_files"
 AUDIO_DIR.mkdir(exist_ok=True)
 
