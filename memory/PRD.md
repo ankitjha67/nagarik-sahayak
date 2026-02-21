@@ -100,6 +100,14 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] 3 schemes seeded: Pradhan Mantri Awas Yojana, Vidyasiri Scholarship, Vidya Lakshmi Education Loan
 - [x] Prisma Client Python (async) generated and ready for use
 
+- [x] **Full Prisma migration**: User, Scheme, ChatLog models — all CRUD via Prisma Client Python (async)
+- [x] **Profiler Agent** asks ONE question at a time in Hindi (name → age → income → state), saves to User.profile via Prisma
+- [x] Auto-triggers eligibility matcher + PDF generation on profile completion
+- [x] **Chat history** stored in Prisma ChatLog (rich JSON in message field)
+- [x] **3 Prisma Scheme records** seeded (Pradhan Mantri Awas Yojana, Vidyasiri, Vidya Lakshmi)
+- [x] Mock Sarvam transcription fallback for voice input
+- [x] All existing features preserved: DEMO_MODE, Agnost, voice, ticks, sidebar, PDF
+
 ## P0 Backlog
 - Integrate real LLM for intelligent chat responses
 - Implement Sarvam AI STT (needs API key)
