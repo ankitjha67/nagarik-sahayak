@@ -550,7 +550,7 @@ def eligibility_matcher(profile_data: dict, query: str = "") -> dict:
     age = profile_data.get("age", 0) or 0
     income = profile_data.get("income", 0) or 0
     name = profile_data.get("name", "")
-    state = profile_data.get("state", "")
+    _state = profile_data.get("state", "")  # for future state-specific rules
 
     # Step 1: Use search_schemes if query given, else check all
     if query:
