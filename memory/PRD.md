@@ -48,7 +48,11 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] TranscriptionBlock component renders Hindi + English side by side
 - [x] Transcriptions stored in ChatLog with type="transcription", transcript_hi, transcript_en
 - [x] Bot auto-responds to transcribed text (MCP tool if scheme-related)
-- [x] 100% backend test pass rate (19/19 endpoints)
+- [x] **Audio playback button** on transcription bubbles — audio saved to disk, served via `GET /api/audio/{msg_id}`, play/pause toggle button in TranscriptionBlock
+- [x] **Profiler Agent**: asks ONE question at a time in Hindi (name → age → income → state). Stores in `user.profile_data` JSONB. When complete, auto-triggers eligibility check (`check_eligibility` tool) against all 3 schemes
+- [x] Profiler validates inputs (age must be number, income parsed from text)
+- [x] After profile complete, normal MCP chat resumes
+- [x] 90%+ overall test pass rate (backend 93%, frontend 85%)
 
 ## P0 Backlog
 - Integrate real LLM for intelligent chat responses
