@@ -558,23 +558,27 @@ class NagarikSahayakAPITester:
             return False
 
     def test_mcp_tools_list(self):
-        """Test MCP tools listing endpoint"""
+        """Test MCP tools listing endpoint - should include both search_schemes and eligibility_matcher"""
         try:
             response = requests.get(f"{self.base_url}/mcp/tools", timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
                 tools = data.get("tools", [])
-                success = isinstance(tools, list) and len(tools) > 0
+                success = isinstance(tools, list) and len(tools) >= 2
                 
-                # Check for search_schemes tool
+                # Check for both tools
                 search_tool = next((t for t in tools if t.get("name") == "search_schemes"), None)
-                if search_tool:
-                    details = f"Found {len(tools)} MCP tools, search_schemes tool present with description: '{search_tool.get('description', '')[:50]}...'"
-                    success = success and "search" in search_tool.get("description", "").lower()
-                else:
-                    success = False
-                    details = f"Found {len(tools)} tools but search_schemes tool missing"
+                eligibility_tool = next((t for t in tools if t.get("name") == "eligibility_matcher"), None)
+                
+                search_present = search_tool is not None
+                eligibility_present = eligibility_tool is not None
+                
+                success = success and search_present and eligibility_present
+                
+                details = f"Found {len(tools)} MCP tools - search_schemes: {search_present}, eligibility_matcher: {eligibility_present}"
+                if search_tool and eligibility_tool:
+                    details += f" | Eligibility tool desc: '{eligibility_tool.get('description', '')[:50]}...'"
                 
                 self.log_test("MCP Tools List", success, details, 200, response.status_code)
                 return success
