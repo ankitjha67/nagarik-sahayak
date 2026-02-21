@@ -525,20 +525,23 @@ async def send_chat_message(req: ChatMessageRequest):
         "role": "user",
         "content": req.content,
         "status": "sent",
-        "created_at": now
+        "created_at": now,
+        "tool_calls": [],
     }
     await db.chat_logs.insert_one({**user_msg, "_id_field": None})
 
-    bot_content = get_bot_response(req.content, req.language)
+    # Simulate MCP: get response with optional tool calls
+    mcp_result = get_bot_response_with_mcp(req.content, req.language)
     bot_msg_id = str(uuid.uuid4())
 
     bot_msg = {
         "id": bot_msg_id,
         "user_id": req.user_id,
         "role": "assistant",
-        "content": bot_content,
+        "content": mcp_result["content"],
         "status": "delivered",
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "tool_calls": mcp_result["tool_calls"],
     }
     await db.chat_logs.insert_one({**bot_msg, "_id_field": None})
 
