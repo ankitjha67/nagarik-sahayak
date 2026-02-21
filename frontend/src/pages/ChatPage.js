@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { ChatBubble, TypingIndicator } from "../components/ChatBubble";
-import { sendMessage, getChatHistory, sendVoice } from "../lib/api";
+import { sendMessage, getChatHistory, transcribeAudio } from "../lib/api";
 import { toast } from "sonner";
 import { SendHorizontal, Mic, MicOff, Loader2 } from "lucide-react";
+
+const RECORD_DURATION = 5; // seconds
 
 export default function ChatPage({ userId, language = "hi" }) {
   const location = useLocation();
@@ -14,10 +16,13 @@ export default function ChatPage({ userId, language = "hi" }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordCountdown, setRecordCountdown] = useState(0);
   const [initialLoad, setInitialLoad] = useState(true);
   const messagesEndRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
+  const timerRef = useRef(null);
+  const countdownRef = useRef(null);
 
   useEffect(() => {
     if (userId) {
@@ -38,11 +43,20 @@ export default function ChatPage({ userId, language = "hi" }) {
     if (location.state?.startVoice && !initialLoad) {
       startRecording();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLoad, location.state]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, []);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -61,7 +75,8 @@ export default function ChatPage({ userId, language = "hi" }) {
     }
   };
 
-  const startRecording = async () => {
+  const startRecording = useCallback(async () => {
+    if (isRecording || loading) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
@@ -74,46 +89,74 @@ export default function ChatPage({ userId, language = "hi" }) {
 
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
+        if (countdownRef.current) clearInterval(countdownRef.current);
+        setRecordCountdown(0);
+        setIsRecording(false);
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        await processVoice(blob);
+        if (blob.size > 0) {
+          await processTranscription(blob);
+        }
       };
 
       mediaRecorder.start();
       setIsRecording(true);
-      toast.info("रिकॉर्डिंग शुरू... बोलें");
+      setRecordCountdown(RECORD_DURATION);
+      toast.info(`${RECORD_DURATION}s रिकॉर्डिंग शुरू... बोलें`);
+
+      // Countdown ticker
+      let remaining = RECORD_DURATION;
+      countdownRef.current = setInterval(() => {
+        remaining -= 1;
+        setRecordCountdown(remaining);
+        if (remaining <= 0) {
+          clearInterval(countdownRef.current);
+        }
+      }, 1000);
+
+      // Auto-stop after 5 seconds
+      timerRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+          mediaRecorderRef.current.stop();
+        }
+      }, RECORD_DURATION * 1000);
     } catch {
       toast.error("Microphone access denied");
     }
-  };
+  }, [isRecording, loading]);
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
-      setIsRecording(false);
     }
   };
 
-  const processVoice = async (blob) => {
+  const processTranscription = async (blob) => {
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append("audio", blob, "recording.webm");
       formData.append("user_id", userId);
-      formData.append("language", language);
 
-      const res = await sendVoice(formData);
-      if (res.data.success && res.data.transcript) {
-        const transcript = res.data.transcript;
-        // Auto-send the transcribed text
-        const chatRes = await sendMessage(userId, transcript, language);
-        const { user_message, bot_message } = chatRes.data;
+      const res = await transcribeAudio(formData);
+      if (res.data.success) {
+        const { user_message, bot_message } = res.data;
         setMessages((prev) => [...prev, user_message, bot_message]);
-        toast.success("Voice transcribed!");
+
+        const hi = res.data.transcript_hi || "";
+        const en = res.data.transcript_en || "";
+        if (hi || en) {
+          toast.success("Transcribed via Sarvam Saaras v3");
+        } else {
+          toast.warning("No speech detected");
+        }
       } else {
-        toast.error("Could not transcribe audio");
+        toast.error("Transcription failed");
       }
-    } catch {
-      toast.error("Voice processing failed");
+    } catch (err) {
+      const detail = err?.response?.data?.detail || "Transcription failed";
+      toast.error(detail);
     } finally {
       setLoading(false);
     }
@@ -141,7 +184,7 @@ export default function ChatPage({ userId, language = "hi" }) {
               बातचीत शुरू करें
             </h3>
             <p className="text-sm text-gray-400 font-['Nunito']">
-              Type or use voice to ask about schemes
+              Type or tap mic to record 5s voice
             </p>
           </div>
         )}
@@ -159,18 +202,26 @@ export default function ChatPage({ userId, language = "hi" }) {
       {/* Input Bar */}
       <div className="fixed bottom-14 left-0 right-0 bg-white border-t border-gray-100 px-3 py-2.5 z-30">
         <div className="max-w-md mx-auto flex items-center gap-2">
-          {/* Mic Button */}
+          {/* Mic Button with countdown */}
           <button
             data-testid="chat-mic-btn"
             onClick={isRecording ? stopRecording : startRecording}
-            disabled={loading}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
+            disabled={loading && !isRecording}
+            className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
               isRecording
                 ? "bg-red-500 text-white recording-pulse"
                 : "bg-gray-100 text-gray-500 hover:bg-[#FFF0E0] hover:text-[#FF9933]"
             }`}
           >
             {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
+            {isRecording && recordCountdown > 0 && (
+              <span
+                data-testid="mic-countdown"
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white border-2 border-red-500 text-[10px] font-bold text-red-500 flex items-center justify-center"
+              >
+                {recordCountdown}
+              </span>
+            )}
           </button>
 
           {/* Text Input */}
