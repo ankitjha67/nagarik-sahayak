@@ -104,7 +104,7 @@ class NagarikSahayakAPITester:
                 details = f"Found {len(schemes)} schemes"
                 if success:
                     scheme_titles = [s.get('title_hi', 'No title') for s in schemes[:3]]
-                    details += f": {', '.join(scheme_titles)}"
+                    details += f": {', '.join(scheme_titles[:2])}..."
                 self.log_test("Get Schemes", success, details, 200, response.status_code)
                 return success
             else:
@@ -126,7 +126,8 @@ class NagarikSahayakAPITester:
             if response.status_code == 200:
                 profile = response.json()
                 success = profile.get("phone") == self.phone
-                details = f"Phone: {profile.get('phone')}, Name: '{profile.get('name', '')}', Lang: {profile.get('language', 'N/A')}"
+                profile_data = profile.get("profile_data", {})
+                details = f"Phone: {profile.get('phone')}, Profile Complete: {profile.get('profile_complete', False)}"
                 self.log_test("Get Profile", success, details, 200, response.status_code)
                 return success
             else:
