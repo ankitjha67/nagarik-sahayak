@@ -250,8 +250,8 @@ async def profiler_agent_respond(user_id: str, content: str) -> Optional[dict]:
                 "profile": json.dumps(profile, ensure_ascii=False)
             })
 
-            # Step 1: search_schemes (scan documents)
-            search_result = await search_schemes_prisma("scholarship eligibility")
+            # Step 1: search_schemes (scan documents for Agnost tracking)
+            await search_schemes_prisma("scholarship eligibility")
 
             # Step 2: eligibility_matcher_prisma
             matcher_result = await eligibility_matcher_prisma(user_id)
