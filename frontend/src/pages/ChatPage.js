@@ -176,6 +176,47 @@ export default function ChatPage({ userId, language = "hi" }) {
     }
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Only PDF files are accepted");
+      return;
+    }
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("user_id", userId);
+      const res = await uploadPdf(formData);
+      if (res.data.success) {
+        const confirmMsg = {
+          id: `upload-${Date.now()}`, user_id: userId, role: "assistant",
+          content: `PDF uploaded successfully: ${res.data.filename}\nYou can now ask me questions about this document.`,
+          status: "delivered", created_at: new Date().toISOString(), tool_calls: [],
+        };
+        setMessages((prev) => [...prev, confirmMsg]);
+        toast.success("PDF uploaded successfully");
+      }
+    } catch {
+      toast.error("PDF upload failed");
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleNewChat = async () => {
+    try {
+      await resetChat(userId);
+      setMessages([]);
+      setInput("");
+      toast.success("नई चैट शुरू हो गई!");
+    } catch {
+      toast.error("Chat reset failed");
+    }
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
