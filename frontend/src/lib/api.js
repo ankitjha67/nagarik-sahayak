@@ -40,5 +40,6 @@ export const transcribeAudio = (formData) =>
 // MCP Tools
 export const getMcpTools = () => api.get("/mcp/tools");
 export const searchSchemes = (query) => api.post("/search-schemes", { query });
+export const eligibilityCheck = (data) => api.post("/eligibility-check", data);
 
 export default api;
