@@ -90,6 +90,11 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] 2 eligible schemes in single response with full reasons + benefits
 - [x] Streaming tool progress bullets updated: "Scanning scholarship PDFs..." → "Checking eligibility..." → "Generating report & form..."
 
+- [x] **Demo toggle** in sidebar — runtime ON/OFF via `POST /api/demo/toggle`, amber switch, "Stage-ready" label
+- [x] **Hindi voice reply** — speaker button on every bot message, browser SpeechSynthesis (lang=hi-IN), works offline
+- [x] **Animated double ticks** — sent (single grey, pop-in) → delivered (double grey, slide) → read (double blue, pulse)
+- [x] **Pitch script** — `/app/pitch.md` with exact 3-minute stage script (Problem → Demo → How It Works → Impact → The Ask)
+
 ## P0 Backlog
 - Integrate real LLM for intelligent chat responses
 - Implement Sarvam AI STT (needs API key)
