@@ -1,0 +1,100 @@
+{
+  "summary": "Iteration 14: All 3 new features verified - Sukanya Samriddhi PIB URL, Paperclip PDF upload, New Chat reset. Backend: 9/9 tests passed (100%). Frontend: All 11 features verified via Playwright.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "BACKEND: POST /api/upload-pdf accepts PDF file and returns success with pdf_id, pdf_url, filename, size ✓",
+    "BACKEND: POST /api/upload-pdf rejects non-PDF files with 400 error ✓",
+    "BACKEND: POST /api/upload-pdf rejects files with wrong extension (.jpg) ✓",
+    "BACKEND: POST /api/chat/reset clears chat history ✓",
+    "BACKEND: POST /api/chat/reset resets user profile (profile_complete=false) ✓",
+    "BACKEND: After /api/chat/reset, profiler asks name again (first question) ✓",
+    "BACKEND: POST /api/chat/reset requires user_id (returns 400 without it) ✓",
+    "BACKEND: GET /api/schemes returns Sukanya Samriddhi with PIB URL (static.pib.gov.in, not india.gov.in) ✓",
+    "BACKEND: Uploaded PDF can be downloaded via /api/pdf/{id} ✓",
+    "FRONTEND: Paperclip button visible in chat input bar (data-testid='chat-attach-btn') ✓",
+    "FRONTEND: New Chat button visible in header (data-testid='new-chat-btn') ✓",
+    "FRONTEND: Clicking New Chat clears messages (2 → 0) and shows toast 'नई चैट शुरू हो गई!' ✓",
+    "FRONTEND: After New Chat reset, profiler asks name again (आपका नाम क्या है?) ✓",
+    "FRONTEND: Paperclip opens file picker that accepts only PDF (accept='.pdf') ✓",
+    "FRONTEND: WhatsApp share button uses web.whatsapp.com/send URL (not wa.me) ✓",
+    "FRONTEND: PDF download button uses fetch+blob approach (not target=_blank) ✓",
+    "FRONTEND: Chat input, Mic button, Send button all present with data-testid ✓",
+    "FRONTEND: App Header displays correctly with New Chat button ✓"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_14_features.py",
+    "/app/test_reports/pytest/iteration_14_results.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "All data-testid attributes properly implemented for new features",
+    "Sukanya Samriddhi Yojana URL correctly updated to static.pib.gov.in/WriteReadData/specificdocs/documents/2026/jan/doc2026121762801.pdf",
+    "PDF upload validates file extension (.pdf) and file size (10MB limit)",
+    "Chat reset clears both chat history (ChatLog) and user profile",
+    "WhatsApp share uses web.whatsapp.com/send (not wa.me which gets blocked)",
+    "PDF download uses fetch+blob for direct download (not window.open which opens in new tab)"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_iteration_14_features.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (9/9 tests passed)",
+    "frontend": "100% (All 11 features verified)"
+  },
+
+  "test_credentials": {
+    "phone": "Any 10-digit number",
+    "otp": "1234 (hardcoded)"
+  },
+
+  "seed_data_creation": "Tests use timestamp-based phone numbers to create fresh users each run",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "Iteration 14 verified 3 new features: (1) Sukanya Samriddhi Yojana PDF URL updated to static.pib.gov.in (not india.gov.in), (2) Paperclip PDF upload button with data-testid='chat-attach-btn' accepting only .pdf files, (3) New Chat button with data-testid='new-chat-btn' that clears messages and resets profiler. WhatsApp share uses web.whatsapp.com/send. PDF download uses fetch+blob approach.",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "POST /api/auth/verify-otp - Static OTP 1234",
+      "POST /api/transcribe - Mock Sarvam STT fallback"
+    ]
+  },
+
+  "feature_verification": {
+    "upload_pdf_accepts_pdf": true,
+    "upload_pdf_rejects_non_pdf": true,
+    "upload_pdf_returns_pdf_id_url_filename_size": true,
+    "chat_reset_clears_history": true,
+    "chat_reset_resets_profile": true,
+    "after_reset_profiler_asks_name": true,
+    "chat_reset_requires_user_id": true,
+    "sukanya_url_uses_pib_gov_in": true,
+    "sukanya_url_not_india_gov_in": true,
+    "uploaded_pdf_downloadable": true,
+    "paperclip_button_visible": true,
+    "new_chat_button_visible": true,
+    "new_chat_clears_messages": true,
+    "new_chat_shows_toast": true,
+    "file_input_accepts_pdf_only": true,
+    "whatsapp_uses_web_whatsapp_com": true,
+    "pdf_download_uses_fetch_blob": true
+  }
+}
