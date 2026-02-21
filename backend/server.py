@@ -1097,6 +1097,21 @@ async def transcribe_audio(
     }
 
 
+# --- AUDIO PLAYBACK ENDPOINT ---
+
+@api_router.get("/audio/{msg_id}")
+async def serve_audio(msg_id: str):
+    """Serve stored audio file for playback."""
+    audio_path = AUDIO_DIR / f"{msg_id}.webm"
+    if not audio_path.exists():
+        raise HTTPException(status_code=404, detail="Audio not found")
+    return FileResponse(
+        path=str(audio_path),
+        media_type="audio/webm",
+        headers={"Accept-Ranges": "bytes"},
+    )
+
+
 # --- HEALTH ---
 
 @api_router.get("/")
