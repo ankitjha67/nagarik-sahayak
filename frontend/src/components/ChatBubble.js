@@ -55,14 +55,51 @@ const ToolCallTrace = ({ toolCall }) => (
 const TranscriptionBlock = ({ message }) => {
   const hi = message.transcript_hi || "";
   const en = message.transcript_en || "";
+  const audioUrl = message.audio_url || "";
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef(null);
+
+  const togglePlay = () => {
+    if (!audioUrl) return;
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
+    const fullUrl = `${backendUrl}${audioUrl}`;
+
+    if (!audioRef.current) {
+      audioRef.current = new Audio(fullUrl);
+      audioRef.current.onended = () => setPlaying(false);
+      audioRef.current.onerror = () => setPlaying(false);
+    }
+
+    if (playing) {
+      audioRef.current.pause();
+      setPlaying(false);
+    } else {
+      audioRef.current.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+    }
+  };
 
   return (
     <div data-testid="transcription-block" className="space-y-2">
-      <div className="flex items-center gap-1.5 mb-1">
-        <Languages size={14} className="text-[#FF9933]" />
-        <span className="text-[10px] font-bold text-[#FF9933] font-['Mukta'] uppercase tracking-wider">
-          Voice Transcription — Sarvam Saaras v3
-        </span>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-1.5">
+          <Languages size={14} className="text-[#FF9933]" />
+          <span className="text-[10px] font-bold text-[#FF9933] font-['Mukta'] uppercase tracking-wider">
+            Voice Transcription — Sarvam Saaras v3
+          </span>
+        </div>
+        {audioUrl && (
+          <button
+            data-testid="audio-playback-btn"
+            onClick={togglePlay}
+            className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+              playing
+                ? "bg-[#000080] text-white"
+                : "bg-[#FFF0E0] text-[#FF9933] hover:bg-[#FFE4C4]"
+            }`}
+          >
+            {playing ? <Pause size={12} /> : <Play size={12} className="ml-0.5" />}
+          </button>
+        )}
       </div>
 
       {hi && (
