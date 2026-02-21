@@ -1488,6 +1488,15 @@ async def root():
     return {"message": "Nagarik Sahayak API", "version": "1.0.0"}
 
 
+@api_router.get("/analytics/status")
+async def analytics_status():
+    """Check if Agnost analytics tracking is active."""
+    return {
+        "enabled": bool(_agnost_key),
+        "dashboard_url": "https://app.agnost.ai",
+    }
+
+
 # Include router
 app.include_router(api_router)
 
