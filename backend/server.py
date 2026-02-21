@@ -483,7 +483,8 @@ async def search_schemes_prisma(query: str) -> dict:
 
 
 async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dict:
-    """MCP Tool 2: Fetch User profile + Schemes from Prisma, compare eligibility."""
+    """MCP Tool 2: Fetch User profile + Schemes from Prisma, compare eligibility.
+    Income in profile is YEARLY (सालाना). Defaults to Vidyasiri Scholarship."""
     t0 = _time.time()
     user = await prisma.user.find_unique(where={"id": user_id})
     if not user:
@@ -491,14 +492,21 @@ async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dic
     profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})
     name = profile.get("name", "")
     age = profile.get("age") or 0
-    income = profile.get("income") or 0
+    income_yearly = profile.get("income") or 0
     state = (profile.get("state") or "").lower()
 
-    # Fetch all schemes or specific one
+    # First call search_schemes to scan documents
+    search_result = await search_schemes_prisma("scholarship eligibility")
+
+    # Default to Vidyasiri, then check all schemes
+    vidyasiri = await prisma.scheme.find_first(where={"name": {"contains": "Vidyasiri"}})
     if scheme_name:
         schemes = await prisma.scheme.find_many(where={"name": {"contains": scheme_name}})
     else:
         schemes = await prisma.scheme.find_many()
+    # Ensure Vidyasiri is first in the list
+    if vidyasiri:
+        schemes = [vidyasiri] + [s for s in schemes if s.id != vidyasiri.id]
 
     documents_scanned = [s.name for s in schemes]
     results = []
@@ -508,16 +516,16 @@ async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dic
         eligible = True
         reasons = []
 
-        # Parse income from criteria text
+        # Parse yearly income limit from criteria text (e.g., "income < ₹1.5 lakh")
         income_matches = re.findall(r'(?:income\s*[<>]?\s*₹?|income\s*<?)\s*([\d,.]+)\s*(?:lakh|lac)', criteria_text)
         if income_matches:
             limit_lakh = float(income_matches[0].replace(",", ""))
-            limit_monthly = int(limit_lakh * 100000 / 12)
-            if income > limit_monthly:
+            limit_yearly = int(limit_lakh * 100000)
+            if income_yearly > limit_yearly:
                 eligible = False
-                reasons.append(f"आय ₹{income:,}/माह — सीमा ₹{limit_monthly:,}/माह (₹{limit_lakh} लाख/वर्ष) से अधिक")
+                reasons.append(f"सालाना आय ₹{income_yearly:,} — सीमा ₹{limit_yearly:,}/वर्ष (₹{limit_lakh} लाख) से अधिक")
             else:
-                reasons.append(f"आय ₹{income:,}/माह — सीमा ₹{limit_monthly:,}/माह के अंदर")
+                reasons.append(f"सालाना आय ₹{income_yearly:,} — सीमा ₹{limit_yearly:,}/वर्ष के अंदर — पात्र")
 
         # State check
         if "karnataka" in criteria_text:
@@ -527,8 +535,8 @@ async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dic
             else:
                 reasons.append("कर्नाटक निवासी — पात्र")
 
-        # Age / education check
-        if "10th" in criteria_text or "10th pass" in criteria_text.replace("equivalent", ""):
+        # Education checks
+        if "10th" in criteria_text or "10th pass" in criteria_text:
             reasons.append("10वीं पास या समकक्ष — आवश्यक")
         if "12th pass" in criteria_text:
             reasons.append("12वीं पास — आवश्यक")
@@ -558,11 +566,13 @@ async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dic
         except Exception:
             pass
 
-    summary_lines = [f"नमस्ते {name}! प्रोफाइल आधारित पात्रता:", ""]
+    summary_lines = [f"नमस्ते {name}! प्रोफाइल आधारित पात्रता जांच:", ""]
     for r in results:
         icon = "+" if r["eligible"] else "-"
         summary_lines.append(f"[{icon}] {r['scheme']}: {'पात्र' if r['eligible'] else 'अपात्र'}")
         summary_lines.append(f"    कारण: {r['reason']}")
+        if r["eligible"] and r.get("benefit"):
+            summary_lines.append(f"    लाभ: {r['benefit']}")
         summary_lines.append("")
 
     return {"tool_name": "eligibility_matcher", "tool_input": {"user_id": user_id},
