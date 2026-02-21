@@ -42,4 +42,7 @@ export const getMcpTools = () => api.get("/mcp/tools");
 export const searchSchemes = (query) => api.post("/search-schemes", { query });
 export const eligibilityCheck = (data) => api.post("/eligibility-check", data);
 
+// PDF
+export const generatePdf = (data) => api.post("/generate-pdf", data);
+
 export default api;
