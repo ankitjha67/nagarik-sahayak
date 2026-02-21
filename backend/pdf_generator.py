@@ -231,13 +231,13 @@ def generate_filled_form_pdf(
     pdf.cell(0, 10, "Nagarik Sahayak", align="C", new_x="LMARGIN", new_y="NEXT")
 
     pdf.set_y(24)
-    pdf.set_font("NH", size=13)
+    pdf.set_font("NS", "B", 13)
     pdf.set_text_color(0, 0, 128)
-    pdf.cell(0, 8, "BHARA HUA AAVEDAN FORM", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 8, "PRE-FILLED APPLICATION FORM", align="C", new_x="LMARGIN", new_y="NEXT")
 
     pdf.set_font("NS", size=9)
     pdf.set_text_color(0, 0, 128)
-    pdf.cell(0, 6, "PRE-FILLED APPLICATION FORM", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, "Bhara Hua Aavedan Form", align="C", new_x="LMARGIN", new_y="NEXT")
 
     # Reference & date
     now = datetime.now(timezone.utc)
