@@ -416,6 +416,98 @@ class NagarikSahayakAPITester:
             self.log_test("Chat with Greeting", False, f"Error: {str(e)}")
             return False
 
+    def test_transcribe_audio(self):
+        """Test NEW /api/transcribe endpoint with Sarvam Saaras v3"""
+        if not self.user_id:
+            self.log_test("Transcribe Audio", False, "No user_id available (login failed)")
+            return False
+            
+        try:
+            # Use localhost for file uploads as external proxy blocks large uploads
+            transcribe_url = "http://localhost:8001/api/transcribe"
+            
+            # Check if test audio file exists
+            audio_path = "/tmp/test_speech.mp3"
+            
+            with open(audio_path, "rb") as f:
+                files = {"audio": ("test_speech.mp3", f, "audio/mp3")}
+                data = {"user_id": self.user_id}
+                
+                response = requests.post(transcribe_url, files=files, data=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                success = (
+                    result.get("success") == True and
+                    "transcript_hi" in result and
+                    "transcript_en" in result and
+                    "user_message" in result and
+                    "bot_message" in result
+                )
+                
+                user_msg = result.get("user_message", {})
+                bot_msg = result.get("bot_message", {})
+                
+                # Verify user message has transcription fields
+                success = success and (
+                    user_msg.get("type") == "transcription" and
+                    "transcript_hi" in user_msg and
+                    "transcript_en" in user_msg
+                )
+                
+                hi_text = result.get("transcript_hi", "")[:50]
+                en_text = result.get("transcript_en", "")[:50]
+                details = f"Hindi: '{hi_text}...', English: '{en_text}...', Type: {user_msg.get('type')}"
+                
+                self.log_test("Transcribe Audio", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Transcribe Audio", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except FileNotFoundError:
+            self.log_test("Transcribe Audio", False, "Test audio file /tmp/test_speech.mp3 not found")
+            return False
+        except Exception as e:
+            self.log_test("Transcribe Audio", False, f"Error: {str(e)}")
+            return False
+
+    def test_chat_history_with_transcription(self):
+        """Test that chat history preserves transcription messages"""
+        if not self.user_id:
+            self.log_test("Chat History with Transcription", False, "No user_id available (login failed)")
+            return False
+            
+        try:
+            response = requests.get(f"{self.base_url}/chat/history/{self.user_id}", timeout=10)
+            
+            if response.status_code == 200:
+                messages = response.json()
+                
+                # Look for transcription messages
+                transcription_msgs = [m for m in messages if m.get("type") == "transcription"]
+                success = len(transcription_msgs) > 0
+                
+                if success:
+                    # Verify transcription message structure
+                    trans_msg = transcription_msgs[-1]  # Get latest
+                    success = (
+                        "transcript_hi" in trans_msg and
+                        "transcript_en" in trans_msg and
+                        trans_msg.get("role") == "user"
+                    )
+                    details = f"Found {len(transcription_msgs)} transcription messages with proper structure"
+                else:
+                    details = f"No transcription messages found in {len(messages)} total messages"
+                
+                self.log_test("Chat History with Transcription", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Chat History with Transcription", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Chat History with Transcription", False, f"Error: {str(e)}")
+            return False
+
     def run_all_tests(self):
         """Run complete API test suite"""
         print("🚀 Starting Nagarik Sahayak API Test Suite (with MCP Testing)\n")
