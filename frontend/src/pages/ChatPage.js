@@ -4,9 +4,9 @@ import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
 import { ChatBubble, TypingIndicator, ToolProgressIndicator } from "../components/ChatBubble";
-import { sendMessage, getChatHistory, transcribeAudio } from "../lib/api";
+import { sendMessage, getChatHistory, transcribeAudio, uploadPdf, resetChat } from "../lib/api";
 import { toast } from "sonner";
-import { SendHorizontal, Mic, MicOff, Loader2 } from "lucide-react";
+import { SendHorizontal, Mic, MicOff, Loader2, Paperclip } from "lucide-react";
 
 const RECORD_DURATION = 5; // seconds
 
