@@ -399,11 +399,16 @@ def _is_demo_trigger(text: str) -> bool:
 
 
 def demo_stage_response(user_id: str = "demo") -> dict:
-    from pdf_generator import generate_eligibility_pdf
+    from pdf_generator import generate_filled_form_pdf
     t0 = _time.time()
     results = [VIDYASIRI_RESULT, PMKISAN_DEMO_RESULT]
     pdf_id = str(uuid.uuid4())
-    generate_eligibility_pdf(profile=DEMO_PROFILE, eligibility_results=results, output_path=str(PDF_DIR / f"{pdf_id}.pdf"))
+    generate_filled_form_pdf(
+        profile=DEMO_PROFILE,
+        scheme_name="Vidyasiri Scholarship",
+        scheme_criteria="Karnataka resident, passed 10th or equivalent, family income < 1.5 lakh, studying in Karnataka.",
+        output_path=str(PDF_DIR / f"{pdf_id}.pdf"),
+    )
     pdf_url = f"/api/pdf/{pdf_id}"
     try:
         if _agnost_key:
