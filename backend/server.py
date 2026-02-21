@@ -1131,7 +1131,11 @@ async def send_chat_message(req: ChatMessageRequest):
         "created_at": now,
         "tool_calls": [],
     }
-    await db.chat_logs.insert_one({**user_msg, "_id_field": None})
+    try:
+        await db.chat_logs.insert_one({**user_msg, "_id_field": None})
+    except Exception:
+        if not DEMO_MODE:
+            raise  # Only swallow in demo mode
 
     # DEMO_MODE fast-path: "mera beta 10th pass hai" or any scholarship query
     # → instant profile + eligibility + PDF. Works even if DB is down.
