@@ -252,20 +252,25 @@ export const ChatBubble = ({ message }) => {
         )}
 
         {(hasPdf || isPdfReport) && message.pdf_url && (
-          <a
-            href={`${backendUrl}${message.pdf_url}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            data-testid="pdf-download-btn"
-            className="mt-2.5 flex items-center gap-2 px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
-          >
-            <FileDown size={16} />
-            <div>
-              <span className="text-xs font-bold font-['Mukta'] block">PDF रिपोर्ट डाउनलोड करें</span>
-              <span className="text-[10px] opacity-75 font-['Nunito']">Eligibility Report</span>
-            </div>
-            <Download size={14} className="ml-auto" />
-          </a>
+          <div className="mt-2.5 space-y-2">
+            <a
+              href={`${backendUrl}${message.pdf_url}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="pdf-download-btn"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
+            >
+              <FileDown size={16} />
+              <div>
+                <span className="text-xs font-bold font-['Mukta'] block">PDF डाउनलोड करें</span>
+                <span className="text-[10px] opacity-75 font-['Nunito']">Pre-filled Application Form</span>
+              </div>
+              <Download size={14} className="ml-auto" />
+            </a>
+            <WhatsAppShareBtn pdfUrl={`${backendUrl}${message.pdf_url}`} schemeName={
+              message.eligibility_results?.find(r => r.eligible)?.scheme || "Government Scheme"
+            } />
+          </div>
         )}
 
         <div className="flex items-center justify-end gap-1 mt-1">
