@@ -547,6 +547,11 @@ class NagarikSahayakAPITester:
         self.test_chat_with_scheme_query()
         self.test_chat_with_greeting()
         
+        # Test 6: NEW Transcription Feature (Sarvam Saaras v3)
+        print("🎙️  Testing NEW Transcription Feature...")
+        self.test_transcribe_audio()
+        self.test_chat_history_with_transcription()
+        
         return self.print_summary()
 
     def print_summary(self):
