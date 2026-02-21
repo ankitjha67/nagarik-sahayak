@@ -433,6 +433,11 @@ def demo_stage_response(user_id: str = "demo") -> dict:
             "documents_scanned": ["Vidyasiri Scholarship Guidelines", "PM-KISAN Operational Guidelines"],
             "match_found": True, "results": results}],
         "type": "profiler_complete", "profiler_field": "", "eligibility_results": results, "pdf_url": pdf_url,
+        "tool_progress": [
+            {"step": "reading_pdf", "text_hi": "विद्यासिरी छात्रवृत्ति PDF पढ़ रहे हैं...", "text_en": "Reading Vidyasiri Scholarship PDF..."},
+            {"step": "checking_eligibility", "text_hi": "पात्रता मानदंड जांच रहे हैं...", "text_en": "Checking eligibility criteria..."},
+            {"step": "generating_form", "text_hi": "भरा हुआ आवेदन फॉर्म तैयार कर रहे हैं...", "text_en": "Generating filled application form..."},
+        ],
     }
 
 
