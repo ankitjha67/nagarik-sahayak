@@ -189,9 +189,11 @@ class TestChatHistoryAPI:
     
     def test_get_chat_history(self):
         """GET /api/chat/history/{user_id} returns all chat messages from Prisma ChatLog"""
-        # Create user and send messages
-        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": "9999777704"})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": "9999777704", "otp": "1234"})
+        import time
+        # Create user with unique phone and send messages
+        phone = f"6666{int(time.time()) % 1000000:06d}"
+        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
         user_id = response.json()["user_id"]
         
         # Send a message
