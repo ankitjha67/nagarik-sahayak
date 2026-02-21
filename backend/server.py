@@ -1203,6 +1203,7 @@ async def generate_pdf_endpoint(req: GeneratePDFRequest):
         raise HTTPException(status_code=400, detail="Profile incomplete — complete profiler first")
 
     # Run eligibility matcher
+    t0 = _time.time()
     matcher = eligibility_matcher(profile)
     results = matcher.get("results", [])
 
@@ -1226,8 +1227,21 @@ async def generate_pdf_endpoint(req: GeneratePDFRequest):
         scheme_detail=scheme_detail,
         output_path=pdf_path,
     )
+    latency_ms = int((_time.time() - t0) * 1000)
 
     pdf_url = f"/api/pdf/{pdf_id}"
+
+    # Track with Agnost
+    if _agnost_key:
+        agnost.track(
+            user_id=req.user_id or "api",
+            agent_name="nagarik_tool",
+            input=str(profile),
+            output=pdf_url,
+            properties={"tool": "generate_pdf", "pdf_id": pdf_id},
+            success=True,
+            latency=latency_ms,
+        )
 
     # Store as chat message if user_id provided
     if req.user_id:
