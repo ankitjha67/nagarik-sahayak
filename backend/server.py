@@ -122,6 +122,7 @@ class ChatMessageResponse(BaseModel):
 class ProfileUpdate(BaseModel):
     name: Optional[str] = None
     language: Optional[str] = None
+    profile_data: Optional[Dict[str, Any]] = None
 
 class ProfileResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
