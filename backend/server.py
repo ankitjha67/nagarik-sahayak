@@ -107,7 +107,7 @@ async def get_chat_history_prisma(user_id: str) -> list:
     try:
         logs = await prisma.chatlog.find_many(
             where={"userId": user_id},
-            order_by={"timestamp": "asc"},
+            order={"timestamp": "asc"},
             take=500,
         )
         messages = []
@@ -206,7 +206,7 @@ async def profiler_agent_respond(user_id: str, content: str) -> Optional[dict]:
     # Find last bot profiler message to know which field was asked
     last_bot_logs = await prisma.chatlog.find_many(
         where={"userId": user_id, "sender": "agent"},
-        order_by={"timestamp": "desc"},
+        order={"timestamp": "desc"},
         take=1,
     )
     asked_field = ""
