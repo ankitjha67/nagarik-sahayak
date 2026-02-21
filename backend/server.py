@@ -975,6 +975,7 @@ async def send_chat_message(req: ChatMessageRequest):
             "type": profiler_result.get("type", "profiler"),
             "profiler_field": profiler_result.get("profiler_field", ""),
             "eligibility_results": profiler_result.get("eligibility_results", []),
+            "pdf_url": profiler_result.get("pdf_url", ""),
         }
         await db.chat_logs.insert_one({**bot_msg, "_id_field": None})
         await db.chat_logs.update_one({"id": user_msg_id}, {"$set": {"status": "read"}})
