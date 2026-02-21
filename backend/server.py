@@ -427,6 +427,255 @@ def get_bot_response_with_mcp(content: str, language: str = "hi") -> dict:
     }
 
 
+# --- PROFILER AGENT ---
+
+PROFILE_FIELDS = ["name", "age", "income", "state"]
+
+PROFILER_QUESTIONS = {
+    "name": "आपका नाम क्या है?",
+    "age": "आपकी उम्र क्या है? (संख्या में बताएं)",
+    "income": "आपकी मासिक आय कितनी है? (रुपये में, जैसे 15000)",
+    "state": "आपका राज्य कौन सा है? (जैसे उत्तर प्रदेश, बिहार, महाराष्ट्र)",
+}
+
+INDIAN_STATES = [
+    "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh",
+    "goa", "gujarat", "haryana", "himachal pradesh", "jharkhand", "karnataka",
+    "kerala", "madhya pradesh", "maharashtra", "manipur", "meghalaya", "mizoram",
+    "nagaland", "odisha", "punjab", "rajasthan", "sikkim", "tamil nadu",
+    "telangana", "tripura", "uttar pradesh", "uttarakhand", "west bengal",
+    "delhi", "jammu and kashmir", "ladakh", "chandigarh", "puducherry",
+    # Hindi names
+    "आंध्र प्रदेश", "अरुणाचल प्रदेश", "असम", "बिहार", "छत्तीसगढ़",
+    "गोवा", "गुजरात", "हरियाणा", "हिमाचल प्रदेश", "झारखंड", "कर्नाटक",
+    "केरल", "मध्य प्रदेश", "महाराष्ट्र", "मणिपुर", "मेघालय", "मिजोरम",
+    "नागालैंड", "ओडिशा", "पंजाब", "राजस्थान", "सिक्किम", "तमिलनाडु",
+    "तेलंगाना", "त्रिपुरा", "उत्तर प्रदेश", "उत्तराखंड", "पश्चिम बंगाल",
+    "दिल्ली", "जम्मू और कश्मीर", "लद्दाख", "चंडीगढ़", "पुडुचेरी",
+]
+
+
+def get_next_missing_field(profile_data: dict) -> str:
+    """Returns the first incomplete profile field, or '' if all complete."""
+    if not profile_data:
+        return "name"
+    for field in PROFILE_FIELDS:
+        val = profile_data.get(field)
+        if val is None or val == "" or val == 0:
+            return field
+    return ""
+
+
+def parse_profile_answer(field: str, answer: str) -> tuple:
+    """Parse user's answer for a profile field. Returns (value, error_msg)."""
+    answer = answer.strip()
+    if not answer:
+        return None, "कृपया उत्तर दें।"
+
+    if field == "name":
+        # Accept any non-empty string
+        cleaned = re.sub(r'[^\w\s\u0900-\u097F]', '', answer).strip()
+        if len(cleaned) < 2:
+            return None, "कृपया अपना पूरा नाम बताएं।"
+        return cleaned, None
+
+    if field == "age":
+        # Extract number
+        nums = re.findall(r'\d+', answer)
+        if nums:
+            age = int(nums[0])
+            if 1 <= age <= 120:
+                return age, None
+        return None, "कृपया अपनी उम्र संख्या में बताएं (जैसे 35)।"
+
+    if field == "income":
+        # Extract number, handle lakhs
+        answer_lower = answer.lower().replace(',', '').replace('₹', '').replace('rs', '').replace('रुपये', '').replace('रू', '').strip()
+        nums = re.findall(r'\d+', answer_lower)
+        if nums:
+            income = int(nums[0])
+            if "lakh" in answer_lower or "लाख" in answer:
+                income *= 100000
+            elif income < 100 and income > 0:
+                # Probably meant in thousands
+                income *= 1000
+            return income, None
+        return None, "कृपया अपनी मासिक आय रुपये में बताएं (जैसे 15000)।"
+
+    if field == "state":
+        # Try to match against known states
+        answer_lower = answer.lower().strip()
+        for state in INDIAN_STATES:
+            if state in answer_lower or answer_lower in state:
+                return answer.strip(), None
+        # Accept anyway if it looks reasonable
+        if len(answer) >= 2:
+            return answer.strip(), None
+        return None, "कृपया अपने राज्य का नाम बताएं (जैसे उत्तर प्रदेश)।"
+
+    return answer, None
+
+
+def check_eligibility(profile_data: dict) -> str:
+    """Check eligibility for all 3 schemes based on profile data."""
+    age = profile_data.get("age", 0) or 0
+    income = profile_data.get("income", 0) or 0
+    state = profile_data.get("state", "")
+    name = profile_data.get("name", "")
+
+    results = []
+    results.append(f"नमस्ते {name}! आपकी प्रोफाइल के आधार पर पात्रता:")
+    results.append("")
+
+    # PM-KISAN: farmers with land, income < 2L/month typically
+    if income <= 200000:
+        results.append("1. पीएम-किसान सम्मान निधि: पात्र हो सकते हैं")
+        results.append("   लाभ: 6,000 रुपये/वर्ष (2,000 रुपये हर 4 महीने)")
+        results.append("   शर्त: खेती योग्य भूमि होनी चाहिए")
+    else:
+        results.append("1. पीएम-किसान सम्मान निधि: आय अधिक होने पर पात्र नहीं")
+
+    results.append("")
+
+    # Ayushman Bharat: SECC 2011, generally low income
+    if income <= 50000:
+        results.append("2. आयुष्मान भारत (पीएम-जय): पात्र हो सकते हैं")
+        results.append("   लाभ: 5 लाख रुपये/वर्ष स्वास्थ्य कवर")
+        results.append("   शर्त: SECC 2011 सूची में होना आवश्यक")
+    else:
+        results.append("2. आयुष्मान भारत (पीएम-जय): आय सीमा से अधिक, संभवत: पात्र नहीं")
+
+    results.append("")
+
+    # Sukanya Samriddhi: needs girl child < 10
+    if age >= 18:
+        results.append("3. सुकन्या समृद्धि योजना: आप माता-पिता/अभिभावक के रूप में खोल सकते हैं")
+        results.append("   लाभ: ~8.2% ब्याज, धारा 80C कर लाभ")
+        results.append("   शर्त: 10 वर्ष से कम आयु की बालिका होनी चाहिए")
+    else:
+        results.append("3. सुकन्या समृद्धि योजना: उम्र कम होने पर स्वयं आवेदन नहीं कर सकते")
+
+    results.append("")
+    results.append("अधिक जानकारी के लिए किसी योजना का नाम लिखें।")
+
+    return "\n".join(results)
+
+
+async def profiler_agent_respond(user_id: str, content: str) -> dict:
+    """
+    Profiler Agent: checks if profile is incomplete, asks ONE question at a time.
+    Returns None if profile is complete (let normal chat handle it).
+    Returns response dict if profiler is active.
+    """
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        return None
+
+    profile_data = user.get("profile_data", {})
+    if not profile_data:
+        profile_data = {"name": "", "age": None, "income": None, "state": ""}
+        await db.users.update_one({"id": user_id}, {"$set": {
+            "profile_data": profile_data,
+            "profile_complete": False,
+        }})
+
+    is_complete = user.get("profile_complete", False)
+    if is_complete:
+        return None  # Profile done, use normal chat
+
+    pending_field = get_next_missing_field(profile_data)
+    if not pending_field:
+        # All fields filled — mark complete + run eligibility
+        await db.users.update_one({"id": user_id}, {"$set": {"profile_complete": True}})
+        return None
+
+    # Check if user is greeting — greet back + ask the question
+    content_lower = content.lower().strip()
+    is_greeting = any(w in content_lower for w in ["hello", "hi", "namaste", "नमस्ते", "हैलो", "हेलो", "start"])
+
+    # Check which field we were previously asking (from last bot message)
+    last_bot = await db.chat_logs.find_one(
+        {"user_id": user_id, "role": "assistant", "type": "profiler"},
+        {"_id": 0},
+        sort=[("created_at", -1)]
+    )
+    asked_field = last_bot.get("profiler_field", "") if last_bot else ""
+
+    if is_greeting or not asked_field:
+        # First interaction or greeting — ask the first missing field
+        greeting = "नमस्ते! मैं नागरिक सहायक हूँ।\nआपकी पात्रता जांचने के लिए मुझे कुछ जानकारी चाहिए।\n\n"
+        return {
+            "content": greeting + PROFILER_QUESTIONS[pending_field],
+            "tool_calls": [],
+            "type": "profiler",
+            "profiler_field": pending_field,
+        }
+
+    # User is answering a question — parse the answer for the asked field
+    if asked_field in PROFILE_FIELDS:
+        value, error = parse_profile_answer(asked_field, content)
+        if error:
+            return {
+                "content": error + "\n\n" + PROFILER_QUESTIONS[asked_field],
+                "tool_calls": [],
+                "type": "profiler",
+                "profiler_field": asked_field,
+            }
+
+        # Save the value
+        profile_data[asked_field] = value
+        if asked_field == "name":
+            await db.users.update_one({"id": user_id}, {"$set": {
+                f"profile_data.{asked_field}": value,
+                "name": value,
+            }})
+        else:
+            await db.users.update_one({"id": user_id}, {"$set": {
+                f"profile_data.{asked_field}": value,
+            }})
+
+        # Check next field
+        next_field = get_next_missing_field(profile_data)
+        if not next_field:
+            # Profile complete! Auto-trigger eligibility
+            await db.users.update_one({"id": user_id}, {"$set": {"profile_complete": True}})
+            eligibility_text = check_eligibility(profile_data)
+            return {
+                "content": f"धन्यवाद! आपकी प्रोफाइल पूरी हो गई।\n\n{eligibility_text}",
+                "tool_calls": [{
+                    "tool_name": "check_eligibility",
+                    "tool_input": {"profile": profile_data},
+                    "documents_scanned": [s["title"] for s in SCHEMES_SEED],
+                    "match_found": True,
+                }],
+                "type": "profiler_complete",
+                "profiler_field": "",
+            }
+        else:
+            confirm = ""
+            if asked_field == "name":
+                confirm = f"धन्यवाद, {value}!\n\n"
+            elif asked_field == "age":
+                confirm = f"उम्र: {value} वर्ष। ठीक है।\n\n"
+            elif asked_field == "income":
+                confirm = f"मासिक आय: ₹{value:,}। ठीक है।\n\n"
+
+            return {
+                "content": confirm + PROFILER_QUESTIONS[next_field],
+                "tool_calls": [],
+                "type": "profiler",
+                "profiler_field": next_field,
+            }
+
+    # Fallback — ask the pending field
+    return {
+        "content": PROFILER_QUESTIONS[pending_field],
+        "tool_calls": [],
+        "type": "profiler",
+        "profiler_field": pending_field,
+    }
+
+
 # --- Startup Event: Seed Schemes ---
 
 @app.on_event("startup")
