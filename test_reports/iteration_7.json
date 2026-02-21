@@ -1,0 +1,74 @@
+{
+  "summary": "Completed testing of Agnost AI SDK integration in Nagarik Sahayak app. All backend APIs (13/13 tests passed) and frontend features working correctly. Agnost tracking is active for search_schemes, eligibility_matcher, and generate_pdf tool calls.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": [
+    "GET /api/analytics/status returns {enabled: true, dashboard_url: 'https://app.agnost.ai'}",
+    "POST /api/search-schemes with query 'farmer' returns PM-KISAN scheme with match_found: true",
+    "POST /api/search-schemes returns MCP tool metadata (tool_name, tool_input, documents_scanned)",
+    "POST /api/search-schemes handles no-match gracefully",
+    "POST /api/eligibility-check with profile data returns eligibility results",
+    "POST /api/eligibility-check returns MCP tool metadata",
+    "POST /api/eligibility-check without profile returns 400",
+    "POST /api/generate-pdf with profile creates PDF and returns download URL",
+    "GET /api/pdf/{id} serves generated PDF with application/pdf content-type",
+    "POST /api/generate-pdf with incomplete profile returns 400",
+    "Agnost tracking logs show session creation on API calls",
+    "Frontend: Hamburger menu button (data-testid='header-menu-btn') visible on Home, Chat, Schemes, Profile pages",
+    "Frontend: Sidebar panel (data-testid='sidebar-panel') opens when hamburger clicked",
+    "Frontend: Analytics Dashboard link (data-testid='sidebar-analytics-link') points to https://app.agnost.ai",
+    "Frontend: Analytics link opens in new tab (target='_blank')",
+    "Frontend: Green active badge (data-testid='analytics-active-badge') shown when analytics enabled",
+    "Frontend: Sidebar close button (data-testid='sidebar-close-btn') closes sidebar"
+  ],
+  
+  "test_report_links": [
+    "/app/backend/tests/test_agnost_integration.py",
+    "/app/test_reports/pytest/agnost_test_results.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [
+    "Agnost SDK properly initialized with AGNOST_WRITE_KEY from .env",
+    "All three tool calls (search_schemes, eligibility_matcher, generate_pdf) wrapped with agnost.track()",
+    "Proper error handling in place - agnost.shutdown() called on app shutdown",
+    "Sidebar component correctly fetches /api/analytics/status and displays green badge when enabled"
+  ],
+  
+  "updated_files": ["/app/backend/tests/test_agnost_integration.py"],
+  
+  "success_rate": {
+    "backend": "100% (13/13 tests passed)",
+    "frontend": "100% (all sidebar and hamburger menu tests passed)"
+  },
+  
+  "seed_data_creation": "",
+  "test_credentials": {
+    "phone": "9876543210",
+    "otp": "1234"
+  },
+  
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  
+  "context_for_next_testing_agent": "Agnost AI SDK v0.1.13 integration complete. Backend tracks all tool calls (search, eligibility, pdf) with agnost.track(). Frontend sidebar drawer accessible via hamburger menu on all pages with Analytics Dashboard link to https://app.agnost.ai. Green active badge indicates tracking is active. Auth uses mock OTP '1234'. Server logs show 'New conversation created' for agnost sessions.",
+  
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "search_schemes (hardcoded in-memory scheme data)",
+      "auth (static OTP 1234)"
+    ]
+  }
+}
