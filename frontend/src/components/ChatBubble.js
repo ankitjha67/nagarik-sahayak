@@ -223,7 +223,8 @@ const WhatsAppShareBtn = ({ pdfUrl, schemeName }) => {
         return;
       } catch {}
     }
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    // Use web.whatsapp.com for desktop (wa.me redirects to api.whatsapp.com which gets blocked)
+    window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   };
 
   return (
