@@ -239,15 +239,17 @@ class TestDemoMode:
     
     def test_demo_trigger_returns_instant_result(self):
         """POST /api/chat with 'Mera beta 10th pass hai' returns instant Vidyasiri result + PDF"""
+        import time
         # Check demo mode is enabled
         demo_status = requests.get(f"{BASE_URL}/api/demo/status").json()
         if not demo_status.get("demo_mode"):
             # Enable demo mode
             requests.post(f"{BASE_URL}/api/demo/toggle")
         
-        # Create user
-        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": "9999777705"})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": "9999777705", "otp": "1234"})
+        # Create user with unique phone
+        phone = f"5555{int(time.time()) % 1000000:06d}"
+        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
         user_id = response.json()["user_id"]
         
         # Send demo trigger
