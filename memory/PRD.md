@@ -69,6 +69,10 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] `GET /api/analytics/status` endpoint returns tracking enabled state + dashboard URL
 - [x] Sidebar drawer on all pages with hamburger menu, Analytics Dashboard link to https://app.agnost.ai
 - [x] Green active badge when Agnost tracking is enabled
+- [x] **DEMO_MODE** env flag: any scholarship query instantly returns Vidyasiri eligible + pre-filled PDF in <2s
+- [x] Demo fast-path in `/api/chat` and `/api/search-schemes` endpoints
+- [x] Pre-filled demo profile (Priya Sharma, 20, Karnataka, Rs 15k/month)
+- [x] Agnost tracking for demo tool calls
 - [x] 100% backend test pass rate (13/13 Agnost integration tests)
 
 ## P0 Backlog
