@@ -581,7 +581,7 @@ async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dic
 
 
 async def generate_filled_form(user_id: str, scheme_id: str) -> dict:
-    """MCP Tool 3: Generate a filled application form PDF."""
+    """MCP Tool 3: Generate a filled application form PDF with Hindi fields."""
     t0 = _time.time()
     user = await prisma.user.find_unique(where={"id": user_id})
     scheme = await prisma.scheme.find_unique(where={"id": scheme_id})
@@ -589,19 +589,15 @@ async def generate_filled_form(user_id: str, scheme_id: str) -> dict:
         return {"success": False, "error": "User or Scheme not found"}
 
     profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})
-    from pdf_generator import generate_eligibility_pdf
+    from pdf_generator import generate_filled_form_pdf
 
     pdf_id = str(uuid.uuid4())
     pdf_path = str(PDF_DIR / f"{pdf_id}.pdf")
 
-    # Generate filled form with profile + scheme info
-    eligibility_results = [{
-        "scheme": scheme.name, "scheme_hi": scheme.name,
-        "eligible": True, "reason": scheme.eligibilityCriteriaText,
-        "benefit": scheme.eligibilityCriteriaText,
-    }]
-    generate_eligibility_pdf(
-        profile=profile, eligibility_results=eligibility_results,
+    generate_filled_form_pdf(
+        profile=profile,
+        scheme_name=scheme.name,
+        scheme_criteria=scheme.eligibilityCriteriaText,
         output_path=pdf_path,
     )
     pdf_url = f"/api/pdf/{pdf_id}"
