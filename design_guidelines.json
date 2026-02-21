@@ -1,0 +1,166 @@
+{
+  "design_system": {
+    "identity": {
+      "name": "Nagarik Sahayak",
+      "tone": "Trustworthy, Efficient, Accessible, Patriotic",
+      "aesthetic": "Digital India Modern — Clean whites, purposeful color, minimal clutter",
+      "persona": "A helpful government officer in your pocket",
+      "target_audience": "Indian citizens, mobile-first, Hindi/English bilingual speakers"
+    },
+    "typography": {
+      "font_family": {
+        "headings": "Mukta, sans-serif",
+        "body": "Nunito, sans-serif",
+        "fallback": "system-ui, -apple-system, sans-serif"
+      },
+      "scale": {
+        "h1": "text-2xl font-bold tracking-tight text-[#000080]",
+        "h2": "text-xl font-semibold text-[#000080]",
+        "h3": "text-lg font-medium text-gray-800",
+        "body": "text-base font-normal text-gray-700 leading-relaxed",
+        "caption": "text-sm text-gray-500",
+        "button": "text-base font-medium tracking-wide"
+      },
+      "rules": "Use 'Mukta' for all Hindi text and English Headings. Use 'Nunito' for English body text. Ensure 1.5x line height for readability."
+    },
+    "colors": {
+      "palette": {
+        "primary": {
+          "main": "#FF9933",
+          "light": "#FFF0E0",
+          "dark": "#E68A00",
+          "foreground": "#FFFFFF"
+        },
+        "secondary": {
+          "main": "#000080",
+          "light": "#E6E6F2",
+          "dark": "#000066",
+          "foreground": "#FFFFFF"
+        },
+        "success": {
+          "main": "#138808",
+          "light": "#E0F2DE"
+        },
+        "background": {
+          "default": "#F9FAFB",
+          "paper": "#FFFFFF",
+          "subtle": "#F3F4F6"
+        },
+        "text": {
+          "primary": "#1F2937",
+          "secondary": "#4B5563",
+          "disabled": "#9CA3AF"
+        }
+      },
+      "usage": {
+        "buttons": "bg-[#FF9933] hover:bg-[#E68A00] text-white shadow-lg",
+        "headers": "bg-white border-b border-gray-100 text-[#000080]",
+        "links": "text-[#000080] font-medium hover:underline decoration-[#FF9933]",
+        "mic_button": "bg-[#FF9933] shadow-[0_4px_14px_0_rgba(255,153,51,0.39)] hover:shadow-[0_6px_20px_rgba(255,153,51,0.23)] hover:-translate-y-1 transition-all"
+      }
+    },
+    "layout": {
+      "spacing": "Relaxed mobile spacing. Use p-4 as base. p-6 for cards. Gap-4 for lists.",
+      "container": "max-w-md mx-auto min-h-screen bg-gray-50 flex flex-col relative",
+      "radius": "rounded-2xl for cards, rounded-xl for inputs, rounded-full for buttons",
+      "shadows": "shadow-sm for cards, shadow-md for floating actions, shadow-none for flat lists"
+    },
+    "components": {
+      "buttons": {
+        "primary": "rounded-full px-6 py-3 bg-[#FF9933] text-white font-medium hover:bg-[#E68A00] transition-colors flex items-center justify-center gap-2",
+        "secondary": "rounded-full px-6 py-3 bg-white border border-gray-200 text-[#000080] hover:bg-gray-50 transition-colors",
+        "mic_fab": "fixed bottom-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-[#FF9933] text-white flex items-center justify-center shadow-xl z-50 hover:scale-105 active:scale-95 transition-transform"
+      },
+      "cards": {
+        "scheme": "bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden",
+        "chat_bubble_user": "bg-[#FFF0E0] text-gray-800 rounded-2xl rounded-tr-sm px-4 py-2 max-w-[85%] self-end shadow-sm border border-orange-100",
+        "chat_bubble_bot": "bg-white text-gray-800 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[85%] self-start shadow-sm border border-gray-100"
+      },
+      "inputs": {
+        "text": "w-full rounded-full border-gray-200 bg-gray-50 px-5 py-3 focus:ring-2 focus:ring-[#FF9933] focus:border-transparent outline-none transition-all"
+      }
+    },
+    "icons": {
+      "library": "lucide-react",
+      "styles": "Stroke width 2px for clarity. Size 24px default.",
+      "specifics": {
+        "mic": "Mic",
+        "send": "SendHorizontal",
+        "user": "UserCircle2",
+        "check": "Check",
+        "double_check": "CheckCheck",
+        "home": "Home",
+        "schemes": "BookOpen",
+        "menu": "Menu"
+      }
+    },
+    "motion": {
+      "transitions": "transition-all duration-300 ease-out",
+      "animations": {
+        "fade_in": "animate-in fade-in duration-500",
+        "slide_up": "animate-in slide-in-from-bottom-4 duration-500",
+        "pulse_mic": "animate-pulse"
+      }
+    }
+  },
+  "assets": {
+    "images": [
+      {
+        "category": "hero",
+        "url": "https://images.pexels.com/photos/29858623/pexels-photo-29858623.jpeg",
+        "alt": "Farmer using mobile phone in field",
+        "usage": "Login page background or Schemes page header"
+      },
+      {
+        "category": "logo",
+        "url": "https://images.unsplash.com/photo-1597058712635-3182d1eacc1e",
+        "alt": "Indian Flag Icon",
+        "usage": "Header logo circular crop"
+      },
+      {
+        "category": "community",
+        "url": "https://images.unsplash.com/photo-1708593343442-7595427ddf7b",
+        "alt": "Villagers discussion",
+        "usage": "Community or Help section"
+      }
+    ]
+  },
+  "content": {
+    "schemes_data": [
+      {
+        "title": "PM-KISAN Samman Nidhi",
+        "description": "Financial benefit of ₹6,000/- per year to eligible farmer families.",
+        "eligibility": "Small and marginal farmers with cultivable landholding up to 2 hectares.",
+        "benefits": "₹2,000 every 4 months directly into bank account."
+      },
+      {
+        "title": "Ayushman Bharat (PM-JAY)",
+        "description": "World's largest health insurance scheme fully financed by the government.",
+        "eligibility": "Families listed in SECC 2011 database, no cap on family size or age.",
+        "benefits": "Health cover of ₹5 Lakh per family per year for secondary and tertiary care hospitalization."
+      },
+      {
+        "title": "Sukanya Samriddhi Yojana",
+        "description": "Small deposit scheme for the girl child launched as a part of the 'Beti Bachao Beti Padhao' campaign.",
+        "eligibility": "Parents or legal guardians can open an account for a girl child below 10 years.",
+        "benefits": "High interest rate (currently ~8%), tax benefits under 80C, maturity at 21 years."
+      }
+    ]
+  },
+  "implementation_steps": [
+    "Step 1: Setup Tailwind config with Saffron (#FF9933) and Navy (#000080) colors.",
+    "Step 2: Install 'lucide-react' and 'framer-motion' (if not present).",
+    "Step 3: Create the 'Layout' component with the sticky Header (Flag + Name) and Bottom Nav (if needed) or simple back navigation.",
+    "Step 4: Build 'LoginPage' with mock OTP (1234). Use the farmer image as a subtle backdrop or top banner.",
+    "Step 5: Build 'ChatInterface' component. Implement the Double Tick logic (Grey -> Blue).",
+    "Step 6: Create the 'SchemesPage' using a clean card layout with the data provided.",
+    "Step 7: Implement the 'MicButton' as a primary FAB (Floating Action Button) on the Home/Chat screen."
+  ],
+  "universal_guidelines": [
+    "Do not use dark mode. Force light mode in tailwind config.",
+    "Use 'data-testid' for all interactive elements.",
+    "Ensure the 'Mic' button is the most prominent element on the home screen.",
+    "Use 'sonner' for toast notifications (e.g., 'OTP Sent', 'Scheme Applied').",
+    "Keep borders subtle (gray-200) but buttons punchy (Saffron)."
+  ]
+}
