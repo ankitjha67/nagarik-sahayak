@@ -282,84 +282,131 @@ BOT_RESPONSES = {
 }
 
 
-# --- DEMO MODE: Vidyasiri Scholarship ---
+# --- DEMO MODE: Hardcoded Stage Demo ---
 
-DEMO_PROFILE = {"name": "Priya Sharma", "age": 20, "income": 15000, "state": "Karnataka"}
+DEMO_PROFILE = {
+    "name": "Rajesh Kumar",
+    "age": 42,
+    "income": 18000,
+    "state": "Karnataka",
+    "child": "Son, 10th pass",
+}
 
 VIDYASIRI_RESULT = {
     "scheme": "Vidyasiri Scholarship",
     "scheme_hi": "विद्यासिरी छात्रवृत्ति",
     "eligible": True,
     "reasons": [
-        "Age 20 years meets student age requirement",
-        "Income Rs 15,000/month within Rs 2,50,000/year limit",
+        "Child passed 10th — eligible for Post-Matric scholarship",
+        "Family income ₹18,000/month within ₹2,50,000/year ceiling",
         "Karnataka domicile verified",
     ],
-    "reason": "Age 20 years meets student age requirement; Income Rs 15,000/month within Rs 2,50,000/year limit; Karnataka domicile verified",
-    "benefit": "Rs 12,000 - Rs 24,000/year tuition + hostel allowance for degree/PG students",
+    "reason": "Child passed 10th — eligible for Post-Matric scholarship; Family income ₹18,000/month within ₹2,50,000/year ceiling; Karnataka domicile verified",
+    "benefit": "₹12,000–₹24,000/year tuition + hostel allowance for post-10th students",
 }
+
+PMKISAN_DEMO_RESULT = {
+    "scheme": "PM-KISAN Samman Nidhi",
+    "scheme_hi": "पीएम-किसान सम्मान निधि",
+    "eligible": True,
+    "reasons": [
+        "Family income ₹18,000/month within ₹2,00,000/year limit",
+        "Cultivable land requirement — verify at local office",
+    ],
+    "reason": "Family income ₹18,000/month within ₹2,00,000/year limit; Cultivable land requirement — verify at local office",
+    "benefit": "₹6,000/year (₹2,000 every 4 months via DBT)",
+}
+
+# Exact trigger + fuzzy variations
+DEMO_EXACT_TRIGGERS = [
+    "mera beta 10th pass hai",
+    "mera beta 10th pass",
+    "mera beta das pass hai",
+    "मेरा बेटा 10th पास है",
+    "मेरा बेटा दसवीं पास है",
+    "मेरा बेटा 10वीं पास है",
+]
 
 DEMO_SCHOLARSHIP_SIGNALS = [
     "scholarship", "छात्रवृत्ति", "vidyasiri", "विद्यासिरी", "student",
     "education", "शिक्षा", "college", "university", "tuition", "fee",
     "study", "पढ़ाई", "degree", "hostel", "exam",
+    "10th", "10वीं", "दसवीं", "pass", "पास", "beta", "बेटा",
 ]
 
 
-def _is_scholarship_query(text: str) -> bool:
+def _is_demo_trigger(text: str) -> bool:
+    """Check if the text matches the hardcoded stage demo trigger."""
+    if not DEMO_MODE:
+        return False
     low = text.lower().strip()
+    # Exact match first
+    if low in DEMO_EXACT_TRIGGERS:
+        return True
+    # Fuzzy: any scholarship-related signal
     return any(sig in low for sig in DEMO_SCHOLARSHIP_SIGNALS)
 
 
-def demo_vidyasiri_response(user_id: str = "demo") -> dict:
+def demo_stage_response(user_id: str = "demo") -> dict:
     """
-    Instant Vidyasiri eligible response with pre-filled PDF.
-    Designed to return in <2s for stage demos.
+    Hardcoded stage demo: 100% reliable, zero external dependencies.
+    Profile → Eligibility → PDF in one shot.
     """
     from pdf_generator import generate_eligibility_pdf
 
     t0 = _time.time()
+    results = [VIDYASIRI_RESULT, PMKISAN_DEMO_RESULT]
     pdf_id = str(uuid.uuid4())
     pdf_path = str(PDF_DIR / f"{pdf_id}.pdf")
     generate_eligibility_pdf(
         profile=DEMO_PROFILE,
-        eligibility_results=[VIDYASIRI_RESULT],
+        eligibility_results=results,
         output_path=pdf_path,
     )
     pdf_url = f"/api/pdf/{pdf_id}"
     latency_ms = int((_time.time() - t0) * 1000)
 
-    if _agnost_key:
-        agnost.track(
-            user_id=user_id,
-            agent_name="nagarik_tool",
-            input="demo_scholarship_query",
-            output=pdf_url,
-            properties={"tool": "demo_vidyasiri", "pdf_id": pdf_id},
-            success=True,
-            latency=latency_ms,
-        )
+    try:
+        if _agnost_key:
+            agnost.track(
+                user_id=user_id,
+                agent_name="nagarik_tool",
+                input="mera beta 10th pass hai",
+                output=pdf_url,
+                properties={"tool": "demo_stage", "pdf_id": pdf_id},
+                success=True,
+                latency=latency_ms,
+            )
+    except Exception:
+        pass  # Never fail on tracking
 
     summary = (
-        f"Priya Sharma, आपकी पात्रता जांच पूरी हुई!\n\n"
+        "प्रोफाइल पूरी हो गई!\n"
+        f"नाम: {DEMO_PROFILE['name']} | उम्र: {DEMO_PROFILE['age']} वर्ष\n"
+        f"मासिक आय: ₹{DEMO_PROFILE['income']:,} | राज्य: {DEMO_PROFILE['state']}\n"
+        f"बच्चा: {DEMO_PROFILE['child']}\n\n"
+        "पात्रता जांच पूरी हुई!\n\n"
         f"[+] विद्यासिरी छात्रवृत्ति: पात्र\n"
         f"    कारण: {VIDYASIRI_RESULT['reason']}\n"
         f"    लाभ: {VIDYASIRI_RESULT['benefit']}\n\n"
-        f"PDF रिपोर्ट तैयार है! नीचे डाउनलोड करें।"
+        f"[+] पीएम-किसान सम्मान निधि: पात्र\n"
+        f"    कारण: {PMKISAN_DEMO_RESULT['reason']}\n"
+        f"    लाभ: {PMKISAN_DEMO_RESULT['benefit']}\n\n"
+        "PDF रिपोर्ट तैयार है! नीचे डाउनलोड करें।"
     )
 
     return {
         "content": summary,
         "tool_calls": [{
             "tool_name": "eligibility_matcher",
-            "tool_input": {"profile": DEMO_PROFILE, "query": "vidyasiri scholarship"},
-            "documents_scanned": ["Vidyasiri Scholarship Guidelines"],
+            "tool_input": {"profile": DEMO_PROFILE, "query": "10th pass scholarship"},
+            "documents_scanned": ["Vidyasiri Scholarship Guidelines", "PM-KISAN Operational Guidelines"],
             "match_found": True,
-            "results": [VIDYASIRI_RESULT],
+            "results": results,
         }],
         "type": "profiler_complete",
         "profiler_field": "",
-        "eligibility_results": [VIDYASIRI_RESULT],
+        "eligibility_results": results,
         "pdf_url": pdf_url,
     }
 
