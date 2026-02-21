@@ -769,11 +769,31 @@ async def profiler_agent_respond(user_id: str, content: str) -> dict:
         # Check next field
         next_field = get_next_missing_field(profile_data)
         if not next_field:
-            # Profile complete! Auto-trigger eligibility matcher
+            # Profile complete! Auto-trigger eligibility matcher + generate PDF
             await db.users.update_one({"id": user_id}, {"$set": {"profile_complete": True}})
             matcher_result = eligibility_matcher(profile_data)
+
+            # Auto-generate PDF
+            pdf_url = ""
+            try:
+                from pdf_generator import generate_eligibility_pdf
+                pdf_id = str(uuid.uuid4())
+                pdf_path = str(PDF_DIR / f"{pdf_id}.pdf")
+                generate_eligibility_pdf(
+                    profile=profile_data,
+                    eligibility_results=matcher_result.get("results", []),
+                    output_path=pdf_path,
+                )
+                pdf_url = f"/api/pdf/{pdf_id}"
+            except Exception as e:
+                logger.error(f"PDF generation failed: {e}")
+
+            content = f"धन्यवाद! आपकी प्रोफाइल पूरी हो गई।\n\n{matcher_result['summary']}"
+            if pdf_url:
+                content += f"\n\nPDF रिपोर्ट तैयार है! नीचे डाउनलोड करें।"
+
             return {
-                "content": f"धन्यवाद! आपकी प्रोफाइल पूरी हो गई।\n\n{matcher_result['summary']}",
+                "content": content,
                 "tool_calls": [{
                     "tool_name": "eligibility_matcher",
                     "tool_input": matcher_result["tool_input"],
@@ -784,6 +804,7 @@ async def profiler_agent_respond(user_id: str, content: str) -> dict:
                 "type": "profiler_complete",
                 "profiler_field": "",
                 "eligibility_results": matcher_result.get("results", []),
+                "pdf_url": pdf_url,
             }
         else:
             confirm = ""
