@@ -41,7 +41,14 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] **/api/search-schemes** direct tool invocation endpoint
 - [x] Chat bot responses include `tool_calls` array with MCP trace
 - [x] Frontend ChatBubble renders MCP tool-call trace (documents scanned, match/no-match indicator)
-- [x] 100% backend test pass rate (17/17 endpoints)
+- [x] **/api/transcribe** endpoint using **Sarvam Saaras v3** (model="saaras:v3")
+  - mode="transcribe" → Hindi transcript
+  - mode="translate" → English translation
+- [x] Frontend mic records **5s auto-stop** audio via MediaRecorder with countdown badge
+- [x] TranscriptionBlock component renders Hindi + English side by side
+- [x] Transcriptions stored in ChatLog with type="transcription", transcript_hi, transcript_en
+- [x] Bot auto-responds to transcribed text (MCP tool if scheme-related)
+- [x] 100% backend test pass rate (19/19 endpoints)
 
 ## P0 Backlog
 - Integrate real LLM for intelligent chat responses
