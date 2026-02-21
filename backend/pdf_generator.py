@@ -197,3 +197,148 @@ def _eligibility_block(pdf: FPDF, result: dict):
         pdf.cell(0, 5, f"Benefit: {benefit}")
 
     pdf.set_y(y_start + 25)
+
+
+
+def generate_filled_form_pdf(
+    profile: dict,
+    scheme_name: str,
+    scheme_criteria: str = "",
+    output_path: str = "/tmp/filled_form.pdf",
+) -> str:
+    """
+    Generate a pre-filled application form PDF with Hindi labels.
+    Fields: naam, umr, aay, rajya, Scheme Name, Date (Hindi format).
+    """
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+
+    pdf.add_font("NS", "", str(FONTS_DIR / "NotoSans-Regular.ttf"))
+    pdf.add_font("NS", "B", str(FONTS_DIR / "NotoSans-Bold.ttf"))
+    pdf.add_font("NH", "", str(FONTS_DIR / "NotoSansDevanagari-Regular.ttf"))
+
+    pdf.add_page()
+
+    # === HEADER BAR (Saffron) ===
+    pdf.set_fill_color(255, 153, 51)
+    pdf.rect(0, 0, 210, 20, "F")
+    pdf.set_fill_color(19, 136, 8)
+    pdf.rect(0, 20, 210, 2, "F")
+
+    pdf.set_y(5)
+    pdf.set_font("NS", "B", 16)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(0, 10, "Nagarik Sahayak", align="C", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_y(24)
+    pdf.set_font("NH", size=13)
+    pdf.set_text_color(0, 0, 128)
+    pdf.cell(0, 8, "BHARA HUA AAVEDAN FORM", align="C", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_font("NS", size=9)
+    pdf.set_text_color(0, 0, 128)
+    pdf.cell(0, 6, "PRE-FILLED APPLICATION FORM", align="C", new_x="LMARGIN", new_y="NEXT")
+
+    # Reference & date
+    now = datetime.now(timezone.utc)
+    hindi_months = ["", "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"]
+    date_str = f"{now.day} {hindi_months[now.month]} {now.year}"
+    ref_id = now.strftime("%Y%m%d%H%M%S")
+    pdf.set_font("NS", size=8)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 5, f"Ref: NS-{ref_id}  |  Date: {date_str}", align="C", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(6)
+
+    # === SCHEME INFO ===
+    pdf.set_fill_color(240, 240, 248)
+    pdf.set_draw_color(0, 0, 128)
+    pdf.set_font("NS", "B", 11)
+    pdf.set_text_color(0, 0, 128)
+    pdf.cell(0, 8, f"  Scheme / Yojana: {scheme_name}", fill=True, new_x="LMARGIN", new_y="NEXT", border="B")
+    pdf.ln(4)
+
+    if scheme_criteria:
+        pdf.set_font("NS", size=9)
+        pdf.set_text_color(80, 80, 80)
+        pdf.multi_cell(0, 5, f"Eligibility: {scheme_criteria}")
+        pdf.ln(4)
+
+    # === APPLICANT DETAILS (Hindi labels) ===
+    pdf.set_fill_color(240, 240, 248)
+    pdf.set_draw_color(0, 0, 128)
+    pdf.set_font("NS", "B", 11)
+    pdf.set_text_color(0, 0, 128)
+    pdf.cell(0, 8, "  Applicant Details", fill=True, new_x="LMARGIN", new_y="NEXT", border="B")
+    pdf.ln(4)
+
+    name = profile.get("name", "N/A")
+    age = profile.get("age", "N/A")
+    income = profile.get("income", 0)
+    state = profile.get("state", "N/A")
+    income_str = f"Rs {income:,}/year" if isinstance(income, (int, float)) and income > 0 else "N/A"
+
+    form_fields = [
+        ("Naam / Name", str(name)),
+        ("Umr / Age", f"{age} varsh / years"),
+        ("Saalanaa Aay / Annual Income", income_str),
+        ("Rajya / State", str(state)),
+        ("Yojana / Scheme", scheme_name),
+        ("Aavedan Tithi / Application Date", date_str),
+    ]
+
+    for label, value in form_fields:
+        # Label
+        pdf.set_font("NS", "B", 10)
+        pdf.set_text_color(80, 80, 80)
+        pdf.cell(75, 8, label)
+        # Value in a box
+        pdf.set_font("NS", size=10)
+        pdf.set_text_color(30, 30, 30)
+        pdf.set_fill_color(255, 255, 255)
+        pdf.set_draw_color(180, 180, 200)
+        pdf.cell(0, 8, f"  {value}", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+
+    pdf.ln(6)
+
+    # === DECLARATION ===
+    pdf.set_fill_color(240, 240, 248)
+    pdf.set_draw_color(0, 0, 128)
+    pdf.set_font("NS", "B", 11)
+    pdf.set_text_color(0, 0, 128)
+    pdf.cell(0, 8, "  Declaration", fill=True, new_x="LMARGIN", new_y="NEXT", border="B")
+    pdf.ln(4)
+
+    pdf.set_font("NS", size=9)
+    pdf.set_text_color(60, 60, 60)
+    pdf.multi_cell(0, 5, (
+        "I hereby declare that the information provided above is true and correct "
+        "to the best of my knowledge. I understand that any false information may "
+        "lead to rejection of my application."
+    ))
+    pdf.ln(8)
+
+    # Signature line
+    pdf.set_font("NS", "B", 9)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(90, 6, "Signature / Hastakshar:", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_draw_color(100, 100, 100)
+    pdf.line(10, pdf.get_y() + 15, 90, pdf.get_y() + 15)
+    pdf.set_y(pdf.get_y() + 20)
+
+    # === FOOTER ===
+    pdf.set_draw_color(200, 200, 200)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+    pdf.set_font("NS", size=7)
+    pdf.set_text_color(150, 150, 150)
+    pdf.multi_cell(0, 4, (
+        "This is an auto-generated application form by Nagarik Sahayak. "
+        "Please submit this form along with required documents at your nearest CSC or government office.\n"
+        "Generated by Nagarik Sahayak | Digital India Initiative"
+    ), align="C")
+
+    pdf.output(output_path)
+    return output_path
