@@ -239,26 +239,174 @@ BOT_RESPONSES = {
 }
 
 
-def get_bot_response(content: str, language: str = "hi") -> str:
-    """Simple rule-based bot response. Replace with LLM integration later."""
+def search_schemes(query: str, language: str = "hi") -> dict:
+    """
+    MCP Tool: search_schemes
+    Scans seeded scheme document text for matching eligibility & criteria.
+    Returns structured result with document scan info.
+    """
+    query_lower = query.lower().strip()
+    # Tokenize query — remove Hindi stopwords and short tokens
+    tokens = re.split(r'[\s,;.!?\-/]+', query_lower)
+    tokens = [t for t in tokens if len(t) > 2]
+
+    # Search keywords mapped to schemes
+    SCHEME_KEYWORDS = {
+        0: ["kisan", "farmer", "किसान", "pm-kisan", "pmkisan", "agriculture",
+            "कृषि", "खेती", "land", "भूमि", "6000", "dbt", "किस्त"],
+        1: ["ayushman", "आयुष्मान", "health", "hospital", "स्वास्थ्य",
+            "insurance", "बीमा", "pmjay", "pm-jay", "lakh", "लाख",
+            "treatment", "इलाज", "surgery", "अस्पताल", "secc", "cashless"],
+        2: ["sukanya", "सुकन्या", "girl", "बेटी", "beti", "daughter",
+            "बालिका", "savings", "बचत", "interest", "ब्याज", "80c",
+            "samriddhi", "समृद्धि", "child", "बच्ची"],
+    }
+
+    # Score each scheme
+    scores = {0: 0, 1: 0, 2: 0}
+    for token in tokens:
+        for idx, keywords in SCHEME_KEYWORDS.items():
+            for kw in keywords:
+                if token in kw or kw in token:
+                    scores[idx] += 1
+
+    # Also check against actual scheme text fields for deeper match
+    for idx, scheme in enumerate(SCHEMES_SEED):
+        searchable = " ".join([
+            scheme["title"].lower(),
+            scheme["title_hi"],
+            scheme["description"].lower(),
+            scheme["description_hi"],
+            scheme["eligibility"].lower(),
+            scheme["eligibility_hi"],
+            scheme["benefits"].lower(),
+            scheme["benefits_hi"],
+        ])
+        for token in tokens:
+            if token in searchable:
+                scores[idx] += 1
+
+    matched_indices = [i for i, s in scores.items() if s > 0]
+    # Sort by score descending
+    matched_indices.sort(key=lambda i: scores[i], reverse=True)
+
+    if not matched_indices:
+        return {
+            "tool_name": "search_schemes",
+            "tool_input": {"query": query},
+            "documents_scanned": [s["title"] for s in SCHEMES_SEED],
+            "match_found": False,
+            "result_text": "I don't know — criteria not explicitly stated in PDFs.",
+            "result_text_hi": "मुझे जानकारी नहीं मिली — पीडीएफ दस्तावेजों में यह मापदंड स्पष्ट रूप से नहीं बताया गया है।",
+        }
+
+    # Build response from top match(es)
+    results = []
+    for idx in matched_indices:
+        scheme = SCHEMES_SEED[idx]
+        is_hi = language == "hi"
+        results.append({
+            "scheme_title": scheme["title_hi"] if is_hi else scheme["title"],
+            "scheme_title_en": scheme["title"],
+            "eligibility": scheme["eligibility_hi"] if is_hi else scheme["eligibility"],
+            "benefits": scheme["benefits_hi"] if is_hi else scheme["benefits"],
+            "pdf_url": scheme["pdf_url"],
+            "category": scheme["category"],
+        })
+
+    return {
+        "tool_name": "search_schemes",
+        "tool_input": {"query": query},
+        "documents_scanned": [s["title"] for s in SCHEMES_SEED],
+        "match_found": True,
+        "matched_schemes": results,
+        "result_text": _format_mcp_result(results, language),
+    }
+
+
+def _format_mcp_result(results: list, language: str) -> str:
+    """Format MCP search results into readable text."""
+    parts = []
+    for r in results:
+        name = r["scheme_title"]
+        if language == "hi":
+            parts.append(
+                f"Document scanned: {r['scheme_title_en']}\n\n"
+                f"{name}:\n"
+                f"पात्रता: {r['eligibility']}\n\n"
+                f"लाभ: {r['benefits']}\n"
+                f"PDF: {r['pdf_url']}"
+            )
+        else:
+            parts.append(
+                f"Document scanned: {r['scheme_title_en']}\n\n"
+                f"Eligibility: {r['eligibility']}\n\n"
+                f"Benefits: {r['benefits']}\n"
+                f"PDF: {r['pdf_url']}"
+            )
+    return "\n\n---\n\n".join(parts)
+
+
+def get_bot_response_with_mcp(content: str, language: str = "hi") -> dict:
+    """
+    Enhanced bot response that simulates MCP tool calling.
+    Returns dict with response text + optional tool_calls trace.
+    """
     content_lower = content.lower().strip()
 
+    # Pure greetings — no tool needed
     if any(w in content_lower for w in ["hello", "hi", "namaste", "नमस्ते", "हैलो", "हेलो"]):
-        return BOT_RESPONSES["greeting"].get(language, BOT_RESPONSES["greeting"]["hi"])
+        return {
+            "content": BOT_RESPONSES["greeting"].get(language, BOT_RESPONSES["greeting"]["hi"]),
+            "tool_calls": [],
+        }
 
-    if any(w in content_lower for w in ["scheme", "schemes", "योजना", "योजनाएं", "yojana"]):
-        return BOT_RESPONSES["schemes"].get(language, BOT_RESPONSES["schemes"]["hi"])
+    # Listing all schemes — no document scan needed
+    if content_lower in ["scheme", "schemes", "योजना", "योजनाएं", "yojana", "योजनाएं दिखाओ"]:
+        return {
+            "content": BOT_RESPONSES["schemes"].get(language, BOT_RESPONSES["schemes"]["hi"]),
+            "tool_calls": [],
+        }
 
-    if any(w in content_lower for w in ["pm-kisan", "pm kisan", "kisan", "किसान", "पीएम-किसान", "pmkisan"]):
-        return BOT_RESPONSES["pmkisan"].get(language, BOT_RESPONSES["pmkisan"]["hi"])
+    # Check if query is about a scheme / eligibility / benefits → invoke MCP tool
+    scheme_signals = [
+        "kisan", "farmer", "किसान", "pm-kisan", "pmkisan", "agriculture", "कृषि", "खेती",
+        "ayushman", "आयुष्मान", "health", "hospital", "स्वास्थ्य", "insurance", "बीमा", "pmjay",
+        "sukanya", "सुकन्या", "girl", "बेटी", "beti", "daughter", "बालिका", "savings", "बचत",
+        "eligib", "पात्र", "benefit", "लाभ", "apply", "आवेदन", "criteria", "मापदंड",
+        "document", "pdf", "दस्तावेज", "scheme", "योजना", "yojana",
+        "who can", "kaun", "कौन", "how to", "kaise", "कैसे",
+    ]
 
-    if any(w in content_lower for w in ["ayushman", "आयुष्मान", "pmjay", "pm-jay", "health", "स्वास्थ्य"]):
-        return BOT_RESPONSES["ayushman"].get(language, BOT_RESPONSES["ayushman"]["hi"])
+    needs_tool = any(sig in content_lower for sig in scheme_signals)
 
-    if any(w in content_lower for w in ["sukanya", "सुकन्या", "beti", "बेटी", "girl", "बालिका"]):
-        return BOT_RESPONSES["sukanya"].get(language, BOT_RESPONSES["sukanya"]["hi"])
+    if needs_tool:
+        tool_result = search_schemes(content, language)
+        tool_call_trace = {
+            "tool_name": "search_schemes",
+            "tool_input": tool_result["tool_input"],
+            "documents_scanned": tool_result["documents_scanned"],
+            "match_found": tool_result["match_found"],
+        }
 
-    return BOT_RESPONSES["default"].get(language, BOT_RESPONSES["default"]["hi"])
+        if tool_result["match_found"]:
+            response_text = tool_result["result_text"]
+        else:
+            if language == "hi":
+                response_text = tool_result["result_text_hi"]
+            else:
+                response_text = tool_result["result_text"]
+
+        return {
+            "content": response_text,
+            "tool_calls": [tool_call_trace],
+        }
+
+    # Default fallback — no tool needed
+    return {
+        "content": BOT_RESPONSES["default"].get(language, BOT_RESPONSES["default"]["hi"]),
+        "tool_calls": [],
+    }
 
 
 # --- Startup Event: Seed Schemes ---
