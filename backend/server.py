@@ -273,15 +273,15 @@ def search_schemes(query: str, language: str = "hi") -> dict:
             "samriddhi", "समृद्धि", "child", "बच्ची"],
     }
 
-    # Score each scheme
+    # Score each scheme using SPECIFIC tokens only (no stopwords)
     scores = {0: 0, 1: 0, 2: 0}
-    for token in tokens:
+    for token in specific_tokens:
         for idx, keywords in SCHEME_KEYWORDS.items():
             for kw in keywords:
                 if token in kw or kw in token:
                     scores[idx] += 1
 
-    # Also check against actual scheme text fields for deeper match
+    # Also check against actual scheme text fields — but only with specific tokens
     for idx, scheme in enumerate(SCHEMES_SEED):
         searchable = " ".join([
             scheme["title"].lower(),
@@ -293,11 +293,12 @@ def search_schemes(query: str, language: str = "hi") -> dict:
             scheme["benefits"].lower(),
             scheme["benefits_hi"],
         ])
-        for token in tokens:
+        for token in specific_tokens:
             if token in searchable:
                 scores[idx] += 1
 
-    matched_indices = [i for i, s in scores.items() if s > 0]
+    # Require at least 2 score to count as a match (avoids false positives)
+    matched_indices = [i for i, s in scores.items() if s >= 2]
     # Sort by score descending
     matched_indices.sort(key=lambda i: scores[i], reverse=True)
 
