@@ -46,6 +46,11 @@ Build a full-stack, mobile-first chat application called 'Nagarik Sahayak' - a W
 - Authentication (static OTP 1234)
 - Speech-to-Text (hardcoded mock, Sarvam AI ready)
 
+### UX Features (COMPLETED Feb 2026)
+- Paperclip PDF upload button (left of mic, accepts .pdf only, max 10MB)
+- New Chat button (header top-right, clears history + resets profiler)
+- Sukanya Samriddhi Yojana link updated to PIB 2026 guidelines
+
 ## Upcoming Tasks
 - P0: Migrate Frontend to Next.js (deferred until after VibeCon)
 - P1: Real Speech-to-Text via Sarvam AI
