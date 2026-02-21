@@ -25,6 +25,7 @@ export default function ChatPage({ userId, language = "hi" }) {
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
   const countdownRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (userId) {
