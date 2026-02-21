@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { CheckCheck, FileSearch, FileText, Check, X, Languages, Play, Pause, ShieldCheck, ShieldX, Download, FileDown } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { CheckCheck, FileSearch, FileText, Check, X, Languages, Play, Pause, ShieldCheck, ShieldX, Download, FileDown, Loader2, Search, ClipboardCheck, FileOutput } from "lucide-react";
 
 const EligibilityCard = ({ result }) => {
   const isEligible = result.eligible;
