@@ -1120,6 +1120,107 @@ async def eligibility_check_endpoint(req: EligibilityCheckRequest):
     return result
 
 
+class GeneratePDFRequest(BaseModel):
+    user_id: Optional[str] = None
+    profile: Optional[Dict[str, Any]] = None
+    scheme_id: Optional[str] = None
+
+
+@api_router.post("/generate-pdf")
+async def generate_pdf_endpoint(req: GeneratePDFRequest):
+    """
+    Generate an eligibility report PDF for a user profile.
+    Accepts user_id (fetches profile + runs eligibility) or inline profile.
+    Optionally focuses on a single scheme_id for detailed report.
+    Returns download link + stores chat message.
+    """
+    from pdf_generator import generate_eligibility_pdf
+
+    profile = req.profile
+
+    # Fetch profile from DB if user_id given
+    if req.user_id and not profile:
+        user = await db.users.find_one({"id": req.user_id}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        profile = user.get("profile_data", {})
+
+    if not profile or not profile.get("name"):
+        raise HTTPException(status_code=400, detail="Profile incomplete — complete profiler first")
+
+    # Run eligibility matcher
+    matcher = eligibility_matcher(profile)
+    results = matcher.get("results", [])
+
+    if not results:
+        raise HTTPException(status_code=400, detail="No eligibility results to generate PDF for")
+
+    # Fetch single scheme detail if requested
+    scheme_detail = None
+    if req.scheme_id:
+        scheme_doc = await db.schemes.find_one({"id": req.scheme_id}, {"_id": 0})
+        if scheme_doc:
+            scheme_detail = scheme_doc
+
+    # Generate PDF
+    pdf_id = str(uuid.uuid4())
+    pdf_path = str(PDF_DIR / f"{pdf_id}.pdf")
+
+    generate_eligibility_pdf(
+        profile=profile,
+        eligibility_results=results,
+        scheme_detail=scheme_detail,
+        output_path=pdf_path,
+    )
+
+    pdf_url = f"/api/pdf/{pdf_id}"
+
+    # Store as chat message if user_id provided
+    if req.user_id:
+        now = datetime.now(timezone.utc).isoformat()
+        eligible_count = sum(1 for r in results if r["eligible"])
+        total = len(results)
+
+        bot_msg_id = str(uuid.uuid4())
+        bot_msg = {
+            "id": bot_msg_id,
+            "user_id": req.user_id,
+            "role": "assistant",
+            "content": f"आपकी पात्रता रिपोर्ट तैयार है! {eligible_count}/{total} योजनाओं में पात्र।\nPDF डाउनलोड करें:",
+            "status": "delivered",
+            "created_at": now,
+            "tool_calls": [],
+            "type": "pdf_report",
+            "pdf_url": pdf_url,
+            "eligible_count": eligible_count,
+            "total_schemes": total,
+        }
+        await db.chat_logs.insert_one({**bot_msg, "_id_field": None})
+
+    return {
+        "success": True,
+        "pdf_url": pdf_url,
+        "pdf_id": pdf_id,
+        "eligible_count": sum(1 for r in results if r["eligible"]),
+        "total_schemes": len(results),
+        "results": results,
+    }
+
+
+@api_router.get("/pdf/{pdf_id}")
+async def serve_pdf(pdf_id: str):
+    """Serve generated PDF report for download."""
+    pdf_path = PDF_DIR / f"{pdf_id}.pdf"
+    if not pdf_path.exists():
+        raise HTTPException(status_code=404, detail="PDF not found")
+    return FileResponse(
+        path=str(pdf_path),
+        media_type="application/pdf",
+        filename=f"Nagarik_Sahayak_Report_{pdf_id[:8]}.pdf",
+        headers={"Content-Disposition": f"attachment; filename=Nagarik_Sahayak_Report_{pdf_id[:8]}.pdf"},
+    )
+
+
 # --- SARVAM TRANSCRIBE ENDPOINT ---
 
 @api_router.post("/transcribe")
