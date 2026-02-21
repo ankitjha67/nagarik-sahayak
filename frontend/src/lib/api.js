@@ -25,9 +25,15 @@ export const sendMessage = (userId, content, language = "hi") =>
   api.post("/chat", { user_id: userId, content, language });
 export const getChatHistory = (userId) => api.get(`/chat/history/${userId}`);
 
-// Voice
+// Voice (legacy — OpenAI Whisper)
 export const sendVoice = (formData) =>
   api.post("/chat/voice", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+// Sarvam Transcribe (Hindi + English)
+export const transcribeAudio = (formData) =>
+  api.post("/transcribe", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 

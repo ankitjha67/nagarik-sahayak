@@ -669,6 +669,121 @@ async def search_schemes_endpoint(req: SearchSchemesRequest):
     return result
 
 
+# --- SARVAM TRANSCRIBE ENDPOINT ---
+
+@api_router.post("/transcribe")
+async def transcribe_audio(
+    audio: UploadFile = File(...),
+    user_id: str = Form(""),
+):
+    """
+    Transcribe audio using Sarvam Saaras v3.
+    - mode="translate" → returns English translation of spoken Hindi/regional audio
+    - Also runs mode="transcribe" → returns original-language (Hindi) transcript
+    Both stored in ChatLog.
+    """
+    from sarvamai import SarvamAI
+
+    sarvam_key = os.environ.get("SARVAM_API_KEY", "")
+    if not sarvam_key:
+        raise HTTPException(status_code=500, detail="SARVAM_API_KEY not configured")
+
+    audio_bytes = await audio.read()
+
+    # Write to temp file once, reuse for both calls
+    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
+        tmp.write(audio_bytes)
+        tmp_path = tmp.name
+
+    sarvam_client = SarvamAI(api_subscription_key=sarvam_key)
+    transcript_hi = ""
+    transcript_en = ""
+
+    # 1) Transcribe — original language (Hindi)
+    try:
+        with open(tmp_path, "rb") as f:
+            resp_hi = sarvam_client.speech_to_text.transcribe(
+                file=f,
+                model="saaras:v3",
+                mode="transcribe",
+            )
+        transcript_hi = resp_hi.transcript or ""
+        logger.info(f"Sarvam transcribe (hi): {transcript_hi[:80]}")
+    except Exception as e:
+        logger.error(f"Sarvam transcribe mode failed: {e}")
+
+    # 2) Translate — English translation
+    try:
+        with open(tmp_path, "rb") as f:
+            resp_en = sarvam_client.speech_to_text.transcribe(
+                file=f,
+                model="saaras:v3",
+                mode="translate",
+            )
+        transcript_en = resp_en.transcript or ""
+        logger.info(f"Sarvam translate (en): {transcript_en[:80]}")
+    except Exception as e:
+        logger.error(f"Sarvam translate mode failed: {e}")
+
+    # Clean up temp file
+    try:
+        os.unlink(tmp_path)
+    except OSError:
+        pass
+
+    if not transcript_hi and not transcript_en:
+        raise HTTPException(status_code=500, detail="Sarvam transcription returned empty for both modes")
+
+    # Store in ChatLog as a transcription message
+    now = datetime.now(timezone.utc).isoformat()
+    msg_id = str(uuid.uuid4())
+    display_content = ""
+    if transcript_hi:
+        display_content += f"[Hindi] {transcript_hi}"
+    if transcript_en:
+        if display_content:
+            display_content += f"\n[English] {transcript_en}"
+        else:
+            display_content += f"[English] {transcript_en}"
+
+    chat_entry = {
+        "id": msg_id,
+        "user_id": user_id,
+        "role": "user",
+        "content": display_content,
+        "status": "read",
+        "created_at": now,
+        "tool_calls": [],
+        "type": "transcription",
+        "transcript_hi": transcript_hi,
+        "transcript_en": transcript_en,
+    }
+    await db.chat_logs.insert_one({**chat_entry, "_id_field": None})
+
+    # Also generate a bot response based on the Hindi transcript
+    query_text = transcript_hi if transcript_hi else transcript_en
+    mcp_result = get_bot_response_with_mcp(query_text, "hi")
+    bot_msg_id = str(uuid.uuid4())
+    bot_msg = {
+        "id": bot_msg_id,
+        "user_id": user_id,
+        "role": "assistant",
+        "content": mcp_result["content"],
+        "status": "delivered",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "tool_calls": mcp_result["tool_calls"],
+    }
+    await db.chat_logs.insert_one({**bot_msg, "_id_field": None})
+
+    return {
+        "success": True,
+        "transcript_hi": transcript_hi,
+        "transcript_en": transcript_en,
+        "user_message": {k: v for k, v in chat_entry.items() if k != "_id_field"},
+        "bot_message": {k: v for k, v in bot_msg.items() if k != "_id_field"},
+    }
+
+
 # --- HEALTH ---
 
 @api_router.get("/")
