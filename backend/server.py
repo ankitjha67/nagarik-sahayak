@@ -425,7 +425,7 @@ def demo_stage_response(user_id: str = "demo") -> dict:
     }
 
 
-# --- MCP Tools: search_schemes + eligibility_matcher ---
+# --- MCP Tools: Prisma-backed search_schemes + eligibility_matcher + generateFilledForm ---
 
 SCHEME_KEYWORDS = {
     0: ["kisan", "farmer", "किसान", "pmkisan", "agriculture", "कृषि", "खेती", "land", "भूमि"],
@@ -436,7 +436,195 @@ STOPWORDS = {"eligibility", "eligible", "criteria", "benefit", "benefits", "sche
     "how", "who", "what", "can", "get", "help", "tell", "about", "kya", "kaun", "kaise", "batao"}
 
 
+async def search_schemes_prisma(query: str) -> dict:
+    """MCP Tool 1: Query Prisma Scheme table."""
+    t0 = _time.time()
+    schemes = await prisma.scheme.find_many()
+    query_lower = query.lower().strip()
+    tokens = [t for t in re.split(r'[\s,;.!?\-/]+', query_lower) if len(t) > 2]
+    specific = [t for t in tokens if t not in STOPWORDS]
+
+    matched = []
+    for scheme in schemes:
+        searchable = f"{scheme.name.lower()} {scheme.eligibilityCriteriaText.lower()}"
+        score = sum(1 for t in specific if t in searchable)
+        # Also check SCHEME_KEYWORDS for legacy compat
+        for kw_list in SCHEME_KEYWORDS.values():
+            score += sum(1 for t in specific if any(t in kw or kw in t for kw in kw_list))
+        if score >= 1:
+            matched.append((scheme, score))
+    matched.sort(key=lambda x: x[1], reverse=True)
+
+    latency = int((_time.time() - t0) * 1000)
+    if _agnost_key:
+        try:
+            agnost.track(user_id="tool", agent_name="nagarik_tool", input=query,
+                output=str(bool(matched)), properties={"tool": "search_schemes"},
+                success=bool(matched), latency=latency)
+        except Exception:
+            pass
+
+    if not matched:
+        return {"tool_name": "search_schemes", "tool_input": {"query": query},
+            "documents_scanned": [s.name for s in schemes], "match_found": False,
+            "result_text": "I don't know — criteria not explicitly stated in government PDFs."}
+
+    results = []
+    for scheme, _ in matched:
+        results.append({
+            "scheme_id": scheme.id, "scheme_title": scheme.name, "scheme_title_en": scheme.name,
+            "eligibility": scheme.eligibilityCriteriaText,
+            "benefits": scheme.eligibilityCriteriaText,
+            "pdf_url": scheme.pdfUrl, "category": "government",
+        })
+    top = matched[0][0]
+    return {"tool_name": "search_schemes", "tool_input": {"query": query},
+        "documents_scanned": [s.name for s, _ in matched],
+        "match_found": True, "matched_schemes": results,
+        "result_text": f"Document scanned: {top.name}\n\n{top.eligibilityCriteriaText}"}
+
+
+async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dict:
+    """MCP Tool 2: Fetch User profile + Schemes from Prisma, compare eligibility."""
+    t0 = _time.time()
+    user = await prisma.user.find_unique(where={"id": user_id})
+    if not user:
+        return {"match_found": False, "results": [], "summary": "User not found"}
+    profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})
+    name = profile.get("name", "")
+    age = profile.get("age") or 0
+    income = profile.get("income") or 0
+    state = (profile.get("state") or "").lower()
+
+    # Fetch all schemes or specific one
+    if scheme_name:
+        schemes = await prisma.scheme.find_many(where={"name": {"contains": scheme_name}})
+    else:
+        schemes = await prisma.scheme.find_many()
+
+    documents_scanned = [s.name for s in schemes]
+    results = []
+
+    for scheme in schemes:
+        criteria_text = scheme.eligibilityCriteriaText.lower()
+        eligible = True
+        reasons = []
+
+        # Parse income from criteria text
+        income_matches = re.findall(r'(?:income\s*[<>]?\s*₹?|income\s*<?)\s*([\d,.]+)\s*(?:lakh|lac)', criteria_text)
+        if income_matches:
+            limit_lakh = float(income_matches[0].replace(",", ""))
+            limit_monthly = int(limit_lakh * 100000 / 12)
+            if income > limit_monthly:
+                eligible = False
+                reasons.append(f"आय ₹{income:,}/माह — सीमा ₹{limit_monthly:,}/माह (₹{limit_lakh} लाख/वर्ष) से अधिक")
+            else:
+                reasons.append(f"आय ₹{income:,}/माह — सीमा ₹{limit_monthly:,}/माह के अंदर")
+
+        # State check
+        if "karnataka" in criteria_text:
+            if state and "karnataka" not in state:
+                eligible = False
+                reasons.append(f"राज्य {profile.get('state', '')} — कर्नाटक निवासी आवश्यक")
+            else:
+                reasons.append("कर्नाटक निवासी — पात्र")
+
+        # Age / education check
+        if "10th" in criteria_text or "10th pass" in criteria_text.replace("equivalent", ""):
+            reasons.append("10वीं पास या समकक्ष — आवश्यक")
+        if "12th pass" in criteria_text:
+            reasons.append("12वीं पास — आवश्यक")
+        if "bpl" in criteria_text:
+            reasons.append("बीपीएल श्रेणी — आवश्यक")
+        if "no pucca house" in criteria_text:
+            reasons.append("कोई पक्का मकान नहीं — आवश्यक")
+
+        if not reasons:
+            reasons.append("मानदंड मैच — विस्तार के लिए कार्यालय से संपर्क करें")
+
+        results.append({
+            "scheme": scheme.name, "scheme_hi": scheme.name, "scheme_id": scheme.id,
+            "eligible": eligible, "reasons": reasons,
+            "reason": "; ".join(reasons),
+            "benefit": scheme.eligibilityCriteriaText,
+        })
+
+    latency = int((_time.time() - t0) * 1000)
+    if _agnost_key:
+        try:
+            agnost.track(user_id=user_id, agent_name="nagarik_tool",
+                input=json.dumps(profile, ensure_ascii=False, default=str),
+                output=str(any(r["eligible"] for r in results)),
+                properties={"tool": "eligibility_matcher"},
+                success=any(r["eligible"] for r in results), latency=latency)
+        except Exception:
+            pass
+
+    summary_lines = [f"नमस्ते {name}! प्रोफाइल आधारित पात्रता:", ""]
+    for r in results:
+        icon = "+" if r["eligible"] else "-"
+        summary_lines.append(f"[{icon}] {r['scheme']}: {'पात्र' if r['eligible'] else 'अपात्र'}")
+        summary_lines.append(f"    कारण: {r['reason']}")
+        summary_lines.append("")
+
+    return {"tool_name": "eligibility_matcher", "tool_input": {"user_id": user_id},
+        "documents_scanned": documents_scanned, "match_found": len(results) > 0,
+        "results": results, "summary": "\n".join(summary_lines)}
+
+
+async def generate_filled_form(user_id: str, scheme_id: str) -> dict:
+    """MCP Tool 3: Generate a filled application form PDF."""
+    t0 = _time.time()
+    user = await prisma.user.find_unique(where={"id": user_id})
+    scheme = await prisma.scheme.find_unique(where={"id": scheme_id})
+    if not user or not scheme:
+        return {"success": False, "error": "User or Scheme not found"}
+
+    profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})
+    from pdf_generator import generate_eligibility_pdf
+
+    pdf_id = str(uuid.uuid4())
+    pdf_path = str(PDF_DIR / f"{pdf_id}.pdf")
+
+    # Generate filled form with profile + scheme info
+    eligibility_results = [{
+        "scheme": scheme.name, "scheme_hi": scheme.name,
+        "eligible": True, "reason": scheme.eligibilityCriteriaText,
+        "benefit": scheme.eligibilityCriteriaText,
+    }]
+    generate_eligibility_pdf(
+        profile=profile, eligibility_results=eligibility_results,
+        output_path=pdf_path,
+    )
+    pdf_url = f"/api/pdf/{pdf_id}"
+
+    # Create Application record
+    try:
+        await prisma.application.create(data={
+            "userId": user_id, "schemeId": scheme_id,
+            "status": "generated", "formUrl": pdf_url,
+        })
+    except Exception as e:
+        logger.error(f"Application create failed: {e}")
+
+    latency = int((_time.time() - t0) * 1000)
+    if _agnost_key:
+        try:
+            agnost.track(user_id=user_id, agent_name="nagarik_tool",
+                input=scheme.name, output=pdf_url,
+                properties={"tool": "generate_filled_form", "scheme_id": scheme_id, "pdf_id": pdf_id},
+                success=True, latency=latency)
+        except Exception:
+            pass
+
+    return {"success": True, "pdf_url": pdf_url, "pdf_id": pdf_id,
+        "scheme_name": scheme.name, "user_name": profile.get("name", "")}
+
+
+# --- Legacy sync wrappers (for demo mode + bot response) ---
+
 def search_schemes(query: str, language: str = "hi") -> dict:
+    """Sync search using in-memory SCHEMES_SEED (for non-async contexts)."""
     query_lower = query.lower().strip()
     tokens = [t for t in re.split(r'[\s,;.!?\-/]+', query_lower) if len(t) > 2]
     specific = [t for t in tokens if t not in STOPWORDS]
@@ -456,66 +644,47 @@ def search_schemes(query: str, language: str = "hi") -> dict:
     if not matched:
         return {"tool_name": "search_schemes", "tool_input": {"query": query},
             "documents_scanned": [s["title"] for s in SCHEMES_SEED], "match_found": False,
-            "result_text": "I don't know — criteria not explicitly stated in PDFs."}
+            "result_text": "I don't know — criteria not explicitly stated in government PDFs."}
 
     is_hi = language == "hi"
     results = []
     for idx in matched:
         s = SCHEMES_SEED[idx]
-        results.append({
-            "scheme_title": s["title_hi"] if is_hi else s["title"], "scheme_title_en": s["title"],
+        results.append({"scheme_title": s["title_hi"] if is_hi else s["title"], "scheme_title_en": s["title"],
             "eligibility": s["eligibility_hi"] if is_hi else s["eligibility"],
             "benefits": s["benefits_hi"] if is_hi else s["benefits"],
-            "pdf_url": s["pdf_url"], "category": s["category"],
-        })
+            "pdf_url": s["pdf_url"], "category": s["category"]})
     top = SCHEMES_SEED[matched[0]]
-    result_text = f"Document scanned: {top['title']}\n\n{top['eligibility']}\n\nBenefits: {top['benefits']}"
     return {"tool_name": "search_schemes", "tool_input": {"query": query},
         "documents_scanned": [SCHEMES_SEED[i]["title"] for i in matched],
-        "match_found": True, "matched_schemes": results, "result_text": result_text}
-
-
-SCHEME_RULES = {
-    0: {"scheme": "PM-KISAN Samman Nidhi", "scheme_hi": "पीएम-किसान सम्मान निधि",
-        "criteria": {"income_limit": 200000, "min_age": 18, "requires": "cultivable_land"},
-        "benefit": "₹6,000/year (₹2,000 every 4 months via DBT)"},
-    1: {"scheme": "Ayushman Bharat (PM-JAY)", "scheme_hi": "आयुष्मान भारत (पीएम-जय)",
-        "criteria": {"income_limit": 50000, "min_age": 0, "requires": "secc_2011_listing"},
-        "benefit": "₹5,00,000/year health cover per family"},
-    2: {"scheme": "Sukanya Samriddhi Yojana", "scheme_hi": "सुकन्या समृद्धि योजना",
-        "criteria": {"income_limit": None, "min_age": 18, "requires": "girl_child_under_10"},
-        "benefit": "~8.2% interest p.a., ₹1.5L tax deduction under 80C"},
-}
+        "match_found": True, "matched_schemes": results,
+        "result_text": f"Document scanned: {top['title']}\n\n{top['eligibility']}\n\nBenefits: {top['benefits']}"}
 
 
 def eligibility_matcher(profile_data: dict, query: str = "") -> dict:
+    """Sync eligibility matcher using in-memory rules."""
     age = profile_data.get("age", 0) or 0
     income = profile_data.get("income", 0) or 0
     name = profile_data.get("name", "")
+    scheme_indices = [0, 1, 2]
 
-    if query:
-        sr = search_schemes(query, "en")
-        if sr["match_found"]:
-            scheme_indices = []
-            for ms in sr.get("matched_schemes", []):
-                for i, s in enumerate(SCHEMES_SEED):
-                    if s["title"] == ms["scheme_title_en"]:
-                        scheme_indices.append(i)
-        else:
-            scheme_indices = []
-    else:
-        scheme_indices = [0, 1, 2]
+    SCHEME_RULES = {
+        0: {"scheme": "PM-KISAN Samman Nidhi", "scheme_hi": "पीएम-किसान सम्मान निधि",
+            "criteria": {"income_limit": 200000, "min_age": 18, "requires": "cultivable_land"},
+            "benefit": "₹6,000/year (₹2,000 every 4 months via DBT)"},
+        1: {"scheme": "Ayushman Bharat (PM-JAY)", "scheme_hi": "आयुष्मान भारत (पीएम-जय)",
+            "criteria": {"income_limit": 50000, "min_age": 0, "requires": "secc_2011_listing"},
+            "benefit": "₹5,00,000/year health cover per family"},
+        2: {"scheme": "Sukanya Samriddhi Yojana", "scheme_hi": "सुकन्या समृद्धि योजना",
+            "criteria": {"income_limit": None, "min_age": 18, "requires": "girl_child_under_10"},
+            "benefit": "~8.2% interest p.a., ₹1.5L tax deduction under 80C"},
+    }
 
-    documents_scanned = [s["title"] for s in SCHEMES_SEED]
     results = []
     for idx in scheme_indices:
-        rule = SCHEME_RULES.get(idx)
-        if not rule:
-            continue
+        rule = SCHEME_RULES[idx]
         criteria = rule["criteria"]
-        reasons = []
-        eligible = True
-
+        reasons, eligible = [], True
         if criteria["min_age"] > 0 and age < criteria["min_age"]:
             eligible = False
             reasons.append(f"Age {age} below minimum {criteria['min_age']}")
@@ -525,31 +694,22 @@ def eligibility_matcher(profile_data: dict, query: str = "") -> dict:
                 reasons.append(f"Income ₹{income:,}/month exceeds ₹{criteria['income_limit']:,}/month limit")
             else:
                 reasons.append(f"Income ₹{income:,}/month within ₹{criteria['income_limit']:,}/month limit")
-
         req = criteria.get("requires", "")
-        if req == "cultivable_land":
-            reasons.append("Requires cultivable agricultural land")
-        elif req == "secc_2011_listing":
-            reasons.append("Requires SECC 2011 listing")
-        elif req == "girl_child_under_10":
-            reasons.append("Requires girl child below 10 years")
-        if idx == 2 and age >= 18 and eligible:
-            reasons.append(f"Age {age}: eligible as parent/guardian")
-
+        if req == "cultivable_land": reasons.append("Requires cultivable agricultural land")
+        elif req == "secc_2011_listing": reasons.append("Requires SECC 2011 listing")
+        elif req == "girl_child_under_10": reasons.append("Requires girl child below 10 years")
         results.append({"scheme": rule["scheme"], "scheme_hi": rule["scheme_hi"],
             "eligible": eligible, "reasons": reasons, "reason": "; ".join(reasons), "benefit": rule["benefit"]})
 
     summary_parts = [f"नमस्ते {name}! प्रोफाइल आधारित पात्रता:", ""]
     for r in results:
-        icon = "+" if r["eligible"] else "-"
-        summary_parts.append(f"[{icon}] {r['scheme_hi']}: {'पात्र' if r['eligible'] else 'अपात्र'}")
+        summary_parts.append(f"[{'+' if r['eligible'] else '-'}] {r['scheme_hi']}: {'पात्र' if r['eligible'] else 'अपात्र'}")
         summary_parts.append(f"    कारण: {r['reason']}")
-        if r["eligible"]:
-            summary_parts.append(f"    लाभ: {r['benefit']}")
+        if r["eligible"]: summary_parts.append(f"    लाभ: {r['benefit']}")
         summary_parts.append("")
 
-    return {"tool_name": "eligibility_matcher", "tool_input": {"profile": profile_data, "query": query},
-        "documents_scanned": documents_scanned, "match_found": len(results) > 0,
+    return {"tool_name": "eligibility_matcher", "tool_input": {"profile": profile_data},
+        "documents_scanned": [r["scheme"] for r in results], "match_found": len(results) > 0,
         "results": results, "summary": "\n".join(summary_parts)}
 
 
