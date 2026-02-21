@@ -1178,8 +1178,8 @@ class NagarikSahayakAPITester:
             return False
 
     def run_all_tests(self):
-        """Run complete API test suite focusing on NEW eligibility_matcher features"""
-        print("🚀 Starting Eligibility Matcher Feature Tests\n")
+        """Run complete API test suite focusing on NEW PDF generation features"""
+        print("🚀 Starting PDF Generation Feature Tests\n")
         
         # Test 1: Health Check
         if not self.test_health_check():
@@ -1195,8 +1195,16 @@ class NagarikSahayakAPITester:
             print("💥 Critical: OTP verification failed. Stopping tests.")
             return self.print_summary()
         
-        # Test 3: NEW ELIGIBILITY_MATCHER FEATURES
-        print("\n🔍 Testing NEW Eligibility Matcher Features...")
+        # Test 3: NEW PDF GENERATION FEATURES
+        print("\n📄 Testing NEW PDF Generation Features...")
+        self.test_generate_pdf_with_inline_profile()
+        self.test_generate_pdf_with_user_id()
+        self.test_generate_pdf_incomplete_profile()
+        self.test_serve_pdf()
+        self.test_serve_pdf_nonexistent()
+        
+        # Test 4: ELIGIBILITY_MATCHER FEATURES (used by PDF generation)
+        print("\n🔍 Testing Eligibility Matcher Features...")
         self.test_eligibility_check_low_income()
         self.test_eligibility_check_high_income()
         self.test_eligibility_check_minor_age()
@@ -1204,17 +1212,17 @@ class NagarikSahayakAPITester:
         self.test_eligibility_check_with_query_filter()
         self.test_existing_user_eligibility_check()
         
-        # Test 4: UPDATED MCP TOOLS
+        # Test 5: UPDATED MCP TOOLS
         print("\n🛠️ Testing Updated MCP Tools...")
         self.test_mcp_tools_list()  # Now checks for both search_schemes AND eligibility_matcher
         
-        # Test 5: UPDATED PROFILER AGENT (now uses eligibility_matcher)
+        # Test 6: UPDATED PROFILER AGENT (now auto-generates PDF)
         print("\n🤖 Testing Updated Profiler Agent...")
-        self.test_profiler_complete_flow()  # Should now call eligibility_matcher, not check_eligibility
+        self.test_profiler_complete_flow()  # Should now generate PDF automatically
         self.test_profile_data_persistence() 
         self.test_post_profiler_normal_chat()
         
-        # Test 6: Core functionality still works
+        # Test 7: Core functionality still works
         print("\n📱 Testing Core Features...")
         self.test_get_schemes()
         self.test_get_profile()
