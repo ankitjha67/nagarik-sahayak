@@ -250,34 +250,41 @@ async def profiler_agent_respond(user_id: str, content: str) -> Optional[dict]:
                 "profile": json.dumps(profile, ensure_ascii=False)
             })
 
-            # Chain: eligibility_matcher_prisma → generate_filled_form
+            # Step 1: search_schemes (scan documents)
+            search_result = await search_schemes_prisma("scholarship eligibility")
+
+            # Step 2: eligibility_matcher_prisma
             matcher_result = await eligibility_matcher_prisma(user_id)
 
-            # Generate filled form for first eligible scheme
+            # Step 3: Generate filled form for first eligible scheme
             pdf_url = ""
             eligible_results = [r for r in matcher_result.get("results", []) if r["eligible"]]
             if eligible_results and eligible_results[0].get("scheme_id"):
                 form_result = await generate_filled_form(user_id, eligible_results[0]["scheme_id"])
                 if form_result.get("success"):
                     pdf_url = form_result["pdf_url"]
-            elif matcher_result.get("results"):
-                # Fallback: generate eligibility report PDF
-                try:
-                    from pdf_generator import generate_eligibility_pdf
-                    pdf_id = str(uuid.uuid4())
-                    generate_eligibility_pdf(
-                        profile=profile,
-                        eligibility_results=matcher_result.get("results", []),
-                        output_path=str(PDF_DIR / f"{pdf_id}.pdf"),
-                    )
-                    pdf_url = f"/api/pdf/{pdf_id}"
-                except Exception as e:
-                    logger.error(f"PDF gen failed: {e}")
 
-            reply = "प्रोफाइल पूरा हो गया। अब योजना चेक कर रहा हूँ...\n\n"
-            reply += matcher_result.get("summary", "")
+            # Build Hindi reply with progress steps
+            reply = "प्रोफाइल पूरी हो गई!\n\n"
+            reply += f"नाम: {profile.get('name', '')} | उम्र: {profile.get('age', '')} वर्ष\n"
+            reply += f"सालाना आय: ₹{profile.get('income', 0):,} | राज्य: {profile.get('state', '')}\n\n"
+            reply += "पात्रता जांच पूरी हुई!\n\n"
+            for r in matcher_result.get("results", []):
+                icon = "+" if r["eligible"] else "-"
+                reply += f"[{icon}] {r['scheme']}: {'पात्र' if r['eligible'] else 'अपात्र'}\n"
+                reply += f"    कारण: {r['reason']}\n"
+                if r["eligible"] and r.get("benefit"):
+                    reply += f"    लाभ: {r['benefit']}\n"
+                reply += "\n"
             if pdf_url:
-                reply += "\n\nPDF रिपोर्ट तैयार है! नीचे डाउनलोड करें।"
+                reply += "भरा हुआ आवेदन फॉर्म तैयार है! नीचे डाउनलोड करें।"
+
+            # Tool progress steps for frontend streaming bullets
+            tool_progress = [
+                {"step": "reading_pdf", "text_hi": "विद्यासिरी छात्रवृत्ति PDF पढ़ रहे हैं...", "text_en": "Reading Vidyasiri Scholarship PDF..."},
+                {"step": "checking_eligibility", "text_hi": "पात्रता मानदंड जांच रहे हैं...", "text_en": "Checking eligibility criteria..."},
+                {"step": "generating_form", "text_hi": "भरा हुआ आवेदन फॉर्म तैयार कर रहे हैं...", "text_en": "Generating filled application form..."},
+            ]
 
             return {
                 "content": reply,
@@ -292,6 +299,7 @@ async def profiler_agent_respond(user_id: str, content: str) -> Optional[dict]:
                 "profiler_field": "",
                 "eligibility_results": matcher_result.get("results", []),
                 "pdf_url": pdf_url,
+                "tool_progress": tool_progress,
             }
         else:
             confirm = ""
