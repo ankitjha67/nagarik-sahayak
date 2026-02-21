@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -7,13 +8,17 @@ import logging
 import tempfile
 import uuid
 import re
+import base64
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+AUDIO_DIR = ROOT_DIR / "audio_files"
+AUDIO_DIR.mkdir(exist_ok=True)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
