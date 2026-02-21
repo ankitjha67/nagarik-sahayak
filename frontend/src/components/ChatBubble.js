@@ -290,9 +290,9 @@ export const TypingIndicator = () => (
 );
 
 const TOOL_STEPS = [
-  { icon: Search, text: "Reading Vidyasiri Scholarship PDF...", textHi: "विद्यासिरी छात्रवृत्ति PDF पढ़ रहे हैं..." },
+  { icon: Search, text: "Scanning scholarship PDFs...", textHi: "छात्रवृत्ति PDF स्कैन कर रहे हैं..." },
   { icon: ClipboardCheck, text: "Checking eligibility...", textHi: "पात्रता जांच रहे हैं..." },
-  { icon: FileOutput, text: "Generating filled form...", textHi: "फॉर्म तैयार कर रहे हैं..." },
+  { icon: FileOutput, text: "Generating report & form...", textHi: "रिपोर्ट और फॉर्म तैयार कर रहे हैं..." },
 ];
 
 export const ToolProgressIndicator = () => {
