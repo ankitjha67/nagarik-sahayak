@@ -1057,17 +1057,35 @@ async def transcribe_audio(
 
     # Also generate a bot response based on the Hindi transcript
     query_text = transcript_hi if transcript_hi else transcript_en
-    mcp_result = get_bot_response_with_mcp(query_text, "hi")
-    bot_msg_id = str(uuid.uuid4())
-    bot_msg = {
-        "id": bot_msg_id,
-        "user_id": user_id,
-        "role": "assistant",
-        "content": mcp_result["content"],
-        "status": "delivered",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "tool_calls": mcp_result["tool_calls"],
-    }
+
+    # Check profiler first
+    profiler_result = await profiler_agent_respond(user_id, query_text) if user_id else None
+
+    if profiler_result:
+        bot_msg_id = str(uuid.uuid4())
+        bot_msg = {
+            "id": bot_msg_id,
+            "user_id": user_id,
+            "role": "assistant",
+            "content": profiler_result["content"],
+            "status": "delivered",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "tool_calls": profiler_result.get("tool_calls", []),
+            "type": profiler_result.get("type", "profiler"),
+            "profiler_field": profiler_result.get("profiler_field", ""),
+        }
+    else:
+        mcp_result = get_bot_response_with_mcp(query_text, "hi")
+        bot_msg_id = str(uuid.uuid4())
+        bot_msg = {
+            "id": bot_msg_id,
+            "user_id": user_id,
+            "role": "assistant",
+            "content": mcp_result["content"],
+            "status": "delivered",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "tool_calls": mcp_result["tool_calls"],
+        }
     await db.chat_logs.insert_one({**bot_msg, "_id_field": None})
 
     return {
