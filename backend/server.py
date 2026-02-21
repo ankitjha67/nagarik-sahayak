@@ -282,7 +282,89 @@ BOT_RESPONSES = {
 }
 
 
-def search_schemes(query: str, language: str = "hi") -> dict:
+# --- DEMO MODE: Vidyasiri Scholarship ---
+
+DEMO_PROFILE = {"name": "Priya Sharma", "age": 20, "income": 15000, "state": "Karnataka"}
+
+VIDYASIRI_RESULT = {
+    "scheme": "Vidyasiri Scholarship",
+    "scheme_hi": "विद्यासिरी छात्रवृत्ति",
+    "eligible": True,
+    "reasons": [
+        "Age 20 years meets student age requirement",
+        "Income Rs 15,000/month within Rs 2,50,000/year limit",
+        "Karnataka domicile verified",
+    ],
+    "reason": "Age 20 years meets student age requirement; Income Rs 15,000/month within Rs 2,50,000/year limit; Karnataka domicile verified",
+    "benefit": "Rs 12,000 - Rs 24,000/year tuition + hostel allowance for degree/PG students",
+}
+
+DEMO_SCHOLARSHIP_SIGNALS = [
+    "scholarship", "छात्रवृत्ति", "vidyasiri", "विद्यासिरी", "student",
+    "education", "शिक्षा", "college", "university", "tuition", "fee",
+    "study", "पढ़ाई", "degree", "hostel", "exam",
+]
+
+
+def _is_scholarship_query(text: str) -> bool:
+    low = text.lower().strip()
+    return any(sig in low for sig in DEMO_SCHOLARSHIP_SIGNALS)
+
+
+def demo_vidyasiri_response(user_id: str = "demo") -> dict:
+    """
+    Instant Vidyasiri eligible response with pre-filled PDF.
+    Designed to return in <2s for stage demos.
+    """
+    from pdf_generator import generate_eligibility_pdf
+
+    t0 = _time.time()
+    pdf_id = str(uuid.uuid4())
+    pdf_path = str(PDF_DIR / f"{pdf_id}.pdf")
+    generate_eligibility_pdf(
+        profile=DEMO_PROFILE,
+        eligibility_results=[VIDYASIRI_RESULT],
+        output_path=pdf_path,
+    )
+    pdf_url = f"/api/pdf/{pdf_id}"
+    latency_ms = int((_time.time() - t0) * 1000)
+
+    if _agnost_key:
+        agnost.track(
+            user_id=user_id,
+            agent_name="nagarik_tool",
+            input="demo_scholarship_query",
+            output=pdf_url,
+            properties={"tool": "demo_vidyasiri", "pdf_id": pdf_id},
+            success=True,
+            latency=latency_ms,
+        )
+
+    summary = (
+        f"Priya Sharma, आपकी पात्रता जांच पूरी हुई!\n\n"
+        f"[+] विद्यासिरी छात्रवृत्ति: पात्र\n"
+        f"    कारण: {VIDYASIRI_RESULT['reason']}\n"
+        f"    लाभ: {VIDYASIRI_RESULT['benefit']}\n\n"
+        f"PDF रिपोर्ट तैयार है! नीचे डाउनलोड करें।"
+    )
+
+    return {
+        "content": summary,
+        "tool_calls": [{
+            "tool_name": "eligibility_matcher",
+            "tool_input": {"profile": DEMO_PROFILE, "query": "vidyasiri scholarship"},
+            "documents_scanned": ["Vidyasiri Scholarship Guidelines"],
+            "match_found": True,
+            "results": [VIDYASIRI_RESULT],
+        }],
+        "type": "profiler_complete",
+        "profiler_field": "",
+        "eligibility_results": [VIDYASIRI_RESULT],
+        "pdf_url": pdf_url,
+    }
+
+
+
     """
     MCP Tool: search_schemes
     Scans seeded scheme document text for matching eligibility & criteria.
