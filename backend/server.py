@@ -976,7 +976,14 @@ async def transcribe_audio(
 
     audio_bytes = await audio.read()
 
-    # Write to temp file once, reuse for both calls
+    # Save audio file for playback
+    audio_msg_id = str(uuid.uuid4())
+    audio_filename = f"{audio_msg_id}.webm"
+    audio_path = AUDIO_DIR / audio_filename
+    with open(audio_path, "wb") as af:
+        af.write(audio_bytes)
+
+    # Write to temp file for Sarvam calls
     with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
         tmp.write(audio_bytes)
         tmp_path = tmp.name
