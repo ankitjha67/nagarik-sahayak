@@ -766,19 +766,21 @@ async def profiler_agent_respond(user_id: str, content: str) -> dict:
         # Check next field
         next_field = get_next_missing_field(profile_data)
         if not next_field:
-            # Profile complete! Auto-trigger eligibility
+            # Profile complete! Auto-trigger eligibility matcher
             await db.users.update_one({"id": user_id}, {"$set": {"profile_complete": True}})
-            eligibility_text = check_eligibility(profile_data)
+            matcher_result = eligibility_matcher(profile_data)
             return {
-                "content": f"धन्यवाद! आपकी प्रोफाइल पूरी हो गई।\n\n{eligibility_text}",
+                "content": f"धन्यवाद! आपकी प्रोफाइल पूरी हो गई।\n\n{matcher_result['summary']}",
                 "tool_calls": [{
-                    "tool_name": "check_eligibility",
-                    "tool_input": {"profile": profile_data},
-                    "documents_scanned": [s["title"] for s in SCHEMES_SEED],
-                    "match_found": True,
+                    "tool_name": "eligibility_matcher",
+                    "tool_input": matcher_result["tool_input"],
+                    "documents_scanned": matcher_result["documents_scanned"],
+                    "match_found": matcher_result["match_found"],
+                    "results": matcher_result.get("results", []),
                 }],
                 "type": "profiler_complete",
                 "profiler_field": "",
+                "eligibility_results": matcher_result.get("results", []),
             }
         else:
             confirm = ""
