@@ -250,6 +250,17 @@ def search_schemes(query: str, language: str = "hi") -> dict:
     tokens = re.split(r'[\s,;.!?\-/]+', query_lower)
     tokens = [t for t in tokens if len(t) > 2]
 
+    # Generic stopwords that appear in all schemes — don't use for scoring
+    STOPWORDS = {
+        "eligibility", "eligible", "eligib", "criteria", "benefit", "benefits",
+        "apply", "application", "document", "pdf", "scheme", "yojana", "योजना",
+        "पात्र", "पात्रता", "लाभ", "आवेदन", "दस्तावेज", "मापदंड",
+        "how", "who", "what", "can", "get", "help", "tell", "about",
+        "kya", "kaun", "kaise", "batao", "bataiye",
+    }
+    # Scheme-specific tokens (after removing stopwords)
+    specific_tokens = [t for t in tokens if t not in STOPWORDS]
+
     # Search keywords mapped to schemes
     SCHEME_KEYWORDS = {
         0: ["kisan", "farmer", "किसान", "pm-kisan", "pmkisan", "agriculture",
