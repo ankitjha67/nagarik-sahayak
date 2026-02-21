@@ -1042,8 +1042,8 @@ class NagarikSahayakAPITester:
             return False
 
     def run_all_tests(self):
-        """Run complete API test suite focusing on new features"""
-        print("🚀 Starting Audio & Profiler Feature Tests\n")
+        """Run complete API test suite focusing on NEW eligibility_matcher features"""
+        print("🚀 Starting Eligibility Matcher Feature Tests\n")
         
         # Test 1: Health Check
         if not self.test_health_check():
@@ -1059,23 +1059,31 @@ class NagarikSahayakAPITester:
             print("💥 Critical: OTP verification failed. Stopping tests.")
             return self.print_summary()
         
-        # Test 3: NEW PROFILER AGENT FEATURES
-        print("\n🤖 Testing Profiler Agent Features...")
-        self.test_profiler_complete_flow()
+        # Test 3: NEW ELIGIBILITY_MATCHER FEATURES
+        print("\n🔍 Testing NEW Eligibility Matcher Features...")
+        self.test_eligibility_check_low_income()
+        self.test_eligibility_check_high_income()
+        self.test_eligibility_check_minor_age()
+        self.test_eligibility_check_with_user_id()
+        self.test_eligibility_check_with_query_filter()
+        self.test_existing_user_eligibility_check()
+        
+        # Test 4: UPDATED MCP TOOLS
+        print("\n🛠️ Testing Updated MCP Tools...")
+        self.test_mcp_tools_list()  # Now checks for both search_schemes AND eligibility_matcher
+        
+        # Test 5: UPDATED PROFILER AGENT (now uses eligibility_matcher)
+        print("\n🤖 Testing Updated Profiler Agent...")
+        self.test_profiler_complete_flow()  # Should now call eligibility_matcher, not check_eligibility
         self.test_profile_data_persistence() 
-        self.test_invalid_age_handling()
         self.test_post_profiler_normal_chat()
         
-        # Test 4: NEW AUDIO FEATURES  
-        print("\n🎙️ Testing Audio Playback Features...")
-        self.test_audio_transcribe_endpoint()
-        if self.audio_msg_id:  # Only test playback if transcribe worked
-            self.test_audio_playback_endpoint()
-        
-        # Test 5: Core functionality still works
+        # Test 6: Core functionality still works
         print("\n📱 Testing Core Features...")
         self.test_get_schemes()
-        self.test_get_profile() 
+        self.test_get_profile()
+        self.test_search_schemes_kisan()
+        self.test_search_schemes_health()
         
         return self.print_summary()
 
