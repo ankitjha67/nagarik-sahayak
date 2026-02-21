@@ -434,7 +434,19 @@ def get_bot_response_with_mcp(content: str, language: str = "hi") -> dict:
     needs_tool = any(sig in content_lower for sig in scheme_signals)
 
     if needs_tool:
+        t0 = _time.time()
         tool_result = search_schemes(content, language)
+        latency_ms = int((_time.time() - t0) * 1000)
+        if _agnost_key:
+            agnost.track(
+                user_id="chat",
+                agent_name="nagarik_tool",
+                input=content,
+                output=str(tool_result.get("match_found", False)),
+                properties={"tool": "search_schemes", "language": language},
+                success=tool_result.get("match_found", False),
+                latency=latency_ms,
+            )
         tool_call_trace = {
             "tool_name": "search_schemes",
             "tool_input": tool_result["tool_input"],
@@ -779,7 +791,19 @@ async def profiler_agent_respond(user_id: str, content: str) -> dict:
         if not next_field:
             # Profile complete! Auto-trigger eligibility matcher + generate PDF
             await db.users.update_one({"id": user_id}, {"$set": {"profile_complete": True}})
+            t0 = _time.time()
             matcher_result = eligibility_matcher(profile_data)
+            latency_ms = int((_time.time() - t0) * 1000)
+            if _agnost_key:
+                agnost.track(
+                    user_id=user_id,
+                    agent_name="nagarik_tool",
+                    input=str(profile_data),
+                    output=str(matcher_result.get("match_found", False)),
+                    properties={"tool": "eligibility_matcher", "trigger": "profiler_complete"},
+                    success=matcher_result.get("match_found", False),
+                    latency=latency_ms,
+                )
 
             # Auto-generate PDF
             pdf_url = ""
