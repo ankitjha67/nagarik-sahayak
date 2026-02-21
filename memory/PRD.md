@@ -95,6 +95,11 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] **Animated double ticks** — sent (single grey, pop-in) → delivered (double grey, slide) → read (double blue, pulse)
 - [x] **Pitch script** — `/app/pitch.md` with exact 3-minute stage script (Problem → Demo → How It Works → Impact → The Ask)
 
+- [x] **Prisma + MongoDB** schema deployed with 4 models: User, Scheme, ChatLog, Application
+- [x] MongoDB replica set (rs0) configured for Prisma transactions
+- [x] 3 schemes seeded: Pradhan Mantri Awas Yojana, Vidyasiri Scholarship, Vidya Lakshmi Education Loan
+- [x] Prisma Client Python (async) generated and ready for use
+
 ## P0 Backlog
 - Integrate real LLM for intelligent chat responses
 - Implement Sarvam AI STT (needs API key)
