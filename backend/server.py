@@ -1086,6 +1086,36 @@ async def search_schemes_endpoint(req: SearchSchemesRequest):
     return result
 
 
+class EligibilityCheckRequest(BaseModel):
+    user_id: Optional[str] = None
+    profile: Optional[Dict[str, Any]] = None
+    query: str = ""
+
+
+@api_router.post("/eligibility-check")
+async def eligibility_check_endpoint(req: EligibilityCheckRequest):
+    """
+    Direct invocation of the eligibility_matcher MCP tool.
+    Accepts a user_id (fetches profile from DB) or inline profile dict.
+    Runs search_schemes then compares profile vs criteria.
+    Returns per-scheme {eligible, reason} JSON.
+    """
+    profile = req.profile
+
+    # If user_id provided, fetch profile from DB
+    if req.user_id and not profile:
+        user = await db.users.find_one({"id": req.user_id}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        profile = user.get("profile_data", {})
+
+    if not profile:
+        raise HTTPException(status_code=400, detail="Provide user_id or profile object")
+
+    result = eligibility_matcher(profile, req.query)
+    return result
+
+
 # --- SARVAM TRANSCRIBE ENDPOINT ---
 
 @api_router.post("/transcribe")
