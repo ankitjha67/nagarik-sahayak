@@ -13,9 +13,17 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
+import time as _time
+import agnost
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Initialize Agnost tracking
+_agnost_key = os.environ.get("AGNOST_WRITE_KEY", "")
+if _agnost_key:
+    agnost.init(_agnost_key)
+    logging.getLogger(__name__).info("Agnost tracking initialized")
 
 AUDIO_DIR = ROOT_DIR / "audio_files"
 AUDIO_DIR.mkdir(exist_ok=True)
