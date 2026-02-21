@@ -520,8 +520,8 @@ def check_eligibility(profile_data: dict) -> str:
     """Check eligibility for all 3 schemes based on profile data."""
     age = profile_data.get("age", 0) or 0
     income = profile_data.get("income", 0) or 0
-    state = profile_data.get("state", "")
     name = profile_data.get("name", "")
+    _state = profile_data.get("state", "")  # reserved for state-specific rules
 
     results = []
     results.append(f"नमस्ते {name}! आपकी प्रोफाइल के आधार पर पात्रता:")
