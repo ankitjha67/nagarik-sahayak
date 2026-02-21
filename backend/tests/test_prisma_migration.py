@@ -66,9 +66,12 @@ class TestChatProfilerFlow:
     
     @pytest.fixture(scope="class")
     def user_id(self):
-        """Create user and return user_id"""
-        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": "9999777702"})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": "9999777702", "otp": "1234"})
+        """Create user with a unique phone number"""
+        import time
+        # Use timestamp to create unique phone numbers
+        phone = f"8888{int(time.time()) % 1000000:06d}"
+        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
         return response.json()["user_id"]
     
     def test_greeting_triggers_name_question(self, user_id):
