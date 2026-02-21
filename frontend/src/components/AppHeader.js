@@ -25,7 +25,7 @@ export const AppHeader = ({ title = "नागरिक सहायक", showBa
           <Menu size={20} />
         </button>
       ) : null}
-      <img src="/logo.png" alt="Nagarik Sahayak" className="h-9 w-auto object-contain" />
+      <img src="/logo.png" alt="Nagarik Sahayak" className="h-10 w-auto object-contain" />
       <div className="flex-1" />
       {onNewChat && (
         <button
