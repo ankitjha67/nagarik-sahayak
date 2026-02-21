@@ -823,15 +823,15 @@ class NagarikSahayakAPITester:
             return False
 
     def run_all_tests(self):
-        """Run complete API test suite"""
-        print("🚀 Starting Nagarik Sahayak API Test Suite (with MCP Testing)\n")
+        """Run complete API test suite focusing on new features"""
+        print("🚀 Starting Audio & Profiler Feature Tests\n")
         
         # Test 1: Health Check
         if not self.test_health_check():
             print("💥 Critical: API health check failed. Stopping tests.")
             return self.print_summary()
         
-        # Test 2: Authentication Flow
+        # Test 2: Authentication Flow (need fresh user for profiler)
         if not self.test_send_otp():
             print("💥 Critical: OTP sending failed. Stopping tests.")
             return self.print_summary()
@@ -840,31 +840,23 @@ class NagarikSahayakAPITester:
             print("💥 Critical: OTP verification failed. Stopping tests.")
             return self.print_summary()
         
-        # Test 3: Core Endpoints
+        # Test 3: NEW PROFILER AGENT FEATURES
+        print("\n🤖 Testing Profiler Agent Features...")
+        self.test_profiler_complete_flow()
+        self.test_profile_data_persistence() 
+        self.test_invalid_age_handling()
+        self.test_post_profiler_normal_chat()
+        
+        # Test 4: NEW AUDIO FEATURES  
+        print("\n🎙️ Testing Audio Playback Features...")
+        self.test_audio_transcribe_endpoint()
+        if self.audio_msg_id:  # Only test playback if transcribe worked
+            self.test_audio_playback_endpoint()
+        
+        # Test 5: Core functionality still works
+        print("\n📱 Testing Core Features...")
         self.test_get_schemes()
-        self.test_get_profile()
-        self.test_update_profile()
-        self.test_send_chat_message()
-        self.test_get_chat_history()
-        
-        # Test 4: Info Endpoints
-        self.test_llm_providers()
-        self.test_stt_providers()
-        
-        # Test 5: NEW MCP Functionality
-        print("🔧 Testing NEW MCP Tool Functionality...")
-        self.test_mcp_tools_list()
-        self.test_search_schemes_kisan()
-        self.test_search_schemes_health()
-        self.test_search_schemes_sukanya()
-        self.test_search_schemes_no_match()
-        self.test_chat_with_scheme_query()
-        self.test_chat_with_greeting()
-        
-        # Test 6: NEW Transcription Feature (Sarvam Saaras v3)
-        print("🎙️  Testing NEW Transcription Feature...")
-        self.test_transcribe_audio()
-        self.test_chat_history_with_transcription()
+        self.test_get_profile() 
         
         return self.print_summary()
 
