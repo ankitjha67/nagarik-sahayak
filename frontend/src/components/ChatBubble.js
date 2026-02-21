@@ -1,4 +1,4 @@
-import { CheckCheck, FileSearch, FileText, Check, X } from "lucide-react";
+import { CheckCheck, FileSearch, FileText, Check, X, Languages } from "lucide-react";
 
 const ToolCallTrace = ({ toolCall }) => (
   <div
@@ -51,10 +51,45 @@ const ToolCallTrace = ({ toolCall }) => (
   </div>
 );
 
+const TranscriptionBlock = ({ message }) => {
+  const hi = message.transcript_hi || "";
+  const en = message.transcript_en || "";
+
+  return (
+    <div data-testid="transcription-block" className="space-y-2">
+      <div className="flex items-center gap-1.5 mb-1">
+        <Languages size={14} className="text-[#FF9933]" />
+        <span className="text-[10px] font-bold text-[#FF9933] font-['Mukta'] uppercase tracking-wider">
+          Voice Transcription — Sarvam Saaras v3
+        </span>
+      </div>
+
+      {hi && (
+        <div data-testid="transcript-hindi" className="rounded-lg bg-[#FFF8F0] border border-orange-100 px-3 py-2">
+          <span className="text-[10px] font-bold text-[#000080] font-['Mukta'] uppercase tracking-wider block mb-0.5">
+            Hindi
+          </span>
+          <p className="text-sm text-gray-800 leading-relaxed font-['Mukta']">{hi}</p>
+        </div>
+      )}
+
+      {en && (
+        <div data-testid="transcript-english" className="rounded-lg bg-[#F0F0F8] border border-[#D4D4E8] px-3 py-2">
+          <span className="text-[10px] font-bold text-[#000080] font-['Nunito'] uppercase tracking-wider block mb-0.5">
+            English
+          </span>
+          <p className="text-sm text-gray-800 leading-relaxed font-['Nunito']">{en}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const ChatBubble = ({ message }) => {
   const isUser = message.role === "user";
   const isRead = message.status === "read";
   const hasToolCalls = message.tool_calls && message.tool_calls.length > 0;
+  const isTranscription = message.type === "transcription";
 
   return (
     <div
@@ -83,9 +118,14 @@ export const ChatBubble = ({ message }) => {
             <ToolCallTrace key={i} toolCall={tc} />
           ))}
 
-        <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line font-['Nunito']">
-          {message.content}
-        </p>
+        {/* Transcription dual-language block */}
+        {isTranscription ? (
+          <TranscriptionBlock message={message} />
+        ) : (
+          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line font-['Nunito']">
+            {message.content}
+          </p>
+        )}
 
         <div className="flex items-center justify-end gap-1 mt-1">
           <span className="text-[10px] text-gray-400">
