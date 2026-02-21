@@ -1,6 +1,52 @@
 import { useState, useRef } from "react";
 import { CheckCheck, FileSearch, FileText, Check, X, Languages, Play, Pause, ShieldCheck, ShieldX } from "lucide-react";
 
+const EligibilityCard = ({ result }) => {
+  const isEligible = result.eligible;
+  return (
+    <div
+      data-testid={`eligibility-card-${isEligible ? "eligible" : "ineligible"}`}
+      className={`rounded-lg border px-3 py-2.5 ${
+        isEligible
+          ? "bg-green-50 border-green-200"
+          : "bg-red-50 border-red-200"
+      }`}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        {isEligible ? (
+          <ShieldCheck size={15} className="text-green-600 flex-shrink-0" />
+        ) : (
+          <ShieldX size={15} className="text-red-500 flex-shrink-0" />
+        )}
+        <span
+          className={`text-xs font-bold font-['Mukta'] ${
+            isEligible ? "text-green-800" : "text-red-800"
+          }`}
+        >
+          {result.scheme_hi || result.scheme}
+        </span>
+        <span
+          className={`ml-auto text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+            isEligible
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
+          }`}
+        >
+          {isEligible ? "पात्र" : "अपात्र"}
+        </span>
+      </div>
+      <p className="text-[11px] text-gray-600 font-['Nunito'] leading-relaxed">
+        {result.reason}
+      </p>
+      {isEligible && result.benefit && (
+        <p className="text-[11px] text-green-700 font-['Nunito'] font-semibold mt-1">
+          Benefit: {result.benefit}
+        </p>
+      )}
+    </div>
+  );
+};
+
 const ToolCallTrace = ({ toolCall }) => (
   <div
     data-testid="mcp-tool-trace"
@@ -27,28 +73,42 @@ const ToolCallTrace = ({ toolCall }) => (
       ))}
     </div>
 
-    {/* Match result */}
-    <div className="px-3 py-1.5 border-t border-[#E6E6F2] flex items-center gap-1.5">
-      {toolCall.match_found ? (
-        <>
-          <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center">
-            <Check size={10} className="text-green-600" />
-          </div>
-          <span className="text-[11px] font-semibold text-green-700 font-['Nunito']">
-            Match found
-          </span>
-        </>
-      ) : (
-        <>
-          <div className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center">
-            <X size={10} className="text-red-500" />
-          </div>
-          <span className="text-[11px] font-semibold text-red-600 font-['Nunito']">
-            No match in documents
-          </span>
-        </>
-      )}
-    </div>
+    {/* Eligibility results (if present) */}
+    {toolCall.results && toolCall.results.length > 0 && (
+      <div className="px-3 py-2 border-t border-[#E6E6F2] space-y-2">
+        <p className="text-[10px] font-semibold text-gray-500 font-['Nunito'] uppercase tracking-wider">
+          Eligibility results
+        </p>
+        {toolCall.results.map((r, i) => (
+          <EligibilityCard key={i} result={r} />
+        ))}
+      </div>
+    )}
+
+    {/* Match result (only if no eligibility results) */}
+    {(!toolCall.results || toolCall.results.length === 0) && (
+      <div className="px-3 py-1.5 border-t border-[#E6E6F2] flex items-center gap-1.5">
+        {toolCall.match_found ? (
+          <>
+            <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center">
+              <Check size={10} className="text-green-600" />
+            </div>
+            <span className="text-[11px] font-semibold text-green-700 font-['Nunito']">
+              Match found
+            </span>
+          </>
+        ) : (
+          <>
+            <div className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center">
+              <X size={10} className="text-red-500" />
+            </div>
+            <span className="text-[11px] font-semibold text-red-600 font-['Nunito']">
+              No match in documents
+            </span>
+          </>
+        )}
+      </div>
+    )}
   </div>
 );
 
