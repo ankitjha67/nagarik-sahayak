@@ -258,6 +258,27 @@ export default function ChatPage({ userId, language = "hi" }) {
       {/* Input Bar */}
       <div className="fixed bottom-14 left-0 right-0 bg-white border-t border-gray-100 px-3 py-2.5 z-30">
         <div className="max-w-md mx-auto flex items-center gap-2">
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleFileUpload}
+            data-testid="pdf-file-input"
+          />
+
+          {/* Paperclip Button */}
+          <button
+            data-testid="chat-attach-btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading || isRecording}
+            title="PDF अपलोड करें"
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 bg-gray-100 text-gray-500 hover:bg-[#FFF0E0] hover:text-[#FF9933]"
+          >
+            <Paperclip size={18} />
+          </button>
+
           {/* Mic Button with countdown */}
           <button
             data-testid="chat-mic-btn"
