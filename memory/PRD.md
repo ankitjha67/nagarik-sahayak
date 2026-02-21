@@ -84,6 +84,12 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] Hindi + English bilingual text on each step
 - [x] Progress card auto-disappears when response arrives
 
+- [x] **Hardcoded stage demo**: "Mera beta 10th pass hai" → Rajesh Kumar profile + Vidyasiri + PM-KISAN eligible + PDF (~300ms)
+- [x] Exact trigger phrases (English + Hindi) + fuzzy keyword matching (scholarship, student, 10th, pass, etc.)
+- [x] DB writes & Agnost tracking wrapped in try/except for 100% offline reliability
+- [x] 2 eligible schemes in single response with full reasons + benefits
+- [x] Streaming tool progress bullets updated: "Scanning scholarship PDFs..." → "Checking eligibility..." → "Generating report & form..."
+
 ## P0 Backlog
 - Integrate real LLM for intelligent chat responses
 - Implement Sarvam AI STT (needs API key)
