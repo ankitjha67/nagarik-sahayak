@@ -1,4 +1,5 @@
-import { CheckCheck, FileSearch, FileText, Check, X, Languages } from "lucide-react";
+import { useState, useRef } from "react";
+import { CheckCheck, FileSearch, FileText, Check, X, Languages, Play, Pause } from "lucide-react";
 
 const ToolCallTrace = ({ toolCall }) => (
   <div
