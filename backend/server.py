@@ -355,7 +355,7 @@ SCHEMES_SEED = [
         "eligibility_hi": "10 वर्ष से कम आयु की बालिका। प्रति परिवार अधिकतम 2 खाते।",
         "benefits": "~8.2% interest. Tax deduction under 80C up to Rs 1.5 lakh.",
         "benefits_hi": "~8.2% ब्याज। धारा 80C के तहत 1.5 लाख रुपये तक कर कटौती।",
-        "pdf_url": "https://india.gov.in/sukanya-samriddhi-yojna", "icon": "baby", "category": "savings",
+        "pdf_url": "https://static.pib.gov.in/WriteReadData/specificdocs/documents/2026/jan/doc2026121762801.pdf", "icon": "baby", "category": "savings",
     },
 ]
 
