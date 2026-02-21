@@ -509,12 +509,11 @@ async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dic
         return {"match_found": False, "results": [], "summary": "User not found"}
     profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})
     name = profile.get("name", "")
-    age = profile.get("age") or 0
     income_yearly = profile.get("income") or 0
     state = (profile.get("state") or "").lower()
 
-    # First call search_schemes to scan documents
-    search_result = await search_schemes_prisma("scholarship eligibility")
+    # First call search_schemes to scan documents (for Agnost tracking)
+    await search_schemes_prisma("scholarship eligibility")
 
     # Default to Vidyasiri, then check all schemes
     vidyasiri = await prisma.scheme.find_first(where={"name": {"contains": "Vidyasiri"}})
