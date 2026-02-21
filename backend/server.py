@@ -250,32 +250,29 @@ async def profiler_agent_respond(user_id: str, content: str) -> Optional[dict]:
                 "profile": json.dumps(profile, ensure_ascii=False)
             })
 
-            t0 = _time.time()
-            matcher_result = eligibility_matcher(profile)
-            latency_ms = int((_time.time() - t0) * 1000)
-            if _agnost_key:
-                try:
-                    agnost.track(
-                        user_id=user_id, agent_name="nagarik_tool",
-                        input=str(profile), output=str(matcher_result.get("match_found", False)),
-                        properties={"tool": "eligibility_matcher", "trigger": "profiler_complete"},
-                        success=matcher_result.get("match_found", False), latency=latency_ms,
-                    )
-                except Exception:
-                    pass
+            # Chain: eligibility_matcher_prisma → generate_filled_form
+            matcher_result = await eligibility_matcher_prisma(user_id)
 
+            # Generate filled form for first eligible scheme
             pdf_url = ""
-            try:
-                from pdf_generator import generate_eligibility_pdf
-                pdf_id = str(uuid.uuid4())
-                generate_eligibility_pdf(
-                    profile=profile,
-                    eligibility_results=matcher_result.get("results", []),
-                    output_path=str(PDF_DIR / f"{pdf_id}.pdf"),
-                )
-                pdf_url = f"/api/pdf/{pdf_id}"
-            except Exception as e:
-                logger.error(f"PDF gen failed: {e}")
+            eligible_results = [r for r in matcher_result.get("results", []) if r["eligible"]]
+            if eligible_results and eligible_results[0].get("scheme_id"):
+                form_result = await generate_filled_form(user_id, eligible_results[0]["scheme_id"])
+                if form_result.get("success"):
+                    pdf_url = form_result["pdf_url"]
+            elif matcher_result.get("results"):
+                # Fallback: generate eligibility report PDF
+                try:
+                    from pdf_generator import generate_eligibility_pdf
+                    pdf_id = str(uuid.uuid4())
+                    generate_eligibility_pdf(
+                        profile=profile,
+                        eligibility_results=matcher_result.get("results", []),
+                        output_path=str(PDF_DIR / f"{pdf_id}.pdf"),
+                    )
+                    pdf_url = f"/api/pdf/{pdf_id}"
+                except Exception as e:
+                    logger.error(f"PDF gen failed: {e}")
 
             reply = "प्रोफाइल पूरा हो गया। अब योजना चेक कर रहा हूँ...\n\n"
             reply += matcher_result.get("summary", "")
