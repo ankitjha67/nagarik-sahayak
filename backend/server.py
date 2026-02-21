@@ -6,6 +6,7 @@ import os
 import logging
 import tempfile
 import uuid
+import re
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
@@ -139,6 +140,28 @@ class SchemeResponse(BaseModel):
     pdf_url: str
     icon: str
     category: str
+
+class SearchSchemesRequest(BaseModel):
+    query: str
+
+# --- MCP Tool Registry (Simulated) ---
+
+MCP_TOOLS = [
+    {
+        "name": "search_schemes",
+        "description": "Search government scheme PDFs/documents for eligibility criteria and scheme details. Scans seeded document text and returns matching eligibility information.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Natural-language search query about a government scheme, eligibility, or benefit"
+                }
+            },
+            "required": ["query"]
+        }
+    }
+]
 
 # --- Seed Data ---
 
