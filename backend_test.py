@@ -418,7 +418,7 @@ class NagarikSahayakAPITester:
 
     def run_all_tests(self):
         """Run complete API test suite"""
-        print("🚀 Starting Nagarik Sahayak API Test Suite\n")
+        print("🚀 Starting Nagarik Sahayak API Test Suite (with MCP Testing)\n")
         
         # Test 1: Health Check
         if not self.test_health_check():
@@ -444,6 +444,16 @@ class NagarikSahayakAPITester:
         # Test 4: Info Endpoints
         self.test_llm_providers()
         self.test_stt_providers()
+        
+        # Test 5: NEW MCP Functionality
+        print("🔧 Testing NEW MCP Tool Functionality...")
+        self.test_mcp_tools_list()
+        self.test_search_schemes_kisan()
+        self.test_search_schemes_health()
+        self.test_search_schemes_sukanya()
+        self.test_search_schemes_no_match()
+        self.test_chat_with_scheme_query()
+        self.test_chat_with_greeting()
         
         return self.print_summary()
 
