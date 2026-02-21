@@ -19,24 +19,22 @@ Build a full-stack, mobile-first chat application called 'Nagarik Sahayak' - a W
 - One question at a time in Hindi
 - Validates input for each field
 
-### Intelligence + Execution Layer (P0 - COMPLETED Feb 2026)
-1. **search_schemes(query)**: Prisma-backed search of Scheme table. Returns "Document scanned: [name]" + eligibilityCriteriaText. No match returns "I don't know" message.
-2. **eligibilityMatcher(user_id)**: Fetches user.profile via Prisma. Defaults to Vidyasiri scheme (listed first). Compares yearly income < 150000, state == Karnataka. Returns {eligible, reason} in Hindi.
-3. **generateFilledForm(user_id, scheme_id)**: Generates pre-filled application form PDF with Hindi labels (Naam, Umr, Aay, Rajya, Scheme Name, Date). Saved to static/uploads, returns public download URL.
-4. **Full Chain**: Profile complete → search_schemes → eligibilityMatcher → generateFilledForm → download link in chat
-5. **Streaming Bullets UI**: Reading Vidyasiri PDF → Checking eligibility → Generating form
-6. **DEMO_MODE** (env var, default true): Triggers on "10th", "scholarship", "beta" → instant Vidyasiri eligible + pre-filled PDF
-7. **Agnost Tracking**: All tools wrapped with agnost.track()
+### Intelligence + Execution Layer (COMPLETED Feb 2026)
+1. **search_schemes(query)**: Prisma-backed search. Returns "Document scanned: [name]" + eligibilityCriteriaText.
+2. **eligibilityMatcher(user_id)**: Defaults to Vidyasiri. Income compared YEARLY < 150000. State == Karnataka.
+3. **generateFilledForm(user_id, scheme_id)**: Pre-filled PDF with Hindi labels (Naam, Umr, Aay, Rajya, Scheme Name, Date DD/MM/YYYY).
+4. **Full Chain**: profiler → search_schemes → eligibility → generateFilledForm → download link
+5. **Streaming Bullets**: "Reading Vidyasiri PDF" → "Checking eligibility" → "Generating form"
+6. **DEMO_MODE** (default true): Triggers on "10th", "scholarship", "beta"
+7. **Agnost Tracking**: All tools wrapped
 
-### UI/UX
-- WhatsApp-style chat with saffron/blue government theme
-- Large microphone button for voice input
-- Animated double ticks (read receipts)
-- Tool progress streaming bullets
-- Eligibility cards with green/red badges
-- PDF download button in chat
-- Hindi voice reply (browser SpeechSynthesis)
-- Sidebar with analytics link and demo toggle
+### Final Polish (COMPLETED Feb 2026)
+- WhatsApp Share button (Web Share API + wa.me fallback)
+- "Agent is thinking..." with saffron spinner during tools
+- Mic pulse animation when recording
+- Instant blue double ticks on agent replies
+- Hindi date DD/MM/YYYY in PDF
+- PDF labels: "PDF डाउनलोड करें" / "Pre-filled Application Form"
 
 ### Database Seed (3 Schemes)
 1. Pradhan Mantri Awas Yojana
@@ -45,17 +43,11 @@ Build a full-stack, mobile-first chat application called 'Nagarik Sahayak' - a W
 
 ## Mocked Components
 - Authentication (static OTP 1234)
-- Speech-to-Text (hardcoded mock response, Sarvam AI ready)
-
-## Key API Endpoints
-- POST /api/auth/send-otp, /api/auth/verify-otp
-- POST /api/chat (main chat with profiler + tool chain)
-- POST /api/search-schemes, /api/eligibility-check, /api/generate-filled-form
-- GET /api/pdf/{id}, /api/schemes, /api/chat/history/{user_id}
-- POST /api/demo/toggle, GET /api/demo/status
+- Speech-to-Text (hardcoded mock, Sarvam AI ready)
 
 ## Upcoming Tasks
 - P0: Migrate Frontend to Next.js (deferred until after VibeCon)
 - P1: Real Speech-to-Text via Sarvam AI
+- P1: Dynamic RAG with uploaded PDF documents
 - P2: Refactor monolithic server.py into modules
 - P3: Real OTP authentication service
