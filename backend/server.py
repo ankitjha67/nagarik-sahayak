@@ -639,6 +639,24 @@ async def get_stt_providers():
     return STT_PROVIDERS
 
 
+# --- MCP TOOL ENDPOINTS ---
+
+@api_router.get("/mcp/tools")
+async def list_mcp_tools():
+    """List available MCP tools (simulated MCP server)."""
+    return {"tools": MCP_TOOLS}
+
+
+@api_router.post("/search-schemes")
+async def search_schemes_endpoint(req: SearchSchemesRequest):
+    """
+    Direct invocation of the search_schemes MCP tool.
+    Scans seeded scheme documents and returns eligibility + criteria.
+    """
+    result = search_schemes(req.query, "en")
+    return result
+
+
 # --- HEALTH ---
 
 @api_router.get("/")
