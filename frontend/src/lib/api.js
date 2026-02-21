@@ -45,4 +45,13 @@ export const eligibilityCheck = (data) => api.post("/eligibility-check", data);
 // PDF
 export const generatePdf = (data) => api.post("/generate-pdf", data);
 
+// Upload PDF
+export const uploadPdf = (formData) =>
+  api.post("/upload-pdf", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+// Reset Chat
+export const resetChat = (userId) => api.post("/chat/reset", { user_id: userId });
+
 export default api;
