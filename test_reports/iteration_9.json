@@ -1,0 +1,108 @@
+{
+  "summary": "Demo flow testing complete - all backend (10/10) and frontend (11/11) tests passed. Hardcoded demo phrase 'Mera beta 10th pass hai' and variants trigger instant profiler_complete response with Rajesh Kumar profile + 2 eligible schemes (Vidyasiri + PM-KISAN) + downloadable PDF. Response time < 500ms.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Backend: POST /api/chat with 'Mera beta 10th pass hai' returns type='profiler_complete'",
+    "Backend: Response profile shows Rajesh Kumar, age 42, income 18000, state Karnataka, child 'Son, 10th pass'",
+    "Backend: Response includes 2 eligible schemes: Vidyasiri Scholarship and PM-KISAN Samman Nidhi",
+    "Backend: Response includes pdf_url with /api/pdf/{id} format",
+    "Backend: PDF download at GET /api/pdf/{id} returns valid PDF (26KB)",
+    "Backend: Response time under 2 seconds (avg ~300ms)",
+    "Backend: Hindi variation 'मेरा बेटा 10th पास है' triggers demo",
+    "Backend: Keyword 'scholarship' triggers demo",
+    "Backend: Keywords '10th pass', 'student' trigger demo",
+    "Backend: tool_calls contain 2 documents_scanned (Vidyasiri + PM-KISAN Guidelines)",
+    "Frontend: MCP tool trace (data-testid='mcp-tool-trace') displayed with ELIGIBILITY_MATCHER",
+    "Frontend: Documents scanned section shows Vidyasiri + PM-KISAN Guidelines",
+    "Frontend: 2 eligibility cards (data-testid='eligibility-card-eligible') rendered",
+    "Frontend: Vidyasiri छात्रवृत्ति card shows 'पात्र' with reasons and benefit",
+    "Frontend: PM-KISAN सम्मान निधि card shows 'पात्र' with reasons and benefit",
+    "Frontend: Profile info displayed (Rajesh Kumar, 42 वर्ष, ₹18,000, Karnataka)",
+    "Frontend: PDF download button (data-testid='pdf-download-btn') rendered",
+    "Frontend: PDF button links to correct backend URL with /api/pdf/ prefix",
+    "Frontend: Chat input and send button work correctly",
+    "Frontend: ToolProgressIndicator streaming bullets work (may complete fast due to demo speed)",
+    "Frontend: Login flow works with mock OTP 1234"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_demo_flow.py",
+    "/app/test_reports/pytest/demo_flow_results.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "Demo flow correctly hardcoded with DEMO_PROFILE, VIDYASIRI_RESULT, PMKISAN_DEMO_RESULT constants",
+    "_is_demo_trigger() function checks DEMO_EXACT_TRIGGERS list and DEMO_SCHOLARSHIP_SIGNALS keywords",
+    "demo_stage_response() generates PDF synchronously and returns complete profiler_complete response",
+    "All DB writes in demo path wrapped in try/except for offline resilience",
+    "Agnost tracking call also wrapped in try/except to never fail demo",
+    "ChatBubble.js renders EligibilityCard components for eligible/ineligible schemes with proper styling",
+    "PDF download button uses correct href format: {backendUrl}{pdf_url}"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_demo_flow.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "100% (11/11 features verified)"
+  },
+
+  "test_credentials": {
+    "phone": "9876543210",
+    "otp": "1234"
+  },
+
+  "seed_data_creation": "",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "Demo mode fully working. Exact phrase 'Mera beta 10th pass hai' and scholarship/student/10th pass keywords trigger instant hardcoded response: Rajesh Kumar profile (age 42, income 18000, Karnataka, Son 10th pass) + Vidyasiri Scholarship eligible + PM-KISAN eligible + downloadable PDF. Response time ~300ms. Auth uses mock OTP 1234. All DB writes and Agnost tracking wrapped in try/except for offline reliability. DEMO_MODE=true in backend/.env.",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "demo_stage_response: Fully hardcoded demo flow with DEMO_PROFILE, VIDYASIRI_RESULT, PMKISAN_DEMO_RESULT",
+      "auth: Static OTP 1234 for any phone number"
+    ]
+  },
+
+  "feature_verification": {
+    "demo_trigger_exact_phrase": true,
+    "demo_trigger_hindi_variation": true,
+    "demo_trigger_scholarship_keyword": true,
+    "demo_trigger_10th_pass_keyword": true,
+    "demo_trigger_student_keyword": true,
+    "profile_rajesh_kumar": true,
+    "profile_age_42": true,
+    "profile_income_18000": true,
+    "profile_state_karnataka": true,
+    "profile_child_son_10th_pass": true,
+    "scheme_vidyasiri_eligible": true,
+    "scheme_pmkisan_eligible": true,
+    "pdf_url_in_response": true,
+    "pdf_downloadable": true,
+    "response_time_under_2s": true,
+    "tool_calls_show_documents_scanned": true,
+    "db_writes_wrapped_in_try_except": true,
+    "frontend_mcp_trace_visible": true,
+    "frontend_eligibility_cards_visible": true,
+    "frontend_pdf_button_visible": true,
+    "frontend_profile_info_visible": true
+  }
+}
