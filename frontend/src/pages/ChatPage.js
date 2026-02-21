@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
-import { ChatBubble, TypingIndicator } from "../components/ChatBubble";
+import { ChatBubble, TypingIndicator, ToolProgressIndicator } from "../components/ChatBubble";
 import { sendMessage, getChatHistory, transcribeAudio } from "../lib/api";
 import { toast } from "sonner";
 import { SendHorizontal, Mic, MicOff, Loader2 } from "lucide-react";
