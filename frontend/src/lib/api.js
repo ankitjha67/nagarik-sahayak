@@ -31,4 +31,8 @@ export const sendVoice = (formData) =>
     headers: { "Content-Type": "multipart/form-data" },
   });
 
+// MCP Tools
+export const getMcpTools = () => api.get("/mcp/tools");
+export const searchSchemes = (query) => api.post("/search-schemes", { query });
+
 export default api;
