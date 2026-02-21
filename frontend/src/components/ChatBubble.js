@@ -1,9 +1,60 @@
-import { CheckCheck } from "lucide-react";
+import { CheckCheck, FileSearch, FileText, Check, X } from "lucide-react";
+
+const ToolCallTrace = ({ toolCall }) => (
+  <div
+    data-testid="mcp-tool-trace"
+    className="mb-2.5 rounded-xl border border-[#E6E6F2] bg-[#F8F8FC] overflow-hidden"
+  >
+    {/* Tool header */}
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-[#E6E6F2] border-b border-[#D4D4E8]">
+      <FileSearch size={13} className="text-[#000080]" />
+      <span className="text-[11px] font-bold text-[#000080] font-['Mukta'] tracking-wide uppercase">
+        MCP Tool: {toolCall.tool_name}
+      </span>
+    </div>
+
+    {/* Scanned documents */}
+    <div className="px-3 py-2 space-y-1">
+      <p className="text-[10px] font-semibold text-gray-500 font-['Nunito'] uppercase tracking-wider">
+        Documents scanned
+      </p>
+      {toolCall.documents_scanned?.map((doc, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <FileText size={12} className="text-[#FF9933] flex-shrink-0" />
+          <span className="text-[11px] text-gray-600 font-['Nunito']">{doc}</span>
+        </div>
+      ))}
+    </div>
+
+    {/* Match result */}
+    <div className="px-3 py-1.5 border-t border-[#E6E6F2] flex items-center gap-1.5">
+      {toolCall.match_found ? (
+        <>
+          <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center">
+            <Check size={10} className="text-green-600" />
+          </div>
+          <span className="text-[11px] font-semibold text-green-700 font-['Nunito']">
+            Match found
+          </span>
+        </>
+      ) : (
+        <>
+          <div className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center">
+            <X size={10} className="text-red-500" />
+          </div>
+          <span className="text-[11px] font-semibold text-red-600 font-['Nunito']">
+            No match in documents
+          </span>
+        </>
+      )}
+    </div>
+  </div>
+);
 
 export const ChatBubble = ({ message }) => {
   const isUser = message.role === "user";
   const isRead = message.status === "read";
-  const isBot = message.role === "assistant";
+  const hasToolCalls = message.tool_calls && message.tool_calls.length > 0;
 
   return (
     <div
@@ -26,6 +77,12 @@ export const ChatBubble = ({ message }) => {
           </div>
         )}
 
+        {/* MCP Tool Call Trace */}
+        {hasToolCalls &&
+          message.tool_calls.map((tc, i) => (
+            <ToolCallTrace key={i} toolCall={tc} />
+          ))}
+
         <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line font-['Nunito']">
           {message.content}
         </p>
@@ -37,7 +94,7 @@ export const ChatBubble = ({ message }) => {
           {isUser && (
             <CheckCheck
               size={14}
-              data-testid={`tick-${isRead ? "blue" : isBot ? "blue" : "grey"}`}
+              data-testid={`tick-${isRead ? "blue" : "grey"}`}
               className={`${
                 isRead ? "text-[#000080]" : "text-gray-400"
               } transition-colors`}
