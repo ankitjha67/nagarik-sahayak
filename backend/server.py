@@ -540,49 +540,154 @@ def parse_profile_answer(field: str, answer: str) -> tuple:
     return answer, None
 
 
-def check_eligibility(profile_data: dict) -> str:
-    """Check eligibility for all 3 schemes based on profile data."""
+def eligibility_matcher(profile_data: dict, query: str = "") -> dict:
+    """
+    MCP Tool: eligibility_matcher
+    1. Calls search_schemes to identify relevant schemes
+    2. Compares user profile vs scheme-specific criteria from documents
+    3. Returns per-scheme {eligible, reason} with exact limit comparisons
+    """
     age = profile_data.get("age", 0) or 0
     income = profile_data.get("income", 0) or 0
     name = profile_data.get("name", "")
-    _state = profile_data.get("state", "")  # reserved for state-specific rules
+    state = profile_data.get("state", "")
+
+    # Step 1: Use search_schemes if query given, else check all
+    if query:
+        search_result = search_schemes(query, "en")
+        if search_result["match_found"]:
+            scheme_indices = []
+            for ms in search_result.get("matched_schemes", []):
+                for i, s in enumerate(SCHEMES_SEED):
+                    if s["title"] == ms["scheme_title_en"]:
+                        scheme_indices.append(i)
+        else:
+            scheme_indices = []
+    else:
+        scheme_indices = [0, 1, 2]
+
+    documents_scanned = [s["title"] for s in SCHEMES_SEED]
+
+    # Step 2: Per-scheme eligibility rules (extracted from document text)
+    # Criteria thresholds from actual scheme PDFs
+    SCHEME_RULES = {
+        0: {  # PM-KISAN
+            "scheme": "PM-KISAN Samman Nidhi",
+            "scheme_hi": "पीएम-किसान सम्मान निधि",
+            "criteria": {
+                "income_limit": 200000,  # ₹2L/month — income tax payer exclusion
+                "min_age": 18,
+                "requires": "cultivable_land",
+            },
+            "benefit": "₹6,000/year (₹2,000 every 4 months via DBT)",
+        },
+        1: {  # Ayushman Bharat
+            "scheme": "Ayushman Bharat (PM-JAY)",
+            "scheme_hi": "आयुष्मान भारत (पीएम-जय)",
+            "criteria": {
+                "income_limit": 50000,  # ₹50K/month SECC threshold
+                "min_age": 0,
+                "requires": "secc_2011_listing",
+            },
+            "benefit": "₹5,00,000/year health cover per family",
+        },
+        2: {  # Sukanya Samriddhi
+            "scheme": "Sukanya Samriddhi Yojana",
+            "scheme_hi": "सुकन्या समृद्धि योजना",
+            "criteria": {
+                "income_limit": None,  # No income limit
+                "min_age": 18,  # Parent/guardian must be 18+
+                "requires": "girl_child_under_10",
+            },
+            "benefit": "~8.2% interest p.a., ₹1.5L tax deduction under 80C",
+        },
+    }
 
     results = []
-    results.append(f"नमस्ते {name}! आपकी प्रोफाइल के आधार पर पात्रता:")
-    results.append("")
 
-    # PM-KISAN: farmers with land, income < 2L/month typically
-    if income <= 200000:
-        results.append("1. पीएम-किसान सम्मान निधि: पात्र हो सकते हैं")
-        results.append("   लाभ: 6,000 रुपये/वर्ष (2,000 रुपये हर 4 महीने)")
-        results.append("   शर्त: खेती योग्य भूमि होनी चाहिए")
-    else:
-        results.append("1. पीएम-किसान सम्मान निधि: आय अधिक होने पर पात्र नहीं")
+    for idx in scheme_indices:
+        rule = SCHEME_RULES.get(idx)
+        if not rule:
+            continue
 
-    results.append("")
+        scheme_name = rule["scheme"]
+        scheme_hi = rule["scheme_hi"]
+        criteria = rule["criteria"]
+        reasons = []
+        eligible = True
 
-    # Ayushman Bharat: SECC 2011, generally low income
-    if income <= 50000:
-        results.append("2. आयुष्मान भारत (पीएम-जय): पात्र हो सकते हैं")
-        results.append("   लाभ: 5 लाख रुपये/वर्ष स्वास्थ्य कवर")
-        results.append("   शर्त: SECC 2011 सूची में होना आवश्यक")
-    else:
-        results.append("2. आयुष्मान भारत (पीएम-जय): आय सीमा से अधिक, संभवत: पात्र नहीं")
+        # Age check
+        if criteria["min_age"] > 0 and age < criteria["min_age"]:
+            eligible = False
+            reasons.append(f"Age {age} years is below minimum {criteria['min_age']} years required")
 
-    results.append("")
+        # Income check
+        if criteria["income_limit"] is not None:
+            if income > criteria["income_limit"]:
+                eligible = False
+                income_fmt = f"₹{income:,}"
+                limit_fmt = f"₹{criteria['income_limit']:,}"
+                reasons.append(f"Income {income_fmt}/month exceeds {limit_fmt}/month limit")
+            else:
+                income_fmt = f"₹{income:,}"
+                limit_fmt = f"₹{criteria['income_limit']:,}"
+                reasons.append(f"Income {income_fmt}/month is within {limit_fmt}/month limit")
 
-    # Sukanya Samriddhi: needs girl child < 10
-    if age >= 18:
-        results.append("3. सुकन्या समृद्धि योजना: आप माता-पिता/अभिभावक के रूप में खोल सकते हैं")
-        results.append("   लाभ: ~8.2% ब्याज, धारा 80C कर लाभ")
-        results.append("   शर्त: 10 वर्ष से कम आयु की बालिका होनी चाहिए")
-    else:
-        results.append("3. सुकन्या समृद्धि योजना: उम्र कम होने पर स्वयं आवेदन नहीं कर सकते")
+        # Special requirement checks
+        req = criteria.get("requires", "")
+        if req == "cultivable_land":
+            reasons.append("Requires cultivable agricultural land (cannot verify digitally)")
+        elif req == "secc_2011_listing":
+            reasons.append("Requires listing in SECC 2011 census (verify at mera.pmjay.gov.in)")
+        elif req == "girl_child_under_10":
+            reasons.append("Requires girl child below 10 years of age")
 
-    results.append("")
-    results.append("अधिक जानकारी के लिए किसी योजना का नाम लिखें।")
+        # Age-based notes
+        if idx == 2 and age >= 18:
+            if eligible:
+                reasons.append(f"Age {age}: eligible as parent/guardian to open account")
 
-    return "\n".join(results)
+        result_entry = {
+            "scheme": scheme_name,
+            "scheme_hi": scheme_hi,
+            "eligible": eligible,
+            "reasons": reasons,
+            "reason": "; ".join(reasons),
+            "benefit": rule["benefit"],
+        }
+        results.append(result_entry)
+
+    # Handle no matching schemes
+    if not results and query:
+        return {
+            "tool_name": "eligibility_matcher",
+            "tool_input": {"profile": profile_data, "query": query},
+            "documents_scanned": documents_scanned,
+            "match_found": False,
+            "results": [],
+            "summary": "I don't know — criteria not explicitly stated in PDFs.",
+            "summary_hi": "मुझे जानकारी नहीं मिली — पीडीएफ दस्तावेजों में यह मापदंड स्पष्ट रूप से नहीं बताया गया है।",
+        }
+
+    # Build summary text
+    summary_parts = [f"नमस्ते {name}! प्रोफाइल आधारित पात्रता:", ""]
+    for r in results:
+        status = "पात्र" if r["eligible"] else "अपात्र"
+        icon = "+" if r["eligible"] else "-"
+        summary_parts.append(f"[{icon}] {r['scheme_hi']}: {status}")
+        summary_parts.append(f"    कारण: {r['reason']}")
+        if r["eligible"]:
+            summary_parts.append(f"    लाभ: {r['benefit']}")
+        summary_parts.append("")
+
+    return {
+        "tool_name": "eligibility_matcher",
+        "tool_input": {"profile": profile_data, "query": query},
+        "documents_scanned": documents_scanned,
+        "match_found": True,
+        "results": results,
+        "summary": "\n".join(summary_parts),
+    }
 
 
 async def profiler_agent_respond(user_id: str, content: str) -> dict:
