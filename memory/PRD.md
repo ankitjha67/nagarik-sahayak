@@ -64,6 +64,13 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] Frontend: navy-blue PDF download button with "PDF रिपोर्ट डाउनलोड करें" + download icon
 - [x] 100% backend test pass rate (27/27 endpoints)
 
+- [x] **Agnost AI SDK** tracking for all MCP tool calls (search_schemes, eligibility_matcher, generate_pdf)
+- [x] `agnost.track()` wraps every tool call with agent_name="nagarik_tool", user_id, properties={tool}
+- [x] `GET /api/analytics/status` endpoint returns tracking enabled state + dashboard URL
+- [x] Sidebar drawer on all pages with hamburger menu, Analytics Dashboard link to https://app.agnost.ai
+- [x] Green active badge when Agnost tracking is enabled
+- [x] 100% backend test pass rate (13/13 Agnost integration tests)
+
 ## P0 Backlog
 - Integrate real LLM for intelligent chat responses
 - Implement Sarvam AI STT (needs API key)
