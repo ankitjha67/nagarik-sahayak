@@ -481,7 +481,14 @@ async def verify_otp(req: VerifyOTPRequest):
             "phone": req.phone,
             "name": "",
             "language": "hi",
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "profile_data": {
+                "name": "",
+                "age": None,
+                "income": None,
+                "state": "",
+            },
+            "profile_complete": False,
         }
         await db.users.insert_one(user)
     else:
