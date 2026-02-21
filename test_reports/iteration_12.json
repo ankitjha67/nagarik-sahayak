@@ -1,0 +1,120 @@
+{
+  "summary": "Comprehensive E2E testing of Intelligence + Execution layer completed. All 16 backend tests passed (100%). Frontend verified with DEMO mode, eligibility cards with पात्र/अपात्र badges, PDF download, tool progress indicator, Hindi voice button, and blue double ticks.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "BACKEND: POST /api/auth/send-otp with phone returns success ✓",
+    "BACKEND: POST /api/auth/send-otp rejects invalid phone (400) ✓",
+    "BACKEND: POST /api/auth/verify-otp with otp=1234 returns user_id (24-char ObjectId) ✓",
+    "BACKEND: POST /api/auth/verify-otp with wrong OTP returns failure ✓",
+    "BACKEND: POST /api/chat with 'namaste' triggers profiler asking name in Hindi ✓",
+    "BACKEND: Full profiler flow (namaste→name→age→income→state) works correctly ✓",
+    "BACKEND: Profile completion triggers eligibility chain + PDF generation ✓",
+    "BACKEND: Vidyasiri shows FIRST and eligible for income < 150000 + Karnataka ✓",
+    "BACKEND: Vidyasiri shows ineligible for income > 150000 ✓",
+    "BACKEND: Income compared as YEARLY (not monthly) ✓",
+    "BACKEND: bot_message has pdf_url, tool_progress array, eligibility_results on profile completion ✓",
+    "BACKEND: DEMO_MODE 'beta' trigger returns instant Vidyasiri eligible + PDF ✓",
+    "BACKEND: DEMO_MODE '10th' trigger returns instant result ✓",
+    "BACKEND: DEMO_MODE 'scholarship' trigger returns instant result ✓",
+    "BACKEND: GET /api/pdf/{id} returns valid PDF file (application/pdf, %PDF magic bytes) ✓",
+    "BACKEND: GET /api/pdf/invalid-id returns 404 ✓",
+    "BACKEND: POST /api/search-schemes returns Document scanned format ✓",
+    "BACKEND: GET /api/schemes returns 3 seeded schemes (Awas, Vidyasiri, Vidya Lakshmi) ✓",
+    "FRONTEND: Login page loads, accepts phone + OTP 1234 ✓",
+    "FRONTEND: Chat page shows profiler questions in Hindi ✓",
+    "FRONTEND: ToolProgressIndicator streaming bullets visible during loading ✓",
+    "FRONTEND: Eligibility cards with पात्र/अपात्र badges displayed ✓",
+    "FRONTEND: PDF download button with correct URL format (/api/pdf/{id}) ✓",
+    "FRONTEND: Hindi voice button visible on bot messages ✓",
+    "FRONTEND: Blue double ticks on user messages ✓",
+    "FRONTEND: MCP tool trace showing documents scanned ✓"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_comprehensive_e2e.py",
+    "/app/test_reports/pytest/comprehensive_e2e_results.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "All data-testid attributes properly implemented for testing",
+    "Prisma ORM with MongoDB replica set working correctly",
+    "Income field stored and compared as YEARLY (saalana aay)",
+    "Vidyasiri eligibility limit correctly set at 1.5 lakh/year (150000)",
+    "DEMO_MODE triggers working: 'beta', '10th', 'scholarship'",
+    "PDF generation with ReportLab working correctly",
+    "Tool progress steps showing Hindi text correctly",
+    "Eligibility cards displaying पात्र (eligible) and अपात्र (ineligible) badges"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_comprehensive_e2e.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (16/16 tests passed)",
+    "frontend": "100% (All 10 features verified)"
+  },
+
+  "test_credentials": {
+    "phone": "Any 10-digit number",
+    "otp": "1234 (hardcoded)"
+  },
+
+  "seed_data_creation": "Tests use timestamp-based phone numbers to create fresh users each run",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "Iteration 12 verified Intelligence + Execution layer (search_schemes, eligibilityMatcher, generateFilledForm). Backend tests cover auth, profiler flow (name→age→income→state), DEMO_MODE triggers, eligibility rules (income YEARLY, Vidyasiri <150k + Karnataka), PDF download. Frontend verified: login, chat with Hindi questions, tool progress indicator, eligibility cards (पात्र/अपात्र), PDF download button, Hindi voice button, blue ticks, MCP tool trace.",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "POST /api/auth/verify-otp - Static OTP 1234",
+      "POST /api/transcribe - Mock Sarvam STT fallback",
+      "DEMO_MODE - Hardcoded Vidyasiri + PM-KISAN results"
+    ]
+  },
+
+  "feature_verification": {
+    "auth_send_otp": true,
+    "auth_verify_otp": true,
+    "auth_verify_otp_invalid": true,
+    "profiler_greeting_asks_name": true,
+    "profiler_complete_flow": true,
+    "vidyasiri_eligible_under_150000_karnataka": true,
+    "vidyasiri_ineligible_over_150000": true,
+    "income_compared_yearly": true,
+    "demo_mode_beta_trigger": true,
+    "demo_mode_10th_trigger": true,
+    "demo_mode_scholarship_trigger": true,
+    "pdf_download_valid": true,
+    "pdf_404_invalid_id": true,
+    "search_schemes_document_scanned": true,
+    "schemes_returns_3": true,
+    "bot_message_has_pdf_url": true,
+    "bot_message_has_tool_progress": true,
+    "bot_message_has_eligibility_results": true,
+    "frontend_login": true,
+    "frontend_chat_profiler_hindi": true,
+    "frontend_tool_progress_indicator": true,
+    "frontend_eligibility_cards_paat_apaat": true,
+    "frontend_pdf_download_button": true,
+    "frontend_hindi_voice_btn": true,
+    "frontend_blue_ticks": true,
+    "frontend_mcp_tool_trace": true
+  }
+}
