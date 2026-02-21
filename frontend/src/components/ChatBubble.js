@@ -288,3 +288,89 @@ export const TypingIndicator = () => (
     </div>
   </div>
 );
+
+const TOOL_STEPS = [
+  { icon: Search, text: "Reading Vidyasiri Scholarship PDF...", textHi: "विद्यासिरी छात्रवृत्ति PDF पढ़ रहे हैं..." },
+  { icon: ClipboardCheck, text: "Checking eligibility...", textHi: "पात्रता जांच रहे हैं..." },
+  { icon: FileOutput, text: "Generating filled form...", textHi: "फॉर्म तैयार कर रहे हैं..." },
+];
+
+export const ToolProgressIndicator = () => {
+  const [visibleCount, setVisibleCount] = useState(0);
+
+  useEffect(() => {
+    const timers = TOOL_STEPS.map((_, i) =>
+      setTimeout(() => setVisibleCount(i + 1), i * 650)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div data-testid="tool-progress-indicator" className="flex justify-start animate-fade-in-up">
+      <div className="relative max-w-[85%] bg-white rounded-2xl rounded-tl-sm px-4 py-3 border border-gray-100 shadow-sm overflow-hidden">
+        {/* Shimmer bar */}
+        <div className="absolute inset-x-0 top-0 h-[2px] tool-shimmer-bar" />
+
+        <div className="flex items-center gap-1.5 mb-2.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#FF9933]" />
+          <span className="text-[11px] font-semibold text-[#000080] font-['Mukta']">
+            नागरिक सहायक
+          </span>
+          <Loader2 size={12} className="ml-1 text-[#FF9933] animate-spin" />
+        </div>
+
+        <div className="space-y-2">
+          {TOOL_STEPS.map((step, i) => {
+            const Icon = step.icon;
+            const visible = i < visibleCount;
+            const isLatest = i === visibleCount - 1;
+            return (
+              <div
+                key={i}
+                data-testid={`tool-step-${i}`}
+                className={`flex items-center gap-2.5 transition-all duration-500 ${
+                  visible ? "tool-step-enter opacity-100" : "opacity-0 h-0 overflow-hidden"
+                }`}
+              >
+                <div
+                  className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors duration-300 ${
+                    isLatest
+                      ? "bg-[#FF9933]/15 tool-icon-pulse"
+                      : "bg-[#E6E6F2]"
+                  }`}
+                >
+                  {isLatest ? (
+                    <Loader2 size={13} className="text-[#FF9933] animate-spin" />
+                  ) : (
+                    <Icon size={13} className="text-[#000080]" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`text-xs font-['Nunito'] leading-tight transition-colors duration-300 ${
+                      isLatest
+                        ? "text-gray-800 font-semibold"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {step.textHi}
+                  </p>
+                  <p
+                    className={`text-[10px] font-['Nunito'] leading-tight transition-colors duration-300 ${
+                      isLatest ? "text-gray-500" : "text-gray-300"
+                    }`}
+                  >
+                    {step.text}
+                  </p>
+                </div>
+                {!isLatest && visible && (
+                  <Check size={13} className="text-green-500 flex-shrink-0 tool-check-pop" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
