@@ -188,6 +188,9 @@ export const ChatBubble = ({ message }) => {
   const isRead = message.status === "read";
   const hasToolCalls = message.tool_calls && message.tool_calls.length > 0;
   const isTranscription = message.type === "transcription";
+  const hasPdf = !!message.pdf_url;
+  const isPdfReport = message.type === "pdf_report";
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   return (
     <div
@@ -223,6 +226,24 @@ export const ChatBubble = ({ message }) => {
           <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line font-['Nunito']">
             {message.content}
           </p>
+        )}
+
+        {/* PDF Download Button */}
+        {(hasPdf || isPdfReport) && message.pdf_url && (
+          <a
+            href={`${backendUrl}${message.pdf_url}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="pdf-download-btn"
+            className="mt-2.5 flex items-center gap-2 px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
+          >
+            <FileDown size={16} />
+            <div>
+              <span className="text-xs font-bold font-['Mukta'] block">PDF रिपोर्ट डाउनलोड करें</span>
+              <span className="text-[10px] opacity-75 font-['Nunito']">Eligibility Report</span>
+            </div>
+            <Download size={14} className="ml-auto" />
+          </a>
         )}
 
         <div className="flex items-center justify-end gap-1 mt-1">
