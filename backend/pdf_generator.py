@@ -239,11 +239,9 @@ def generate_filled_form_pdf(
     pdf.set_text_color(0, 0, 128)
     pdf.cell(0, 6, "Bhara Hua Aavedan Form", align="C", new_x="LMARGIN", new_y="NEXT")
 
-    # Reference & date
+    # Reference & date in DD/MM/YYYY Hindi format
     now = datetime.now(timezone.utc)
-    hindi_months = ["", "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"]
-    date_str = f"{now.day} {hindi_months[now.month]} {now.year}"
+    date_str = now.strftime("%d/%m/%Y")
     ref_id = now.strftime("%Y%m%d%H%M%S")
     pdf.set_font("NS", size=8)
     pdf.set_text_color(120, 120, 120)
