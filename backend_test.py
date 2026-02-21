@@ -1222,15 +1222,20 @@ class NagarikSahayakAPITester:
             print("💥 Critical: OTP verification failed. Stopping tests.")
             return self.print_summary()
         
-        # Test 3: NEW PDF GENERATION FEATURES
-        print("\n📄 Testing NEW PDF Generation Features...")
+        # Test 3: PROFILER AGENT FLOW (creates complete profile + auto-generates PDF)
+        print("\n🤖 Testing Updated Profiler Agent Flow...")
+        self.test_profiler_complete_flow()  # Should now generate PDF automatically
+        self.test_profile_data_persistence() 
+        
+        # Test 4: PDF GENERATION FEATURES (now user has complete profile)
+        print("\n📄 Testing PDF Generation Features...")
         self.test_generate_pdf_with_inline_profile()
-        self.test_generate_pdf_with_user_id()
+        self.test_generate_pdf_with_user_id()  # Should now work after profiler completion
         self.test_generate_pdf_incomplete_profile()
         self.test_serve_pdf()
         self.test_serve_pdf_nonexistent()
         
-        # Test 4: ELIGIBILITY_MATCHER FEATURES (used by PDF generation)
+        # Test 5: ELIGIBILITY_MATCHER FEATURES (used by PDF generation)
         print("\n🔍 Testing Eligibility Matcher Features...")
         self.test_eligibility_check_low_income()
         self.test_eligibility_check_high_income()
@@ -1239,17 +1244,15 @@ class NagarikSahayakAPITester:
         self.test_eligibility_check_with_query_filter()
         self.test_existing_user_eligibility_check()
         
-        # Test 5: UPDATED MCP TOOLS
+        # Test 6: UPDATED MCP TOOLS
         print("\n🛠️ Testing Updated MCP Tools...")
         self.test_mcp_tools_list()  # Now checks for both search_schemes AND eligibility_matcher
         
-        # Test 6: UPDATED PROFILER AGENT (now auto-generates PDF)
-        print("\n🤖 Testing Updated Profiler Agent...")
-        self.test_profiler_complete_flow()  # Should now generate PDF automatically
-        self.test_profile_data_persistence() 
+        # Test 7: POST-PROFILER CHAT
+        print("\n💬 Testing Post-Profiler Chat...")
         self.test_post_profiler_normal_chat()
         
-        # Test 7: Core functionality still works
+        # Test 8: Core functionality still works
         print("\n📱 Testing Core Features...")
         self.test_get_schemes()
         self.test_get_profile()
