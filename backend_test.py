@@ -4,20 +4,24 @@ import requests
 import sys
 import json
 import time
+import uuid
 from datetime import datetime
 
 class NagarikSahayakAPITester:
     def __init__(self):
         self.base_url = "https://citizen-helper.preview.emergentagent.com/api"
         self.user_id = None
-        self.phone = "9876543210"
+        self.phone = f"999{uuid.uuid4().hex[:7]}"  # Fresh number for profiler test
+        self.audio_msg_id = None
         self.tests_run = 0
         self.tests_passed = 0
         self.failed_tests = []
         
-        print(f"🔍 Testing Nagarik Sahayak API at: {self.base_url}")
+        print(f"🧪 Testing Citizen Helper API - Audio & Profiler Features")
+        print(f"🔍 API Base: {self.base_url}")
+        print(f"📱 Test Phone: {self.phone}")
         print(f"📅 Test Run: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print("=" * 60)
+        print("=" * 70)
 
     def log_test(self, name, success, details="", expected_status=None, actual_status=None):
         """Log test results"""
