@@ -804,7 +804,31 @@ async def send_chat_message(req: ChatMessageRequest):
     }
     await db.chat_logs.insert_one({**user_msg, "_id_field": None})
 
-    # Simulate MCP: get response with optional tool calls
+    # Step 1: Check profiler agent (incomplete profile takes priority)
+    profiler_result = await profiler_agent_respond(req.user_id, req.content)
+
+    if profiler_result:
+        bot_msg_id = str(uuid.uuid4())
+        bot_msg = {
+            "id": bot_msg_id,
+            "user_id": req.user_id,
+            "role": "assistant",
+            "content": profiler_result["content"],
+            "status": "delivered",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "tool_calls": profiler_result.get("tool_calls", []),
+            "type": profiler_result.get("type", "profiler"),
+            "profiler_field": profiler_result.get("profiler_field", ""),
+        }
+        await db.chat_logs.insert_one({**bot_msg, "_id_field": None})
+        await db.chat_logs.update_one({"id": user_msg_id}, {"$set": {"status": "read"}})
+
+        return {
+            "user_message": {k: v for k, v in user_msg.items() if k != "_id_field"},
+            "bot_message": {k: v for k, v in bot_msg.items() if k != "_id_field"},
+        }
+
+    # Step 2: Normal MCP response
     mcp_result = get_bot_response_with_mcp(req.content, req.language)
     bot_msg_id = str(uuid.uuid4())
 
