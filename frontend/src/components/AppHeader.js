@@ -1,4 +1,3 @@
-import { IndianFlag } from "./IndianFlag";
 import { Menu, RotateCcw } from "lucide-react";
 
 export const AppHeader = ({ title = "नागरिक सहायक", showBack, onBack, onMenuClick, onNewChat }) => (
