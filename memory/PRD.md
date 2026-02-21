@@ -75,6 +75,15 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] Agnost tracking for demo tool calls
 - [x] 100% backend test pass rate (13/13 Agnost integration tests)
 
+- [x] **Streaming tool progress bullets** in chat — replaces typing dots with 3 animated steps:
+  1. "Reading Vidyasiri Scholarship PDF..." (Search icon)
+  2. "Checking eligibility..." (ClipboardCheck icon)
+  3. "Generating filled form..." (FileOutput icon)
+- [x] Each step slides in with 650ms stagger, active step has pulsing loader, completed steps show green checkmark
+- [x] Saffron-to-navy shimmer bar across the top of the progress card
+- [x] Hindi + English bilingual text on each step
+- [x] Progress card auto-disappears when response arrives
+
 ## P0 Backlog
 - Integrate real LLM for intelligent chat responses
 - Implement Sarvam AI STT (needs API key)
