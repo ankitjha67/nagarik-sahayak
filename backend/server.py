@@ -425,7 +425,7 @@ def demo_stage_response(user_id: str = "demo") -> dict:
         "पात्रता जांच पूरी हुई!\n\n"
         f"[+] विद्यासिरी छात्रवृत्ति: पात्र\n    कारण: {VIDYASIRI_RESULT['reason']}\n    लाभ: {VIDYASIRI_RESULT['benefit']}\n\n"
         f"[+] पीएम-किसान सम्मान निधि: पात्र\n    कारण: {PMKISAN_DEMO_RESULT['reason']}\n    लाभ: {PMKISAN_DEMO_RESULT['benefit']}\n\n"
-        "PDF रिपोर्ट तैयार है! नीचे डाउनलोड करें।"
+        "भरा हुआ आवेदन फॉर्म तैयार है! नीचे डाउनलोड करें।"
     )
     return {
         "content": summary,
