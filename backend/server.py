@@ -811,12 +811,23 @@ async def profiler_agent_respond(user_id: str, content: str) -> dict:
                 from pdf_generator import generate_eligibility_pdf
                 pdf_id = str(uuid.uuid4())
                 pdf_path = str(PDF_DIR / f"{pdf_id}.pdf")
+                t0_pdf = _time.time()
                 generate_eligibility_pdf(
                     profile=profile_data,
                     eligibility_results=matcher_result.get("results", []),
                     output_path=pdf_path,
                 )
                 pdf_url = f"/api/pdf/{pdf_id}"
+                if _agnost_key:
+                    agnost.track(
+                        user_id=user_id,
+                        agent_name="nagarik_tool",
+                        input=str(profile_data),
+                        output=pdf_url,
+                        properties={"tool": "generate_pdf", "pdf_id": pdf_id, "trigger": "profiler_complete"},
+                        success=True,
+                        latency=int((_time.time() - t0_pdf) * 1000),
+                    )
             except Exception as e:
                 logger.error(f"PDF generation failed: {e}")
 
@@ -1491,4 +1502,6 @@ app.add_middleware(
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    if _agnost_key:
+        agnost.shutdown()
     client.close()
