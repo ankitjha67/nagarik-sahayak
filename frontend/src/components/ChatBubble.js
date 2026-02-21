@@ -288,10 +288,25 @@ export const ChatBubble = ({ message }) => {
           <div className="mt-2.5 space-y-2">
             <a
               href={`${backendUrl}${message.pdf_url}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              download={`Nagarik_Sahayak_Form.pdf`}
               data-testid="pdf-download-btn"
               className="flex items-center gap-2 px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
+              onClick={(e) => {
+                e.preventDefault();
+                const url = `${backendUrl}${message.pdf_url}`;
+                fetch(url)
+                  .then(res => res.blob())
+                  .then(blob => {
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = "Nagarik_Sahayak_Form.pdf";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(a.href);
+                  })
+                  .catch(() => window.open(url, "_blank"));
+              }}
             >
               <FileDown size={16} />
               <div>
