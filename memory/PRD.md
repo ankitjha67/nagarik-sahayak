@@ -35,7 +35,13 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] Mobile-first UI with saffron + navy design
 - [x] Bottom navigation (Home, Chat, Schemes, Profile)
 - [x] Profile management with language toggle
-- [x] 100% test pass rate
+- [x] **MCP Tool Simulation: search_schemes(query)** — scans 3 scheme PDFs, returns "Document scanned: [name]" + eligibility criteria
+- [x] **No-match handling**: returns "I don't know — criteria not explicitly stated in PDFs"
+- [x] **/api/mcp/tools** endpoint listing available MCP tools
+- [x] **/api/search-schemes** direct tool invocation endpoint
+- [x] Chat bot responses include `tool_calls` array with MCP trace
+- [x] Frontend ChatBubble renders MCP tool-call trace (documents scanned, match/no-match indicator)
+- [x] 100% backend test pass rate (17/17 endpoints)
 
 ## P0 Backlog
 - Integrate real LLM for intelligent chat responses
