@@ -1021,37 +1021,31 @@ async def search_schemes_endpoint(req: SearchSchemesRequest):
                 "eligibility": "10th pass student, Karnataka domicile", "benefits": VIDYASIRI_RESULT["benefit"],
                 "pdf_url": "https://sw.kar.nic.in/vidyasiri", "category": "education"}],
             "result_text": f"Vidyasiri Scholarship: {VIDYASIRI_RESULT['benefit']}"}
-    t0 = _time.time()
-    result = search_schemes(req.query, "en")
-    if _agnost_key:
-        try:
-            agnost.track(user_id="api", agent_name="nagarik_tool", input=req.query,
-                output=str(result.get("match_found", False)), properties={"tool": "search_schemes"},
-                success=result.get("match_found", False), latency=int((_time.time() - t0) * 1000))
-        except Exception:
-            pass
-    return result
+    # Use Prisma-backed search
+    return await search_schemes_prisma(req.query)
 
 
 @api_router.post("/eligibility-check")
 async def eligibility_check_endpoint(req: EligibilityCheckRequest):
+    if req.user_id:
+        return await eligibility_matcher_prisma(req.user_id)
+    # Fallback to sync matcher with inline profile
     profile = req.profile
-    if req.user_id and not profile:
-        user = await prisma.user.find_unique(where={"id": req.user_id})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})
     if not profile:
         raise HTTPException(status_code=400, detail="Provide user_id or profile object")
-    t0 = _time.time()
     result = eligibility_matcher(profile, req.query)
-    if _agnost_key:
-        try:
-            agnost.track(user_id=req.user_id or "api", agent_name="nagarik_tool", input=str(profile),
-                output=str(result.get("match_found", False)), properties={"tool": "eligibility_matcher"},
-                success=result.get("match_found", False), latency=int((_time.time() - t0) * 1000))
-        except Exception:
-            pass
+    return result
+
+
+class FilledFormRequest(BaseModel):
+    user_id: str
+    scheme_id: str
+
+@api_router.post("/generate-filled-form")
+async def generate_filled_form_endpoint(req: FilledFormRequest):
+    result = await generate_filled_form(req.user_id, req.scheme_id)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error", "Form generation failed"))
     return result
 
 
