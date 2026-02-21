@@ -827,6 +827,220 @@ class NagarikSahayakAPITester:
             self.log_test("Chat History with Transcription", False, f"Error: {str(e)}")
             return False
 
+    def test_eligibility_check_low_income(self):
+        """Test eligibility_check with low income profile - should be eligible for all schemes"""
+        try:
+            payload = {
+                "profile": {
+                    "name": "राम कुमार",
+                    "age": 30,
+                    "income": 15000,  # Low income ₹15K/month
+                    "state": "उत्तर प्रदेश"
+                }
+            }
+            response = requests.post(f"{self.base_url}/eligibility-check", json=payload, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get("results", [])
+                
+                success = (
+                    data.get("match_found") == True and
+                    len(results) == 3 and  # All 3 schemes
+                    all(r.get("eligible") == True for r in results[:2])  # PM-KISAN & Ayushman should be eligible
+                )
+                
+                # Check specific eligibility reasons
+                pm_kisan = next((r for r in results if "PM-KISAN" in r.get("scheme", "")), None)
+                ayushman = next((r for r in results if "Ayushman" in r.get("scheme", "")), None)
+                
+                details = f"Results: {len(results)} schemes, PM-KISAN eligible: {pm_kisan.get('eligible') if pm_kisan else 'N/A'}, Ayushman eligible: {ayushman.get('eligible') if ayushman else 'N/A'}"
+                
+                self.log_test("Eligibility Check - Low Income", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Eligibility Check - Low Income", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Eligibility Check - Low Income", False, f"Error: {str(e)}")
+            return False
+
+    def test_eligibility_check_high_income(self):
+        """Test eligibility_check with high income (₹3L/month) - PM-KISAN & Ayushman should be ineligible"""
+        try:
+            payload = {
+                "profile": {
+                    "name": "अमित सिंह",
+                    "age": 35,
+                    "income": 300000,  # High income ₹3L/month
+                    "state": "महाराष्ट्र"
+                }
+            }
+            response = requests.post(f"{self.base_url}/eligibility-check", json=payload, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get("results", [])
+                
+                # Find PM-KISAN and Ayushman results
+                pm_kisan = next((r for r in results if "PM-KISAN" in r.get("scheme", "")), None)
+                ayushman = next((r for r in results if "Ayushman" in r.get("scheme", "")), None)
+                
+                success = (
+                    len(results) == 3 and
+                    pm_kisan and not pm_kisan.get("eligible") and  # PM-KISAN should be ineligible
+                    ayushman and not ayushman.get("eligible") and  # Ayushman should be ineligible
+                    "₹300,000" in pm_kisan.get("reason", "") and  # Should mention income limit exceeded
+                    "exceeds" in pm_kisan.get("reason", "").lower()
+                )
+                
+                details = f"PM-KISAN ineligible: {not pm_kisan.get('eligible') if pm_kisan else 'N/A'}, Ayushman ineligible: {not ayushman.get('eligible') if ayushman else 'N/A'}, Income reason: {'₹300,000' in pm_kisan.get('reason', '') if pm_kisan else 'N/A'}"
+                
+                self.log_test("Eligibility Check - High Income", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Eligibility Check - High Income", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Eligibility Check - High Income", False, f"Error: {str(e)}")
+            return False
+
+    def test_eligibility_check_minor_age(self):
+        """Test eligibility_check with minor age (15 years) - PM-KISAN & Sukanya should be ineligible"""
+        try:
+            payload = {
+                "profile": {
+                    "name": "रोहित कुमार",
+                    "age": 15,  # Minor age
+                    "income": 20000,
+                    "state": "बिहार"
+                }
+            }
+            response = requests.post(f"{self.base_url}/eligibility-check", json=payload, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get("results", [])
+                
+                # Find PM-KISAN and Sukanya results
+                pm_kisan = next((r for r in results if "PM-KISAN" in r.get("scheme", "")), None)
+                sukanya = next((r for r in results if "Sukanya" in r.get("scheme", "")), None)
+                
+                success = (
+                    len(results) == 3 and
+                    pm_kisan and not pm_kisan.get("eligible") and  # PM-KISAN should be ineligible due to age
+                    "Age 15" in pm_kisan.get("reason", "") and
+                    "below minimum 18" in pm_kisan.get("reason", "")
+                )
+                
+                details = f"PM-KISAN age ineligible: {not pm_kisan.get('eligible') if pm_kisan else 'N/A'}, Age reason present: {'Age 15' in pm_kisan.get('reason', '') if pm_kisan else 'N/A'}"
+                
+                self.log_test("Eligibility Check - Minor Age", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Eligibility Check - Minor Age", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Eligibility Check - Minor Age", False, f"Error: {str(e)}")
+            return False
+
+    def test_eligibility_check_with_user_id(self):
+        """Test eligibility_check using user_id (fetch profile from DB)"""
+        if not self.user_id:
+            self.log_test("Eligibility Check - User ID", False, "No user_id available")
+            return False
+            
+        try:
+            payload = {"user_id": self.user_id}
+            response = requests.post(f"{self.base_url}/eligibility-check", json=payload, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get("results", [])
+                
+                success = (
+                    data.get("match_found") == True and
+                    len(results) >= 3 and
+                    all("scheme" in r for r in results) and
+                    all("eligible" in r for r in results) and
+                    all("reason" in r for r in results)
+                )
+                
+                details = f"Fetched profile via user_id, {len(results)} schemes evaluated, all have required fields"
+                self.log_test("Eligibility Check - User ID", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Eligibility Check - User ID", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Eligibility Check - User ID", False, f"Error: {str(e)}")
+            return False
+
+    def test_eligibility_check_with_query_filter(self):
+        """Test eligibility_check with query filter (e.g., 'ayushman') - should return only matched scheme"""
+        try:
+            payload = {
+                "profile": {
+                    "name": "सुनीता देवी",
+                    "age": 28,
+                    "income": 18000,
+                    "state": "राजस्थान"
+                },
+                "query": "ayushman health"
+            }
+            response = requests.post(f"{self.base_url}/eligibility-check", json=payload, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get("results", [])
+                
+                # Should only return Ayushman scheme due to query filter
+                has_ayushman = any("Ayushman" in r.get("scheme", "") for r in results)
+                has_only_ayushman = len(results) == 1 and has_ayushman
+                
+                success = has_only_ayushman
+                details = f"Query filter 'ayushman': {len(results)} results, Ayushman present: {has_ayushman}, Only Ayushman: {has_only_ayushman}"
+                
+                self.log_test("Eligibility Check - Query Filter", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Eligibility Check - Query Filter", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Eligibility Check - Query Filter", False, f"Error: {str(e)}")
+            return False
+
+    def test_existing_user_eligibility_check(self):
+        """Test eligibility_check with existing profiled user ID from credentials"""
+        try:
+            # Use the existing profiled user from credentials
+            existing_user_id = "539e3d7a-9614-4514-8954-48bda73e20bd"
+            payload = {"user_id": existing_user_id}
+            response = requests.post(f"{self.base_url}/eligibility-check", json=payload, timeout=15)
+            
+            if response.status_code == 200:
+                data = response.json()
+                results = data.get("results", [])
+                
+                success = (
+                    data.get("match_found") == True and
+                    len(results) >= 3 and
+                    all(isinstance(r.get("eligible"), bool) for r in results) and
+                    all(r.get("reason") for r in results)  # All should have reasons
+                )
+                
+                eligible_count = sum(1 for r in results if r.get("eligible"))
+                details = f"Existing user: {len(results)} schemes, {eligible_count} eligible, all have reasons"
+                
+                self.log_test("Eligibility Check - Existing User", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Eligibility Check - Existing User", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Eligibility Check - Existing User", False, f"Error: {str(e)}")
+            return False
+
     def run_all_tests(self):
         """Run complete API test suite focusing on new features"""
         print("🚀 Starting Audio & Profiler Feature Tests\n")
