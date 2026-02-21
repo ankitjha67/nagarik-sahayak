@@ -198,7 +198,7 @@ export default function ChatPage({ userId, language = "hi" }) {
           ))}
         </div>
 
-        {loading && <TypingIndicator />}
+        {loading && <ToolProgressIndicator />}
         <div ref={messagesEndRef} />
       </div>
 
