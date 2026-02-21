@@ -227,7 +227,7 @@ class NagarikSahayakAPITester:
                 self.log_test("Profiler Step 4 - Ask State", False, f"Status: {response.status_code}")
                 return False
                 
-            # Step 5: Provide state - should complete and trigger eligibility
+            # Step 5: Provide state - should complete and trigger eligibility + PDF generation
             response = requests.post(f"{self.base_url}/chat", json={
                 "user_id": self.user_id,
                 "content": "उत्तर प्रदेश",
@@ -241,10 +241,11 @@ class NagarikSahayakAPITester:
                 has_eligibility = "पात्रता" in bot_msg.get("content", "")
                 has_tool_call = len(bot_msg.get("tool_calls", [])) > 0
                 is_complete = bot_msg.get("type") == "profiler_complete"
+                has_pdf_url = bool(bot_msg.get("pdf_url"))  # Should now auto-generate PDF
                 
-                step5_success = has_eligibility and has_tool_call and is_complete
-                self.log_test("Profiler Step 5 - Complete & Eligibility", step5_success,
-                             f"Eligibility: {has_eligibility}, Tool calls: {len(bot_msg.get('tool_calls', []))}, Type: {bot_msg.get('type')}")
+                step5_success = has_eligibility and has_tool_call and is_complete and has_pdf_url
+                self.log_test("Profiler Step 5 - Complete & Eligibility + PDF", step5_success,
+                             f"Eligibility: {has_eligibility}, Tool calls: {len(bot_msg.get('tool_calls', []))}, Type: {bot_msg.get('type')}, PDF URL: {has_pdf_url}")
                 
                 # Check tool call details
                 if has_tool_call:
@@ -252,10 +253,16 @@ class NagarikSahayakAPITester:
                     eligibility_tool = any(tc.get("tool_name") == "eligibility_matcher" for tc in tool_calls)
                     self.log_test("Eligibility Tool Call", eligibility_tool,
                                  f"Tool names: {[tc.get('tool_name') for tc in tool_calls]}")
+                
+                # Store PDF ID for later testing
+                if has_pdf_url and not hasattr(self, 'pdf_id'):
+                    pdf_url = bot_msg.get("pdf_url", "")
+                    if "/api/pdf/" in pdf_url:
+                        self.pdf_id = pdf_url.split("/api/pdf/")[1]
                     
                 return step1_success and step2_success and step3_success and step4_success and step5_success
             else:
-                self.log_test("Profiler Step 5 - Complete & Eligibility", False, f"Status: {response.status_code}")
+                self.log_test("Profiler Step 5 - Complete & Eligibility + PDF", False, f"Status: {response.status_code}")
                 return False
                 
         except Exception as e:
