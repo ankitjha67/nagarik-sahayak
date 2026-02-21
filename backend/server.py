@@ -1086,6 +1086,30 @@ async def send_chat_message(req: ChatMessageRequest):
     }
     await db.chat_logs.insert_one({**user_msg, "_id_field": None})
 
+    # DEMO_MODE fast-path: scholarship query → instant Vidyasiri eligible + PDF
+    if DEMO_MODE and _is_scholarship_query(req.content):
+        demo = demo_vidyasiri_response(req.user_id)
+        bot_msg_id = str(uuid.uuid4())
+        bot_msg = {
+            "id": bot_msg_id,
+            "user_id": req.user_id,
+            "role": "assistant",
+            "content": demo["content"],
+            "status": "delivered",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "tool_calls": demo.get("tool_calls", []),
+            "type": demo.get("type", "profiler_complete"),
+            "profiler_field": "",
+            "eligibility_results": demo.get("eligibility_results", []),
+            "pdf_url": demo.get("pdf_url", ""),
+        }
+        await db.chat_logs.insert_one({**bot_msg, "_id_field": None})
+        await db.chat_logs.update_one({"id": user_msg_id}, {"$set": {"status": "read"}})
+        return {
+            "user_message": {k: v for k, v in user_msg.items() if k != "_id_field"},
+            "bot_message": {k: v for k, v in bot_msg.items() if k != "_id_field"},
+        }
+
     # Step 1: Check profiler agent (incomplete profile takes priority)
     profiler_result = await profiler_agent_respond(req.user_id, req.content)
 
