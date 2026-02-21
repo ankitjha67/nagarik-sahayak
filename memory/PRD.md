@@ -52,7 +52,12 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] **Profiler Agent**: asks ONE question at a time in Hindi (name → age → income → state). Stores in `user.profile_data` JSONB. When complete, auto-triggers eligibility check (`check_eligibility` tool) against all 3 schemes
 - [x] Profiler validates inputs (age must be number, income parsed from text)
 - [x] After profile complete, normal MCP chat resumes
-- [x] 90%+ overall test pass rate (backend 93%, frontend 85%)
+- [x] **eligibility_matcher** MCP tool: uses `search_schemes` → compares profile vs scheme criteria → returns per-scheme `{eligible, reason}` JSON with exact limit comparisons (e.g. "Income ₹80,000 exceeds ₹50,000 limit")
+- [x] `POST /api/eligibility-check` endpoint (accepts profile inline or user_id + optional query filter)
+- [x] Registered in MCP_TOOLS alongside search_schemes
+- [x] Profiler completion auto-triggers eligibility_matcher
+- [x] Frontend EligibilityCard component: green/red shield icon, पात्र/अपात्र badge, reason text, benefit info
+- [x] 100% backend test pass rate (22/22)
 
 ## P0 Backlog
 - Integrate real LLM for intelligent chat responses
