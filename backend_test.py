@@ -13,6 +13,7 @@ class NagarikSahayakAPITester:
         self.user_id = None
         self.phone = f"999{uuid.uuid4().hex[:7]}"  # Fresh number for profiler test
         self.audio_msg_id = None
+        self.pdf_id = None
         self.tests_run = 0
         self.tests_passed = 0
         self.failed_tests = []
