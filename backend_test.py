@@ -248,7 +248,7 @@ class NagarikSahayakAPITester:
                 # Check tool call details
                 if has_tool_call:
                     tool_calls = bot_msg.get("tool_calls", [])
-                    eligibility_tool = any(tc.get("tool_name") == "check_eligibility" for tc in tool_calls)
+                    eligibility_tool = any(tc.get("tool_name") == "eligibility_matcher" for tc in tool_calls)
                     self.log_test("Eligibility Tool Call", eligibility_tool,
                                  f"Tool names: {[tc.get('tool_name') for tc in tool_calls]}")
                     
