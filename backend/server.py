@@ -918,6 +918,7 @@ async def send_chat_message(req: ChatMessageRequest):
             "tool_calls": demo.get("tool_calls", []), "type": demo.get("type", "profiler_complete"),
             "profiler_field": "", "eligibility_results": demo.get("eligibility_results", []),
             "pdf_url": demo.get("pdf_url", ""),
+            "tool_progress": demo.get("tool_progress", []),
         }
         await save_chat_prisma(req.user_id, bot_msg, "agent")
         user_msg["status"] = "read"
