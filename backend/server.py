@@ -20,6 +20,9 @@ load_dotenv(ROOT_DIR / '.env')
 AUDIO_DIR = ROOT_DIR / "audio_files"
 AUDIO_DIR.mkdir(exist_ok=True)
 
+PDF_DIR = ROOT_DIR / "pdf_reports"
+PDF_DIR.mkdir(exist_ok=True)
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
