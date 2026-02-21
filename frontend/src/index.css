@@ -172,3 +172,39 @@
   background: linear-gradient(90deg, transparent 0%, #FF9933 40%, #000080 60%, transparent 100%);
   animation: shimmerSlide 1.8s ease-in-out infinite;
 }
+
+/* Double tick animations */
+@keyframes tickSent {
+  0% { opacity: 0; transform: scale(0.3); }
+  60% { transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.tick-sent-anim {
+  animation: tickSent 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes tickDeliver {
+  0% { opacity: 0.4; transform: translateX(-3px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.tick-deliver-anim {
+  animation: tickDeliver 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes tickRead {
+  0% { color: #9ca3af; transform: scale(1); }
+  40% { color: #000080; transform: scale(1.25); }
+  100% { color: #000080; transform: scale(1); }
+}
+.tick-read-anim {
+  animation: tickRead 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Hindi voice pulse */
+@keyframes voicePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 0, 128, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(0, 0, 128, 0); }
+}
+.voice-pulse {
+  animation: voicePulse 1.2s ease-in-out infinite;
+}
