@@ -1029,7 +1029,6 @@ async def transcribe_audio(
 
     # Store in ChatLog as a transcription message
     now = datetime.now(timezone.utc).isoformat()
-    msg_id = str(uuid.uuid4())
     display_content = ""
     if transcript_hi:
         display_content += f"[Hindi] {transcript_hi}"
@@ -1039,8 +1038,10 @@ async def transcribe_audio(
         else:
             display_content += f"[English] {transcript_en}"
 
+    audio_url = f"/api/audio/{audio_msg_id}"
+
     chat_entry = {
-        "id": msg_id,
+        "id": audio_msg_id,
         "user_id": user_id,
         "role": "user",
         "content": display_content,
@@ -1050,6 +1051,7 @@ async def transcribe_audio(
         "type": "transcription",
         "transcript_hi": transcript_hi,
         "transcript_en": transcript_en,
+        "audio_url": audio_url,
     }
     await db.chat_logs.insert_one({**chat_entry, "_id_field": None})
 
