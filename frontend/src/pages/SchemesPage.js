@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
+import { Sidebar } from "../components/Sidebar";
 import { getSchemes } from "../lib/api";
 import { Badge } from "../components/ui/badge";
 import { Sprout, HeartPulse, Baby, ExternalLink, ChevronDown, ChevronUp, Users, IndianRupee } from "lucide-react";
@@ -20,6 +21,7 @@ const CATEGORY_COLORS = {
 export default function SchemesPage({ language = "hi" }) {
   const [schemes, setSchemes] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     getSchemes()
@@ -31,7 +33,8 @@ export default function SchemesPage({ language = "hi" }) {
 
   return (
     <div data-testid="schemes-page" className="min-h-screen bg-gray-50 pb-20">
-      <AppHeader title={isHindi ? "सरकारी योजनाएं" : "Government Schemes"} />
+      <AppHeader title={isHindi ? "सरकारी योजनाएं" : "Government Schemes"} onMenuClick={() => setSidebarOpen(true)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="max-w-md mx-auto px-4 pt-4">
         {/* Info Banner */}

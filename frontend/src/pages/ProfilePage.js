@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
+import { Sidebar } from "../components/Sidebar";
 import { getProfile, updateProfile } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -12,6 +13,7 @@ export default function ProfilePage({ userId, onLogout }) {
   const [name, setName] = useState("");
   const [language, setLanguage] = useState("hi");
   const [saving, setSaving] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -40,7 +42,8 @@ export default function ProfilePage({ userId, onLogout }) {
 
   return (
     <div data-testid="profile-page" className="min-h-screen bg-gray-50 pb-20">
-      <AppHeader title="प्रोफाइल" />
+      <AppHeader title="प्रोफाइल" onMenuClick={() => setSidebarOpen(true)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="max-w-md mx-auto px-4 pt-6">
         {/* Avatar Section */}
