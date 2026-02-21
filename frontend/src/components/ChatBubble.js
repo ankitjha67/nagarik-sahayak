@@ -360,6 +360,7 @@ export const ToolProgressIndicator = () => {
           <div className="w-1.5 h-1.5 rounded-full bg-[#FF9933]" />
           <span className="text-[11px] font-semibold text-[#000080] font-['Mukta']">नागरिक सहायक</span>
           <Loader2 size={12} className="ml-1 text-[#FF9933] animate-spin" />
+          <span data-testid="agent-thinking-text" className="text-[10px] text-[#FF9933] font-semibold font-['Mukta'] ml-0.5">Agent is thinking...</span>
         </div>
         <div className="space-y-2">
           {TOOL_STEPS.map((step, i) => {
