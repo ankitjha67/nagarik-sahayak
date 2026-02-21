@@ -1095,8 +1095,19 @@ class NagarikSahayakAPITester:
         if not self.user_id:
             self.log_test("Generate PDF - User ID", False, "No user_id available")
             return False
-            
+        
         try:
+            # First check if profile is complete
+            profile_resp = requests.get(f"{self.base_url}/profile/{self.user_id}", timeout=10)
+            if profile_resp.status_code != 200:
+                self.log_test("Generate PDF - User ID", False, "Could not fetch user profile")
+                return False
+                
+            profile_data = profile_resp.json()
+            if not profile_data.get("profile_complete", False):
+                self.log_test("Generate PDF - User ID", False, "User profile not complete - need to run profiler flow first")
+                return False
+            
             payload = {"user_id": self.user_id}
             response = requests.post(f"{self.base_url}/generate-pdf", json=payload, timeout=20)
             
@@ -1112,9 +1123,17 @@ class NagarikSahayakAPITester:
                 
                 details = f"PDF generated for user {self.user_id[:8]}..., eligible: {data.get('eligible_count')}"
                 self.log_test("Generate PDF - User ID", success, details, 200, response.status_code)
+                
+                # Store pdf_id if not already stored
+                if success and not hasattr(self, 'pdf_id'):
+                    self.pdf_id = data.get("pdf_id")
                 return success
             else:
-                self.log_test("Generate PDF - User ID", False, f"HTTP Error", 200, response.status_code)
+                try:
+                    error_details = response.json().get("detail", "")
+                except:
+                    error_details = f"Status: {response.status_code}"
+                self.log_test("Generate PDF - User ID", False, f"HTTP Error: {error_details}", 200, response.status_code)
                 return False
         except Exception as e:
             self.log_test("Generate PDF - User ID", False, f"Error: {str(e)}")
