@@ -166,6 +166,30 @@ MCP_TOOLS = [
             },
             "required": ["query"]
         }
+    },
+    {
+        "name": "eligibility_matcher",
+        "description": "Compares a user profile (age, income, state) against scheme-specific criteria extracted from scanned documents. Returns per-scheme {eligible, reason} with exact limit comparisons.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "profile": {
+                    "type": "object",
+                    "description": "User profile with name, age, income, state",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "age": {"type": "integer"},
+                        "income": {"type": "integer", "description": "Monthly income in INR"},
+                        "state": {"type": "string"}
+                    }
+                },
+                "query": {
+                    "type": "string",
+                    "description": "Optional query to narrow scheme search"
+                }
+            },
+            "required": ["profile"]
+        }
     }
 ]
 
