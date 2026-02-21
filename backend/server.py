@@ -1259,6 +1259,24 @@ async def search_schemes_endpoint(req: SearchSchemesRequest):
     Direct invocation of the search_schemes MCP tool.
     Scans seeded scheme documents and returns eligibility + criteria.
     """
+    # DEMO_MODE: scholarship query → instant Vidyasiri result
+    if DEMO_MODE and _is_scholarship_query(req.query):
+        return {
+            "tool_name": "search_schemes",
+            "tool_input": {"query": req.query},
+            "documents_scanned": ["Vidyasiri Scholarship Guidelines"],
+            "match_found": True,
+            "matched_schemes": [{
+                "scheme_title": VIDYASIRI_RESULT["scheme_hi"],
+                "scheme_title_en": VIDYASIRI_RESULT["scheme"],
+                "eligibility": "Karnataka domicile, family income < Rs 2,50,000/year, enrolled in recognized degree/PG course",
+                "benefits": VIDYASIRI_RESULT["benefit"],
+                "pdf_url": "https://sw.kar.nic.in/vidyasiri",
+                "category": "education",
+            }],
+            "result_text": f"Document scanned: Vidyasiri Scholarship Guidelines\n\n{VIDYASIRI_RESULT['scheme']}:\nEligibility: Karnataka domicile, family income < Rs 2,50,000/year, enrolled in recognized degree/PG course\n\nBenefits: {VIDYASIRI_RESULT['benefit']}",
+        }
+
     t0 = _time.time()
     result = search_schemes(req.query, "en")
     latency_ms = int((_time.time() - t0) * 1000)
