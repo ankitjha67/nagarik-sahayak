@@ -1,148 +1,156 @@
-<analysis>
-**original_problem_statement:**
-Build a mobile-first full-stack chat application called 'Nagarik Sahayak' using React 19, TypeScript, Tailwind CSS, and a backend. The design should evoke a trustworthy government service with clean whites, saffron (#FF9933) accents, and Ashok Chakra blue (#000080) text. The UI should feature a WhatsApp-style chat interface with read receipts.
+<analysis>**original_problem_statement:**
+The user wants to build a full-stack, mobile-first chat application called 'Nagarik Sahayak'. Initially specified with a Node.js/PostgreSQL stack, the project pivoted first to Python/FastAPI/MongoDB and is now undergoing a migration to a **Next.js frontend with a Prisma/MongoDB backend**.
 
 PRODUCT REQUIREMENTS:
-- **Home Screen**: Header नागरिक सहायक with an Indian flag icon, a large centered saffron microphone button, and a chat history view.
-- **Authentication**: Mock phone authentication where any number is accepted with the OTP '1234'.
-- **Core Chat**:
-    - Speech-to-Text using Sarvam API (Saaras v3).
-    - Bilingual support for Hindi and English.
-- **Profiler Agent**: An automated agent that asks for the user's profile information (name, age, income, state) one question at a time in Hindi.
-- **Scheme Matching**:
-    - A  tool to find government schemes based on user queries.
-    - An  tool that compares the completed user profile against scheme criteria and returns a detailed JSON response ().
-    - The eligibility check should be automatically triggered upon profile completion.
-- **Audio Playback**: A button on transcription messages to let the user re-listen to the recorded audio.
-- **PDF Reports**: An endpoint () to create a PDF summary of the user's eligibility for various schemes, with a download link provided in the chat.
-- **Tech Stack Deviation**: Original request specified Node.js/Express and Prisma/PostgreSQL, but the implementation uses Python/FastAPI and MongoDB.
+- **UI/UX**: A WhatsApp-style chat interface with a government service theme (saffron and blue accents), a large microphone button for voice input, and animated read receipts (double ticks).
+- **Authentication**: Mock phone authentication using a static OTP ('1234').
+- **Profiler Agent**: A conversational agent that collects a user's profile (name, age, income, state) one question at a time in Hindi.
+- **Core Logic**:
+    - ****: A tool to find government schemes from the database using Prisma.
+    - ****: A tool to check a user's eligibility for a scheme based on their profile.
+    - ****: A tool to generate a PDF of a pre-filled application form.
+- **Workflow**: Upon profile completion, the application should automatically trigger the eligibility check and PDF generation, showing streaming progress bullets in the UI.
+- **Integrations**:
+    - **Agnost AI**: Track all tool calls.
+    - **Sarvam AI**: Speech-to-text for voice input (currently mocked).
+- **Demo Mode**: An environment variable () to enable an instant, hardcoded response for specific queries, designed for stage presentations and to work even if the database is offline.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A functional full-stack application with a FastAPI backend, MongoDB database, and a React frontend. The application successfully implements all core features requested by the user, including mock authentication, a bilingual chat interface, speech-to-text via Sarvam AI, a profiler agent for data collection, an eligibility-checking engine, and PDF report generation. The UI/UX matches the user's design specifications.
+The project is a full-stack application with a Python/FastAPI backend and a React (Create React App) frontend. A significant migration is in progress. The backend has been successfully updated to use the **Prisma Python Client** as an ORM for all MongoDB database operations, replacing the previous  implementation. A MongoDB replica set has been configured, and the Prisma schema for , , , and  has been created and seeded. The frontend has not yet been migrated to Next.js.
 
 **Last working item**:
-    - Last item agent was working: The agent was implementing a feature to generate a PDF eligibility report. This involved creating a new Python module () using the  library to handle Unicode characters, adding backend endpoints (, ) to create and serve the PDF, and updating the frontend  component to include a download button.
-    - Status: USER VERIFICATION PENDING
-    - Agent Testing Done: Y
+    - Last item agent was working: The agent was re-implementing the application's core logic (the Intelligence + Execution layer) to use the new Prisma models. This involved rewriting the  and  tools and creating a new  tool. The agent was in the process of chaining these tools to execute automatically after the user completes the profiler questionnaire.
+    - Status: IN PROGRESS
+    - Agent Testing Done: Y (Partially. The  tool was successfully tested via curl. The full end-to-end chain test is pending.)
     - Which testing method agent to use? manual testing by curl
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-There are no pending or in-progress issues. The last feature was fully implemented and tested by the agent.
+  - Issue 1:  (P0) Complete and verify the backend Prisma migration.
+
+  Issues Detail:
+  - Issue 1: 
+     - Attempted fixes: The agent has rewritten  to use the Prisma client and has confirmed that the  endpoint works.
+     - Next debug checklist: 
+        1. Finish the user profiler flow (answer all 4 questions) via .
+        2. Verify that this triggers the chain of  and .
+        3. Check the  response to ensure it contains the eligibility result and a valid PDF download link.
+        4. Inspect backend logs for any errors from Prisma or the application logic.
+     - Why fix this issue and what will be achieved with the fix? This will validate that the entire backend logic is working correctly on the new Prisma/MongoDB stack, unblocking the subsequent frontend migration to Next.js.
+     - Status:  IN PROGRESS
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? backend
+     - Blocked on other issue: None
 
 **In progress Task List**:
-There are no tasks currently in progress.
+- There are no other in-progress tasks besides the pending issue mentioned above.
 
 **Upcoming and Future Tasks**
-- **P0: Database and Backend Stack Alignment**: The most critical pending action is to address the deviation from the original tech stack. The user requested a Node.js/Express backend with Prisma/PostgreSQL, but the agent built it with Python/FastAPI and MongoDB. The next agent should clarify with the user if they want to proceed with the current stack or migrate to the one originally requested.
-- **P1: Real PDF Scanning**: The current  tool is a mock that searches a hardcoded list. A future task would be to implement a real document-scanning capability to extract information from actual PDF files.
-- **P2: Real Authentication**: Replace the mock phone authentication (static OTP) with a real OTP service like Twilio.
+- **P0: Migrate Frontend to Next.js**: This is the user's top priority. After the backend is verified, the existing React (CRA) frontend must be migrated to a new Next.js application. This involves setting up the Next.js project and refactoring existing pages (, , ) and components (, ) into the Next.js  directory structure.
+- **P1: Implement Real Speech-to-Text**: Replace the mocked  endpoint with a real integration to the Sarvam AI service.
+- **P2: Refactor Backend Code**: Break down the monolithic  into a more organized, modular structure (e.g., separating routes, services, and tool logic into different files).
+- **P3: Implement Real Authentication**: Replace the hardcoded OTP '1234' with a genuine OTP service like Twilio.
 
 **Completed work in this session**
-- **Full Stack Foundation**: Built the application with a FastAPI backend and React frontend.
-- **Authentication**: Implemented mock phone authentication ().
-- **UI/UX**: Created the specified government service aesthetic with a saffron/blue theme, Indian flag, and a functional chat interface.
-- **Speech-to-Text (Sarvam AI)**: Integrated Sarvam Saaras v3 for speech-to-text and translation via the  endpoint.
-- **Audio Playback**: Implemented audio saving and a playback button on chat bubbles ().
-- **Profiler Agent**: Developed a conversational agent in  to collect user profile data (name, age, income, state) sequentially.
-- **Eligibility Engine**:
-    - Created a mock MCP  tool.
-    - Built an  tool in  to compare user profiles against scheme criteria.
-    - Implemented  components in  to display results.
-- **PDF Report Generation**:
-    - Created  using  for Hindi/English PDF creation.
-    - Added  to generate and  to serve the reports.
-    - Added a download button to the chat UI.
-- **Comprehensive Testing**: Used , screenshots, and the  to validate each feature end-to-end.
+- **Prisma Migration (Backend)**: Successfully migrated the entire backend from native  to the Prisma Python Client, including setting up a MongoDB replica set, defining the schema, seeding data, and rewriting all database operations in .
+- **Agnost AI Integration**: Integrated the Agnost AI SDK to track all tool calls and added a corresponding Analytics Dashboard link and status indicator in a new frontend sidebar.
+- **Advanced Demo Mode**: Implemented a  flag that provides an instant, pre-canned response for specific user queries. This mode is resilient and designed to function even if the database is offline.
+- **UI/UX Enhancements**:
+  - Added a streaming bullets animation to show tool progress.
+  - Implemented animated double ticks for read receipts.
+  - Added a Hindi voice reply button.
+  - Added a demo mode toggle switch to the UI.
+- **Pitch Script**: Created a 3-minute pitch script and saved it as .
 
 **Earlier issues found/mentioned but not fixed**
-- **Infrastructure Limitations**: The agent correctly identified and noted two issues that are not code-related bugs but are part of the environment:
-    - A Cloudflare proxy blocks large file uploads, which was observed during testing of the  endpoint. The workaround was to test via localhost.
-    - The testing agent () sometimes reported false negatives on UI interactions (e.g., disabled buttons), which were confirmed to be working correctly via screenshots.
+   - **Cloudflare Proxy Limits**: The environment's proxy blocks large file uploads, requiring local testing for features like audio transcription.
+   - **Testing Agent Flakiness**: The -based testing agent occasionally produces false negatives on UI elements.
 
 **Known issue recurrence from previous fork**
-- None.
+  - None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Backend**: FastAPI for the web server, Pydantic for data modeling and validation, MongoDB for the database, and  for PDF generation.
-- **Frontend**: React with Hooks, Tailwind CSS for styling, shadcn/ui for components, and the browser's  API for audio capture.
-- **Architecture**: A RESTful API separates the backend and frontend. The backend simulates a Multi-turn Conversation Protocol (MCP) to orchestrate tool calls like searching for schemes and checking eligibility.
+- **Backend**: FastAPI, **Prisma Python Client (ORM)**, MongoDB (configured as a replica set), Pydantic.
+- **Frontend**: React (Create React App), Tailwind CSS, shadcn/ui.
+- **Database**: The key architectural change is the adoption of **Prisma** as the ORM to interact with MongoDB, replacing direct driver calls.
 
 **key DB schema**
-The application uses MongoDB. Collections are implicitly defined in :
-- ****: 
-- ****: 
-- ****: 
+Managed by :
+  - **User**: 
+  - **Scheme**: 
+  - **ChatLog**: 
+  - **Application**: 
 
 **changes in tech stack**
-- The user requested a **Node.js/Express + Prisma/PostgreSQL** stack.
-- The agent implemented a **Python/FastAPI + MongoDB** stack without clarification. This is a major deviation.
+- The backend's data access layer was migrated from the  driver to the **Prisma Python Client ORM**.
+- The user has mandated a migration of the frontend from **Create React App to Next.js**, which has not yet been started.
 
 **All files of reference**
-- : The monolithic backend file containing all API endpoints, models, chat logic, profiler agent, and MCP tool definitions.
-- : A dedicated module for creating PDF reports with bilingual support.
-- : The primary frontend component managing the chat UI, state, and user interactions.
-- : A crucial UI component responsible for rendering various message types, including text, transcriptions with audio playback, eligibility cards, and PDF download links.
-- : A centralized file for all frontend-to-backend API requests.
-- : Contains the .
-- : Lists Python dependencies like To use the fastapi command, please install "fastapi[standard]":
+- : The main application logic, heavily modified to use Prisma.
+- : The definitive source for all database models.
+- : Contains the updated  for the replica set.
+- : New component for the UI sidebar.
+- : Contains UI logic for ticks and voice buttons.
+- : The new pitch script file.
 
-	pip install "fastapi[standard]", , , and .
+**Areas that need refactoring**:
+- The frontend needs a complete refactor from its current Create React App structure to Next.js.
+- The  file is monolithic and should be broken down into smaller, more manageable modules.
 
 **key api endpoints**
-- : Verifies OTP and logs in the user.
-- : The main endpoint for all chat interactions, orchestrating the profiler and MCP tools.
-- : Handles audio file uploads for speech-to-text.
-- : An MCP tool endpoint to determine scheme eligibility.
-- : Creates the PDF eligibility report.
-- : Serves saved audio files for playback.
-- : Serves generated PDF report files.
+- : Main chat endpoint orchestrating the profiler and tool calls.
+- : User login.
+- : Tool to search for schemes (now uses Prisma).
+- : Tool for eligibility (now uses Prisma).
+- : New endpoint to generate PDF.
+- : New endpoint to toggle demo mode.
 
 **Critical Info for New Agent**
-- **Database & Backend Mismatch**: The most important point is the stack deviation. The user asked for Node.js/PostgreSQL, but the app is built on Python/MongoDB. You MUST raise this with the user before proceeding.
-- **Mocked Components**: The  tool and phone authentication are currently mock implementations. Be prepared for user requests to replace them with real-world solutions.
-- **API Keys**: The Sarvam API key is stored in .
+- **Project is mid-migration**: The most critical context is that the application is in a transitional state. The backend has been moved to Prisma, but this change is not yet fully tested end-to-end. The next major step is the user-mandated migration of the frontend from Create React App to Next.js.
+- **Verify Backend First**: Before starting any frontend work, you must complete the testing of the Prisma-based backend. Confirm that the full  chain works as expected.
+- **Prisma is the Standard**: All new and existing backend database operations must use the Prisma client. Do not use .
 
 **documents and test reports created in this job**
-- : Contains the product requirements and a log of completed features.
-- Test reports from the testing agent are located in .
+- 
+-  contains all test reports from the .
 
-**Last 10 User Messages and any pending HUMAN messages**
-1.  **User Request (Msg 256):** Add PDF generation for eligibility reports. **Status: COMPLETED**
-2.  **User Command (Msg 254):** . **Status: HANDLED**
-3.  **User Command (Msg 252):** Screenshot confirmation. **Status: HANDLED**
-4.  **User Command (Msg 250):** Run testing agent. **Status: HANDLED**
-5.  **User Command (Msg 246):** Run testing agent. **Status: HANDLED**
-6.  **User Command (Msg 244):** Test the full profiler flow. **Status: HANDLED**
-7.  **User Command (Msg 242):** Test the  endpoint. **Status: HANDLED**
-8.  **User Request (Msg 201):** Create the  tool. **Status: COMPLETED**
-9.  **User Command (Msg 199):** . **Status: HANDLED**
-10. **User Command (Msg 197):** Run testing agent. **Status: HANDLED**
+**Last 10 User Messages and any pending HUMAN messages** 
+1.  **User Request (Msg 276):** Implement core logic (search, eligibility, PDF) using the new Prisma models. **Status: IN PROGRESS**
+2.  **User Request (Msg 241):** Implement the UI, voice, and profiler using Prisma. **Status: COMPLETED**
+3.  **User Request (Msg 206):** Mandated a full migration to **Next.js + Prisma + MongoDB** and provided the schema. **Status: PARTIALLY COMPLETED** (Prisma backend is done; Next.js frontend is pending).
+4.  **User Command (Msg 203):** Pasted local dev commands, later clarified to ignore. **Status: HANDLED**
+5.  **User Request (Msg 168):** Add demo toggle, voice reply, double ticks, and pitch script. **Status: COMPLETED**
+6.  **User Request (Msg 135):** Create a resilient, hardcoded demo flow. **Status: COMPLETED**
+7.  **User Request (Msg 110):** Add streaming bullets UI for tool progress. **Status: COMPLETED**
+8.  **User Request (Msg 73):** Add a  for instant stage presentations. **Status: COMPLETED**
+9.  **User Request (Msg 7):** Add Agnost AI SDK for analytics. **Status: COMPLETED**
+10. **User Info (Msg 24):** Provided Agnost AI credentials. **Status: HANDLED**
 
 **Project Health Check:**
-- **Working**: The application is fully functional from end to end according to the implemented features.
+- **Broken**: The application is in a transitional state due to the ongoing migration. The backend changes are not fully verified, and the frontend does not yet meet the new Next.js requirement.
 - **Mocked**:
-    - **Authentication**: Uses a static OTP ('1234').
-    - **Scheme Search**: Searches a hardcoded in-memory list, not real documents.
+    - Authentication (static OTP).
+    - Speech-to-Text (hardcoded mock response).
 
 **3rd Party Integrations**
-- **Sarvam AI (Saaras v3)**: Used for Speech-to-Text and Translation. Requires a user-provided API key ().
+- **Prisma**: The ORM used for all MongoDB interactions.
+- **Agnost AI**: For analytics and tool-call tracking.
+- **Sarvam AI (Saaras v3)**: Intended for speech-to-text but currently mocked.
 
 **Testing status**
-- **Testing agent used after significant changes**: YES
-- **Troubleshoot agent used after agent stuck in loop**: NO
-- **Test files created**: None.
-- **Known regressions**: None.
+  - Testing agent used after significant changes: YES
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: []
+  - Known regressions: None known, but the Prisma migration is a high-risk change that requires full validation.
 
 **Credentials to test flow:**
-- **Phone Number**: Any 10-digit number.
-- **OTP**: 1234
+- **Phone Number**: Any 10-digit number
+- **OTP**: 
 
 **What agent forgot to execute**
-- The agent completely disregarded the original tech stack requirement (Node.js/Express, Prisma/PostgreSQL) and implemented a different stack (Python/FastAPI, MongoDB) without seeking user confirmation. This is the most significant oversight. Is this covered: Implement Profiler Agent: if profile incomplete, ask ONLY ONE question at a time in Hindi (name, age, income, state). Save to User.profile JSONB. When complete, auto-trigger eligibility.
-</analysis>
+- The migration of the frontend application from Create React App to Next.js has been requested but not yet started. The agent correctly prioritized finishing the backend migration first.</analysis>

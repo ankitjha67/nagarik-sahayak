@@ -9,7 +9,7 @@ from datetime import datetime
 
 class NagarikSahayakAPITester:
     def __init__(self):
-        self.base_url = "https://govt-assistant.preview.emergentagent.com/api"
+        self.base_url = "https://gov-assistance.preview.emergentagent.com/api"
         self.user_id = None
         self.phone = f"999{uuid.uuid4().hex[:7]}"  # Fresh number for profiler test
         self.audio_msg_id = None
