@@ -242,6 +242,180 @@ class NagarikSahayakAPITester:
             self.log_test("STT Providers", False, f"Error: {str(e)}")
             return False
 
+    def test_mcp_tools_list(self):
+        """Test MCP tools listing endpoint"""
+        try:
+            response = requests.get(f"{self.base_url}/mcp/tools", timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                tools = data.get("tools", [])
+                success = isinstance(tools, list) and len(tools) > 0
+                
+                # Check for search_schemes tool
+                search_tool = next((t for t in tools if t.get("name") == "search_schemes"), None)
+                if search_tool:
+                    details = f"Found {len(tools)} MCP tools, search_schemes tool present with description: '{search_tool.get('description', '')[:50]}...'"
+                    success = success and "search" in search_tool.get("description", "").lower()
+                else:
+                    success = False
+                    details = f"Found {len(tools)} tools but search_schemes tool missing"
+                
+                self.log_test("MCP Tools List", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("MCP Tools List", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("MCP Tools List", False, f"Error: {str(e)}")
+            return False
+
+    def test_search_schemes_kisan(self):
+        """Test search_schemes with farmer kisan query"""
+        try:
+            payload = {"query": "farmer kisan eligibility"}
+            response = requests.post(f"{self.base_url}/search-schemes", json=payload, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                success = (
+                    data.get("match_found") == True and
+                    "PM-KISAN" in str(data.get("documents_scanned", [])) and
+                    "PM-KISAN" in data.get("result_text", "")
+                )
+                details = f"Match found: {data.get('match_found')}, Documents: {data.get('documents_scanned', [])[:2]}"
+                self.log_test("Search Schemes - Kisan Query", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Search Schemes - Kisan Query", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Search Schemes - Kisan Query", False, f"Error: {str(e)}")
+            return False
+
+    def test_search_schemes_health(self):
+        """Test search_schemes with health insurance query"""
+        try:
+            payload = {"query": "health insurance ayushman"}
+            response = requests.post(f"{self.base_url}/search-schemes", json=payload, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                success = (
+                    data.get("match_found") == True and
+                    "Ayushman Bharat" in data.get("result_text", "")
+                )
+                details = f"Match found: {data.get('match_found')}, Ayushman detected in response"
+                self.log_test("Search Schemes - Health Query", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Search Schemes - Health Query", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Search Schemes - Health Query", False, f"Error: {str(e)}")
+            return False
+
+    def test_search_schemes_sukanya(self):
+        """Test search_schemes with girl child savings query"""
+        try:
+            payload = {"query": "girl child savings sukanya"}
+            response = requests.post(f"{self.base_url}/search-schemes", json=payload, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                success = (
+                    data.get("match_found") == True and
+                    "Sukanya" in data.get("result_text", "")
+                )
+                details = f"Match found: {data.get('match_found')}, Sukanya detected in response"
+                self.log_test("Search Schemes - Sukanya Query", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Search Schemes - Sukanya Query", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Search Schemes - Sukanya Query", False, f"Error: {str(e)}")
+            return False
+
+    def test_search_schemes_no_match(self):
+        """Test search_schemes with unrelated query"""
+        try:
+            payload = {"query": "passport renewal visa"}
+            response = requests.post(f"{self.base_url}/search-schemes", json=payload, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                success = (
+                    data.get("match_found") == False and
+                    "I don't know" in data.get("result_text", "")
+                )
+                details = f"Match found: {data.get('match_found')}, 'I don't know' message returned"
+                self.log_test("Search Schemes - No Match Query", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Search Schemes - No Match Query", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Search Schemes - No Match Query", False, f"Error: {str(e)}")
+            return False
+
+    def test_chat_with_scheme_query(self):
+        """Test chat with scheme-related question that should trigger MCP tool"""
+        if not self.user_id:
+            self.log_test("Chat with Scheme Query", False, "No user_id available (login failed)")
+            return False
+            
+        try:
+            payload = {"user_id": self.user_id, "content": "kisan eligibility", "language": "hi"}
+            response = requests.post(f"{self.base_url}/chat", json=payload, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                bot_msg = data.get("bot_message", {})
+                tool_calls = bot_msg.get("tool_calls", [])
+                
+                success = (
+                    len(tool_calls) > 0 and
+                    any(tc.get("tool_name") == "search_schemes" for tc in tool_calls) and
+                    any("PM-KISAN" in str(tc.get("documents_scanned", [])) for tc in tool_calls)
+                )
+                
+                details = f"Tool calls: {len(tool_calls)}, Search tool invoked: {any(tc.get('tool_name') == 'search_schemes' for tc in tool_calls)}"
+                self.log_test("Chat with Scheme Query", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Chat with Scheme Query", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Chat with Scheme Query", False, f"Error: {str(e)}")
+            return False
+
+    def test_chat_with_greeting(self):
+        """Test chat with greeting that should NOT trigger MCP tool"""
+        if not self.user_id:
+            self.log_test("Chat with Greeting", False, "No user_id available (login failed)")
+            return False
+            
+        try:
+            payload = {"user_id": self.user_id, "content": "hello", "language": "hi"}
+            response = requests.post(f"{self.base_url}/chat", json=payload, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                bot_msg = data.get("bot_message", {})
+                tool_calls = bot_msg.get("tool_calls", [])
+                
+                success = len(tool_calls) == 0  # No tool calls for greeting
+                details = f"Tool calls: {len(tool_calls)} (should be 0 for greeting)"
+                self.log_test("Chat with Greeting", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Chat with Greeting", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Chat with Greeting", False, f"Error: {str(e)}")
+            return False
+
     def run_all_tests(self):
         """Run complete API test suite"""
         print("🚀 Starting Nagarik Sahayak API Test Suite\n")
