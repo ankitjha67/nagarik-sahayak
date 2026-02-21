@@ -4,7 +4,7 @@ import { Menu, RotateCcw } from "lucide-react";
 export const AppHeader = ({ title = "नागरिक सहायक", showBack, onBack, onMenuClick, onNewChat }) => (
   <header
     data-testid="app-header"
-    className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3"
+    className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-2"
   >
     <div className="max-w-md mx-auto flex items-center gap-3">
       {showBack ? (
@@ -26,13 +26,8 @@ export const AppHeader = ({ title = "नागरिक सहायक", showBa
           <Menu size={20} />
         </button>
       ) : null}
-      <IndianFlag size={30} />
-      <h1
-        data-testid="header-title"
-        className="text-xl font-bold text-[#000080] font-['Mukta'] tracking-tight flex-1"
-      >
-        {title}
-      </h1>
+      <img src="/logo.png" alt="Nagarik Sahayak" className="h-9 w-auto object-contain" />
+      <div className="flex-1" />
       {onNewChat && (
         <button
           data-testid="new-chat-btn"
