@@ -57,7 +57,12 @@ Build a mobile-first full-stack chat application called 'Nagarik Sahayak' — a 
 - [x] Registered in MCP_TOOLS alongside search_schemes
 - [x] Profiler completion auto-triggers eligibility_matcher
 - [x] Frontend EligibilityCard component: green/red shield icon, पात्र/अपात्र badge, reason text, benefit info
-- [x] 100% backend test pass rate (22/22)
+- [x] **PDF generation** via `fpdf2` with Noto Sans (English) + Noto Sans Devanagari (Hindi) fonts
+- [x] `POST /api/generate-pdf` — accepts profile inline or user_id, runs eligibility_matcher, generates clean PDF report
+- [x] `GET /api/pdf/{pdf_id}` — serves PDF for download
+- [x] Profiler completion auto-generates PDF and includes download link in chat
+- [x] Frontend: navy-blue PDF download button with "PDF रिपोर्ट डाउनलोड करें" + download icon
+- [x] 100% backend test pass rate (27/27 endpoints)
 
 ## P0 Backlog
 - Integrate real LLM for intelligent chat responses
