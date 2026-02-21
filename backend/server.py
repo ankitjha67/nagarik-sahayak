@@ -1678,6 +1678,20 @@ async def analytics_status():
     }
 
 
+@api_router.get("/demo/status")
+async def demo_status():
+    """Check if DEMO_MODE is active."""
+    return {"demo_mode": DEMO_MODE}
+
+
+@api_router.post("/demo/toggle")
+async def demo_toggle():
+    """Toggle DEMO_MODE at runtime (no restart needed)."""
+    global DEMO_MODE
+    DEMO_MODE = not DEMO_MODE
+    return {"demo_mode": DEMO_MODE}
+
+
 # Include router
 app.include_router(api_router)
 
