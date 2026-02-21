@@ -1,0 +1,104 @@
+{
+  "summary": "Testing iteration 10 - All 4 new features verified: (1) Demo toggle endpoints working with round-trip, (2) Hindi voice button present on all bot messages, (3) Tick marks with animations present on user messages, (4) /app/pitch.md contains all required sections including demo phrase and quick reference table. Backend 8/8 tests passed, Frontend 7/7 features verified.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "Backend: GET /api/demo/status returns {demo_mode: true/false}",
+    "Backend: POST /api/demo/toggle toggles demo_mode and returns new state",
+    "Backend: Toggle works round-trip (true→false→true→back to original)",
+    "Backend: Chat messages include status field for tick marks (sent/delivered/read)",
+    "File: /app/pitch.md exists",
+    "File: /app/pitch.md contains all 5 required sections (Problem, Demo, How It Works, Impact, The Ask)",
+    "File: /app/pitch.md contains demo phrase 'Mera beta 10th pass hai'",
+    "File: /app/pitch.md contains Quick Reference table",
+    "Frontend: Sidebar has Demo Mode toggle row (data-testid='demo-toggle-row')",
+    "Frontend: Demo toggle button (data-testid='demo-toggle-btn') is clickable with amber styling",
+    "Frontend: Demo toggle shows 'Stage-ready' when ON and 'Off' when disabled",
+    "Frontend: Clicking demo toggle changes backend demo state",
+    "Frontend: Bot messages have Hindi voice button (data-testid='hindi-voice-btn') - 46 buttons found",
+    "Frontend: Hindi voice button uses Volume2 icon and is clickable",
+    "Frontend: User messages show tick marks (data-testid='tick-blue') - 46 blue ticks found (read status)"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "Demo toggle endpoints correctly use global DEMO_MODE variable with proper toggle logic",
+    "HindiVoiceBtn component uses window.speechSynthesis with lang='hi-IN' - browser native TTS, no external API",
+    "TickStatus component properly renders CheckIcon for 'sent' and CheckCheck for 'delivered'/'read' with animation classes",
+    "CSS animations tick-sent-anim, tick-deliver-anim, tick-read-anim, voice-pulse all defined in index.css",
+    "Sidebar.js correctly fetches demo status on open and calls POST /api/demo/toggle on button click",
+    "/app/pitch.md is a complete 3-minute stage pitch with proper timing markers"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_new_features.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (8/8 tests passed)",
+    "frontend": "100% (7/7 features verified)"
+  },
+
+  "test_credentials": {
+    "phone": "9876543210",
+    "otp": "1234"
+  },
+
+  "seed_data_creation": "",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "Iteration 10 added: (1) Demo toggle API at /api/demo/status and /api/demo/toggle, (2) HindiVoiceBtn component on all bot messages using browser SpeechSynthesis, (3) TickStatus component with animated ticks for sent/delivered/read states, (4) /app/pitch.md complete 3-min script. All features working. DEMO_MODE=true in backend/.env. Hindi TTS uses browser native API (no external service). Sidebar trigger is data-testid='header-menu-btn' in AppHeader.js.",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "demo_stage_response: Hardcoded demo flow with DEMO_PROFILE, VIDYASIRI_RESULT, PMKISAN_DEMO_RESULT",
+      "auth: Static OTP 1234 for any phone number",
+      "Hindi TTS: Browser SpeechSynthesis API (no external service)"
+    ]
+  },
+
+  "feature_verification": {
+    "demo_toggle_endpoint_get": true,
+    "demo_toggle_endpoint_post": true,
+    "demo_toggle_roundtrip": true,
+    "demo_toggle_sidebar_ui": true,
+    "demo_toggle_amber_styling": true,
+    "demo_toggle_stage_ready_text": true,
+    "demo_toggle_off_text": true,
+    "hindi_voice_btn_present": true,
+    "hindi_voice_btn_clickable": true,
+    "hindi_voice_uses_volume2_icon": true,
+    "tick_marks_present": true,
+    "tick_blue_for_read": true,
+    "tick_sent_anim_css": true,
+    "tick_deliver_anim_css": true,
+    "tick_read_anim_css": true,
+    "voice_pulse_css": true,
+    "pitch_file_exists": true,
+    "pitch_file_problem_section": true,
+    "pitch_file_demo_section": true,
+    "pitch_file_how_it_works_section": true,
+    "pitch_file_impact_section": true,
+    "pitch_file_the_ask_section": true,
+    "pitch_file_demo_phrase": true,
+    "pitch_file_quick_reference": true
+  }
+}
