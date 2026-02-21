@@ -29,7 +29,8 @@ Build a full-stack, mobile-first chat application called 'Nagarik Sahayak' - a W
 7. **Agnost Tracking**: All tools wrapped
 
 ### Final Polish (COMPLETED Feb 2026)
-- WhatsApp Share button (Web Share API + wa.me fallback)
+- WhatsApp Share button (Web Share API + web.whatsapp.com fallback, fixed from wa.me redirect block)
+- PDF download via blob fetch (fixed about:blank issue from target=_blank)
 - "Agent is thinking..." with saffron spinner during tools
 - Mic pulse animation when recording
 - Instant blue double ticks on agent replies
