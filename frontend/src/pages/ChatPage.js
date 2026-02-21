@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
+import { Sidebar } from "../components/Sidebar";
 import { ChatBubble, TypingIndicator } from "../components/ChatBubble";
 import { sendMessage, getChatHistory, transcribeAudio } from "../lib/api";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ export default function ChatPage({ userId, language = "hi" }) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordCountdown, setRecordCountdown] = useState(0);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -171,7 +173,8 @@ export default function ChatPage({ userId, language = "hi" }) {
 
   return (
     <div data-testid="chat-page" className="min-h-screen bg-gray-50 flex flex-col">
-      <AppHeader title="नागरिक सहायक" />
+      <AppHeader title="नागरिक सहायक" onMenuClick={() => setSidebarOpen(true)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-md mx-auto w-full pb-36">

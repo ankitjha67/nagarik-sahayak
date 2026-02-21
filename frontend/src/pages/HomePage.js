@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
+import { Sidebar } from "../components/Sidebar";
 import { getChatHistory, getSchemes } from "../lib/api";
 import { Mic, MessageCircle, BookOpen, ChevronRight, Sparkles } from "lucide-react";
 
@@ -10,6 +11,7 @@ export default function HomePage({ userId }) {
   const [recentChats, setRecentChats] = useState([]);
   const [schemes, setSchemes] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -28,7 +30,8 @@ export default function HomePage({ userId }) {
 
   return (
     <div data-testid="home-page" className="min-h-screen bg-gray-50 pb-20">
-      <AppHeader />
+      <AppHeader onMenuClick={() => setSidebarOpen(true)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="max-w-md mx-auto px-4 pt-4">
         {/* Welcome Banner */}
