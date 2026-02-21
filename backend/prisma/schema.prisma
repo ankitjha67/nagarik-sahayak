@@ -1,0 +1,47 @@
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGO_URL")
+}
+
+model User {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  phone        String        @unique
+  language     String        @default("hi")
+  profile      Json?
+  createdAt    DateTime      @default(now())
+  chatLogs     ChatLog[]
+  applications Application[]
+}
+
+model Scheme {
+  id                      String        @id @default(auto()) @map("_id") @db.ObjectId
+  name                    String
+  eligibilityCriteriaText String
+  pdfUrl                  String
+  applications            Application[]
+}
+
+model ChatLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  message   String
+  timestamp DateTime @default(now())
+  sender    String
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Application {
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId   String  @db.ObjectId
+  schemeId String  @db.ObjectId
+  status   String
+  formUrl  String?
+  user     User    @relation(fields: [userId], references: [id])
+  scheme   Scheme  @relation(fields: [schemeId], references: [id])
+}
