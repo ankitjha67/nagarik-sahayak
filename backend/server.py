@@ -377,7 +377,8 @@ PMKISAN_DEMO_RESULT = {
 
 DEMO_EXACT_TRIGGERS = ["mera beta 10th pass hai", "mera beta 10th pass", "मेरा बेटा 10th पास है", "मेरा बेटा दसवीं पास है"]
 DEMO_SIGNALS = ["scholarship", "छात्रवृत्ति", "vidyasiri", "विद्यासिरी", "student", "education", "शिक्षा",
-    "10th", "10वीं", "दसवीं", "pass", "पास", "beta", "बेटा", "college", "tuition", "पढ़ाई"]
+    "10th", "10वीं", "दसवीं", "pass", "पास", "beta", "बेटा", "college", "tuition", "पढ़ाई",
+    "scholarship", "beta"]
 
 
 def _is_demo_trigger(text: str) -> bool:
