@@ -226,7 +226,7 @@ export default function ChatPage({ userId, language = "hi" }) {
 
   return (
     <div data-testid="chat-page" className="min-h-screen bg-gray-50 flex flex-col">
-      <AppHeader title="नागरिक सहायक" onMenuClick={() => setSidebarOpen(true)} />
+      <AppHeader title="नागरिक सहायक" onMenuClick={() => setSidebarOpen(true)} onNewChat={handleNewChat} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Messages Area */}
