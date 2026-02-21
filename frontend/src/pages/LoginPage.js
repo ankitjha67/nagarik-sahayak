@@ -62,20 +62,9 @@ export default function LoginPage({ onLogin }) {
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-10 animate-fade-in-up">
-          <div className="inline-flex items-center justify-center mb-6">
-            <div className="bg-white rounded-2xl p-4 shadow-md border border-orange-50">
-              <IndianFlag size={56} />
-            </div>
+          <div className="inline-flex items-center justify-center mb-4">
+            <img src="/logo.png" alt="Nagarik Sahayak" className="w-48 h-auto object-contain" />
           </div>
-          <h1
-            data-testid="login-title"
-            className="text-3xl font-bold text-[#000080] font-['Mukta'] mb-1"
-          >
-            नागरिक सहायक
-          </h1>
-          <p className="text-gray-500 text-sm font-['Nunito']">
-            Your Digital Citizen Assistant
-          </p>
         </div>
 
         {step === "phone" ? (
