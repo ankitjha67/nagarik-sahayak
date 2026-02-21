@@ -66,11 +66,22 @@ export default function ChatPage({ userId, language = "hi" }) {
     setInput("");
     setLoading(true);
 
+    // Show user message immediately with "sent" status
+    const tempUserMsg = {
+      id: `temp-${Date.now()}`, user_id: userId, role: "user",
+      content: text, status: "sent",
+      created_at: new Date().toISOString(), tool_calls: [],
+    };
+    setMessages((prev) => [...prev, tempUserMsg]);
+
     try {
       const res = await sendMessage(userId, text, language);
       const { user_message, bot_message } = res.data;
-      setMessages((prev) => [...prev, user_message, bot_message]);
+      // Replace temp msg with real one (status=read) and add bot reply
+      setMessages((prev) => [...prev.filter((m) => m.id !== tempUserMsg.id), user_message, bot_message]);
     } catch {
+      // Mark temp as failed
+      setMessages((prev) => prev.map((m) => m.id === tempUserMsg.id ? { ...m, status: "sent" } : m));
       toast.error("Message failed to send");
     } finally {
       setLoading(false);
