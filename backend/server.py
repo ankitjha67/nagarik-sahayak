@@ -1116,7 +1116,19 @@ async def search_schemes_endpoint(req: SearchSchemesRequest):
     Direct invocation of the search_schemes MCP tool.
     Scans seeded scheme documents and returns eligibility + criteria.
     """
+    t0 = _time.time()
     result = search_schemes(req.query, "en")
+    latency_ms = int((_time.time() - t0) * 1000)
+    if _agnost_key:
+        agnost.track(
+            user_id="api",
+            agent_name="nagarik_tool",
+            input=req.query,
+            output=str(result.get("match_found", False)),
+            properties={"tool": "search_schemes"},
+            success=result.get("match_found", False),
+            latency=latency_ms,
+        )
     return result
 
 
@@ -1146,7 +1158,19 @@ async def eligibility_check_endpoint(req: EligibilityCheckRequest):
     if not profile:
         raise HTTPException(status_code=400, detail="Provide user_id or profile object")
 
+    t0 = _time.time()
     result = eligibility_matcher(profile, req.query)
+    latency_ms = int((_time.time() - t0) * 1000)
+    if _agnost_key:
+        agnost.track(
+            user_id=req.user_id or "api",
+            agent_name="nagarik_tool",
+            input=str(profile),
+            output=str(result.get("match_found", False)),
+            properties={"tool": "eligibility_matcher", "query": req.query},
+            success=result.get("match_found", False),
+            latency=latency_ms,
+        )
     return result
 
 
