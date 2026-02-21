@@ -1014,7 +1014,7 @@ class NagarikSahayakAPITester:
         """Test eligibility_check with existing profiled user ID from credentials"""
         try:
             # Use the existing profiled user from credentials
-            existing_user_id = "539e3d7a-9614-4514-8954-48bda73e20bd"
+            existing_user_id = "59e728b4-0808-4a95-8c34-5e5530dc7da8"
             payload = {"user_id": existing_user_id}
             response = requests.post(f"{self.base_url}/eligibility-check", json=payload, timeout=15)
             
@@ -1039,6 +1039,142 @@ class NagarikSahayakAPITester:
                 return False
         except Exception as e:
             self.log_test("Eligibility Check - Existing User", False, f"Error: {str(e)}")
+            return False
+
+    def test_generate_pdf_with_inline_profile(self):
+        """Test POST /api/generate-pdf with inline profile"""
+        try:
+            payload = {
+                "profile": {
+                    "name": "सुधा देवी",
+                    "age": 32,
+                    "income": 18000,
+                    "state": "उत्तर प्रदेश"
+                }
+            }
+            response = requests.post(f"{self.base_url}/generate-pdf", json=payload, timeout=20)
+            
+            if response.status_code == 200:
+                data = response.json()
+                success = (
+                    data.get("success") == True and
+                    "pdf_url" in data and
+                    "pdf_id" in data and
+                    "eligible_count" in data and
+                    "results" in data and
+                    isinstance(data.get("results"), list) and
+                    len(data.get("results", [])) >= 3
+                )
+                
+                eligible_count = data.get("eligible_count", 0)
+                pdf_url = data.get("pdf_url", "")
+                details = f"PDF URL: {pdf_url}, Eligible: {eligible_count}/{len(data.get('results', []))}"
+                
+                self.log_test("Generate PDF - Inline Profile", success, details, 200, response.status_code)
+                
+                # Store pdf_id for later test
+                self.pdf_id = data.get("pdf_id")
+                return success
+            else:
+                self.log_test("Generate PDF - Inline Profile", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Generate PDF - Inline Profile", False, f"Error: {str(e)}")
+            return False
+
+    def test_generate_pdf_with_user_id(self):
+        """Test POST /api/generate-pdf with user_id (fetch profile from DB)"""
+        if not self.user_id:
+            self.log_test("Generate PDF - User ID", False, "No user_id available")
+            return False
+            
+        try:
+            payload = {"user_id": self.user_id}
+            response = requests.post(f"{self.base_url}/generate-pdf", json=payload, timeout=20)
+            
+            if response.status_code == 200:
+                data = response.json()
+                success = (
+                    data.get("success") == True and
+                    "pdf_url" in data and
+                    "pdf_id" in data and
+                    "eligible_count" in data and
+                    "results" in data
+                )
+                
+                details = f"PDF generated for user {self.user_id[:8]}..., eligible: {data.get('eligible_count')}"
+                self.log_test("Generate PDF - User ID", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Generate PDF - User ID", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Generate PDF - User ID", False, f"Error: {str(e)}")
+            return False
+
+    def test_generate_pdf_incomplete_profile(self):
+        """Test POST /api/generate-pdf with incomplete profile (no name) - should return 400"""
+        try:
+            payload = {
+                "profile": {
+                    "age": 25,
+                    "income": 20000,
+                    "state": "बिहार"
+                    # Missing name
+                }
+            }
+            response = requests.post(f"{self.base_url}/generate-pdf", json=payload, timeout=15)
+            
+            success = response.status_code == 400
+            details = "Correctly rejected incomplete profile (missing name)"
+            
+            self.log_test("Generate PDF - Incomplete Profile", success, details, 400, response.status_code)
+            return success
+        except Exception as e:
+            self.log_test("Generate PDF - Incomplete Profile", False, f"Error: {str(e)}")
+            return False
+
+    def test_serve_pdf(self):
+        """Test GET /api/pdf/{pdf_id} - should return PDF file"""
+        if not hasattr(self, 'pdf_id') or not self.pdf_id:
+            self.log_test("Serve PDF", False, "No pdf_id available from generate test")
+            return False
+            
+        try:
+            response = requests.get(f"{self.base_url}/pdf/{self.pdf_id}", timeout=15)
+            
+            if response.status_code == 200:
+                content_type = response.headers.get("content-type", "")
+                content_disposition = response.headers.get("content-disposition", "")
+                
+                success = (
+                    "application/pdf" in content_type and
+                    "Nagarik_Sahayak_Report_" in content_disposition and
+                    len(response.content) > 1000  # PDF should be substantial
+                )
+                
+                details = f"Content-Type: {content_type}, Size: {len(response.content)} bytes"
+                self.log_test("Serve PDF", success, details, 200, response.status_code)
+                return success
+            else:
+                self.log_test("Serve PDF", False, f"HTTP Error", 200, response.status_code)
+                return False
+        except Exception as e:
+            self.log_test("Serve PDF", False, f"Error: {str(e)}")
+            return False
+
+    def test_serve_pdf_nonexistent(self):
+        """Test GET /api/pdf/nonexistent - should return 404"""
+        try:
+            response = requests.get(f"{self.base_url}/pdf/nonexistent-id", timeout=10)
+            
+            success = response.status_code == 404
+            details = "Correctly returned 404 for non-existent PDF"
+            
+            self.log_test("Serve PDF - Nonexistent", success, details, 404, response.status_code)
+            return success
+        except Exception as e:
+            self.log_test("Serve PDF - Nonexistent", False, f"Error: {str(e)}")
             return False
 
     def run_all_tests(self):
