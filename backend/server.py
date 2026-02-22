@@ -1197,53 +1197,46 @@ async def demo_toggle():
 
 # --- Download All PDFs ---
 
-@api_router.get("/download-all")
-async def download_all_pdfs(user_id: str = ""):
-    """Return list of all generated PDF URLs for a user, or generate a zip bundle."""
-    apps = await prisma.application.find_many(
-        where={"userId": user_id, "status": "generated"},
-        order={"createdAt": "desc"},
-    ) if user_id else []
-    urls = []
-    for app in apps:
-        if app.formUrl:
-            scheme = await prisma.scheme.find_unique(where={"id": app.schemeId}) if app.schemeId else None
-            urls.append({"pdf_url": app.formUrl, "scheme_name": scheme.name if scheme else "Scheme"})
+class DownloadAllRequest(BaseModel):
+    pdf_urls: list = []
+    user_id: str = ""
+
+@api_router.post("/download-all")
+async def download_all_pdfs(req: DownloadAllRequest):
+    """Track multi-PDF download event via Agnost."""
     if _agnost_key:
         try:
-            agnost.track(user_id=user_id or "api", agent_name="nagarik_tool",
-                input="download_all", output=str(len(urls)),
-                properties={"tool": "multi_pdf_download", "scheme_count": len(urls), "user_id": user_id},
+            agnost.track(user_id=req.user_id or "api", agent_name="nagarik_tool",
+                input="multi_pdf_download", output=str(len(req.pdf_urls)),
+                properties={"tool": "multi_pdf_download", "scheme_count": len(req.pdf_urls), "user_id": req.user_id},
                 success=True, latency=0)
         except Exception:
             pass
-    return {"urls": urls, "count": len(urls)}
+    return {"tracked": True, "count": len(req.pdf_urls)}
 
 
-@api_router.get("/download-all-zip")
-async def download_all_zip(user_id: str = ""):
-    """Generate a zip of all generated PDFs for a user."""
+@api_router.post("/download-all-zip")
+async def download_all_zip(req: DownloadAllRequest):
+    """Generate a zip bundle of PDFs from provided URLs."""
     import zipfile as zf
-    apps = await prisma.application.find_many(
-        where={"userId": user_id, "status": "generated"},
-        order={"createdAt": "desc"},
-    ) if user_id else []
     zip_id = str(uuid.uuid4())
     zip_path = PDF_DIR / f"{zip_id}.zip"
+    count = 0
     with zf.ZipFile(zip_path, "w", zf.ZIP_DEFLATED) as z:
-        for app in apps:
-            if app.formUrl:
-                pdf_id = app.formUrl.split("/")[-1]
-                pdf_file = PDF_DIR / f"{pdf_id}.pdf"
-                if pdf_file.exists():
-                    scheme = await prisma.scheme.find_unique(where={"id": app.schemeId}) if app.schemeId else None
-                    name = (scheme.name if scheme else "Scheme").replace(" ", "_")
-                    z.write(pdf_file, f"{name}_Form.pdf")
+        for item in req.pdf_urls:
+            pdf_url = item.get("pdf_url", "") if isinstance(item, dict) else str(item)
+            scheme_name = item.get("scheme_name", f"Scheme_{count}") if isinstance(item, dict) else f"Scheme_{count}"
+            pdf_id = pdf_url.split("/")[-1]
+            pdf_file = PDF_DIR / f"{pdf_id}.pdf"
+            if pdf_file.exists():
+                safe_name = scheme_name.replace(" ", "_")
+                z.write(pdf_file, f"{safe_name}_Form.pdf")
+                count += 1
     if _agnost_key:
         try:
-            agnost.track(user_id=user_id or "api", agent_name="nagarik_tool",
-                input="download_all_zip", output=str(len(apps)),
-                properties={"tool": "multi_pdf_download", "scheme_count": len(apps), "user_id": user_id, "format": "zip"},
+            agnost.track(user_id=req.user_id or "api", agent_name="nagarik_tool",
+                input="download_all_zip", output=str(count),
+                properties={"tool": "multi_pdf_download", "scheme_count": count, "format": "zip"},
                 success=True, latency=0)
         except Exception:
             pass
