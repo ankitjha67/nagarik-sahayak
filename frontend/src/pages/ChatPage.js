@@ -303,7 +303,7 @@ export default function ChatPage({ userId, language = "hi" }) {
                   : "bg-[#FFF0E0] text-[#FF9933] hover:bg-[#FFE0C0] active:scale-95"
             }`}
           >
-            {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
+            {isRecording ? <MicOff size={18} /> : micBlocked ? <MicOff size={18} /> : <Mic size={18} />}
             {isRecording && recordCountdown > 0 && (
               <span
                 data-testid="mic-countdown"
