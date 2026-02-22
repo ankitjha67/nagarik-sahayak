@@ -288,6 +288,22 @@ export default function ChatPage({ userId, language = "hi" }) {
             <Paperclip size={18} />
           </button>
 
+          {/* Language Toggle for STT */}
+          <button
+            data-testid="stt-lang-toggle"
+            onClick={() => {
+              const next = sttLang === "hi" ? "en" : "hi";
+              setSttLang(next);
+              localStorage.setItem("ns_stt_lang", next);
+              toast.info(next === "hi" ? "Voice: हिंदी" : "Voice: English", { duration: 1500 });
+            }}
+            disabled={loading || isRecording}
+            title={sttLang === "hi" ? "Voice language: Hindi — click to switch" : "Voice language: English — click to switch"}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 bg-[#E6E6F2] text-[#000080] hover:bg-[#D0D0E8] active:scale-95 text-xs font-bold font-['Mukta']"
+          >
+            {sttLang === "hi" ? "हि" : "EN"}
+          </button>
+
           {/* Mic Button with countdown */}
           <button
             data-testid="chat-mic-btn"
