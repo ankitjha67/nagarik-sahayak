@@ -20,7 +20,6 @@ export default function ChatPage({ userId, language = "hi" }) {
   const [recordCountdown, setRecordCountdown] = useState(0);
   const [initialLoad, setInitialLoad] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [micBlocked, setMicBlocked] = useState(false);
   const messagesEndRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
