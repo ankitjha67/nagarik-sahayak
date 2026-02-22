@@ -1195,6 +1195,62 @@ async def demo_toggle():
     return {"demo_mode": DEMO_MODE}
 
 
+# --- Download All PDFs ---
+
+@api_router.get("/download-all")
+async def download_all_pdfs(user_id: str = ""):
+    """Return list of all generated PDF URLs for a user, or generate a zip bundle."""
+    apps = await prisma.application.find_many(
+        where={"userId": user_id, "status": "generated"},
+        order={"createdAt": "desc"},
+    ) if user_id else []
+    urls = []
+    for app in apps:
+        if app.formUrl:
+            scheme = await prisma.scheme.find_unique(where={"id": app.schemeId}) if app.schemeId else None
+            urls.append({"pdf_url": app.formUrl, "scheme_name": scheme.name if scheme else "Scheme"})
+    if _agnost_key:
+        try:
+            agnost.track(user_id=user_id or "api", agent_name="nagarik_tool",
+                input="download_all", output=str(len(urls)),
+                properties={"tool": "multi_pdf_download", "scheme_count": len(urls), "user_id": user_id},
+                success=True, latency=0)
+        except Exception:
+            pass
+    return {"urls": urls, "count": len(urls)}
+
+
+@api_router.get("/download-all-zip")
+async def download_all_zip(user_id: str = ""):
+    """Generate a zip of all generated PDFs for a user."""
+    import zipfile as zf
+    apps = await prisma.application.find_many(
+        where={"userId": user_id, "status": "generated"},
+        order={"createdAt": "desc"},
+    ) if user_id else []
+    zip_id = str(uuid.uuid4())
+    zip_path = PDF_DIR / f"{zip_id}.zip"
+    with zf.ZipFile(zip_path, "w", zf.ZIP_DEFLATED) as z:
+        for app in apps:
+            if app.formUrl:
+                pdf_id = app.formUrl.split("/")[-1]
+                pdf_file = PDF_DIR / f"{pdf_id}.pdf"
+                if pdf_file.exists():
+                    scheme = await prisma.scheme.find_unique(where={"id": app.schemeId}) if app.schemeId else None
+                    name = (scheme.name if scheme else "Scheme").replace(" ", "_")
+                    z.write(pdf_file, f"{name}_Form.pdf")
+    if _agnost_key:
+        try:
+            agnost.track(user_id=user_id or "api", agent_name="nagarik_tool",
+                input="download_all_zip", output=str(len(apps)),
+                properties={"tool": "multi_pdf_download", "scheme_count": len(apps), "user_id": user_id, "format": "zip"},
+                success=True, latency=0)
+        except Exception:
+            pass
+    return FileResponse(path=str(zip_path), media_type="application/zip",
+        filename="Nagarik_Sahayak_Forms.zip")
+
+
 # --- PDF Upload for RAG ---
 
 UPLOADS_DIR = PDF_DIR  # reuse the same directory
