@@ -260,6 +260,141 @@ const WhatsAppShareBtn = ({ pdfUrl, schemeName }) => {
   );
 };
 
+const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+
+  const handleDownload = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    setError("");
+    setDone(false);
+
+    // Extract PDF IDs for zip fallback
+    const pdfIds = pdfUrls.map((p) => {
+      const parts = (p.pdf_url || "").split("/");
+      return parts[parts.length - 1] || "";
+    }).filter(Boolean);
+
+    try {
+      // Strategy: fetch each PDF as blob and trigger download via <a> with stagger
+      let successCount = 0;
+      for (let i = 0; i < pdfUrls.length; i++) {
+        const pdfItem = pdfUrls[i];
+        const url = `${backendUrl}${pdfItem.pdf_url}`;
+        const fileName = `${(pdfItem.scheme_name || "Form").replace(/\s+/g, "_")}_Form.pdf`;
+        try {
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const blob = await resp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = blobUrl;
+          link.download = fileName;
+          link.style.display = "none";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl);
+          successCount++;
+        } catch {
+          // Individual file failed — continue, will fallback to zip
+        }
+        // 500ms stagger between downloads
+        if (i < pdfUrls.length - 1) {
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      }
+
+      if (successCount === pdfUrls.length) {
+        // All downloaded successfully
+        setDone(true);
+        // Track success
+        try {
+          const api = (await import("../lib/api")).default;
+          await api.get(`/download-all?user_id=${userId || ""}&count=${pdfUrls.length}`);
+        } catch {}
+      } else {
+        // Some failed — fallback to zip download
+        const zipUrl = `${backendUrl}/api/download-all-zip?pdf_ids=${encodeURIComponent(pdfIds.join(","))}&user_id=${encodeURIComponent(userId || "")}`;
+        try {
+          const resp = await fetch(zipUrl);
+          if (!resp.ok) throw new Error(`ZIP HTTP ${resp.status}`);
+          const blob = await resp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = blobUrl;
+          link.download = "Nagarik_Sahayak_Forms.zip";
+          link.style.display = "none";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl);
+          setDone(true);
+        } catch {
+          setError("डाउनलोड विफल हुआ। कृपया पुनः प्रयास करें।");
+          // Track error
+          try {
+            const api = (await import("../lib/api")).default;
+            await api.get(`/download-all?user_id=${userId || ""}&count=0`);
+          } catch {}
+        }
+      }
+    } catch {
+      setError("नेटवर्क त्रुटि। कृपया इंटरनेट जांचें और पुनः प्रयास करें।");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="mt-2.5 space-y-2">
+      <button
+        data-testid="pdf-download-all-btn"
+        onClick={handleDownload}
+        disabled={downloading}
+        className={`w-full flex items-center gap-3 px-4 py-3 text-white rounded-xl transition-all shadow-md ${
+          done
+            ? "bg-[#16a34a]"
+            : downloading
+            ? "bg-gray-400 cursor-wait"
+            : "bg-[#16a34a] hover:bg-[#15803d] hover:-translate-y-0.5"
+        }`}
+      >
+        <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+          {downloading ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : done ? (
+            <Check size={18} />
+          ) : (
+            <FileDown size={18} />
+          )}
+        </div>
+        <div className="flex-1 text-left">
+          <span className="text-sm font-bold font-['Mukta'] block">
+            {done ? "डाउनलोड पूर्ण!" : downloading ? "डाउनलोड हो रहा है..." : `सभी ${pdfUrls.length} फॉर्म डाउनलोड करें`}
+          </span>
+          <ul className="mt-0.5">
+            {pdfUrls.map((p, i) => (
+              <li key={i} className="text-[10px] opacity-90 font-['Nunito'] leading-tight">
+                {i + 1}. {p.scheme_name}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {!downloading && !done && <Download size={16} className="flex-shrink-0 opacity-80" />}
+      </button>
+      {error && (
+        <p data-testid="download-error-msg" className="text-xs text-red-600 font-['Mukta'] px-1">{error}</p>
+      )}
+      <WhatsAppShareBtn pdfUrl={`${backendUrl}${pdfUrls[0].pdf_url}`} schemeName={
+        pdfUrls.map(p => p.scheme_name).join(", ")
+      } />
+    </div>
+  );
+};
+
 export const ChatBubble = ({ message }) => {
   const isUser = message.role === "user";
   const hasToolCalls = message.tool_calls && message.tool_calls.length > 0;
