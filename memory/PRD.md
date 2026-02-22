@@ -37,6 +37,16 @@ Build a full-stack, mobile-first chat application called 'Nagarik Sahayak' - a W
 - Hindi date DD/MM/YYYY in PDF
 - PDF labels: "PDF डाउनलोड करें" / "Pre-filled Application Form"
 
+### Multi-PDF Download Fix (COMPLETED Feb 2026)
+- **Root cause**: Backend `/api/download-all` and `/api/download-all-zip` were POST-only; frontend called them with GET → 405 error
+- **Fix**: Changed both endpoints to GET. Frontend now uses `fetch()` + `blob` + `createObjectURL` for downloads
+- Green download button (#16a34a) with loading spinner and "डाउनलोड पूर्ण!" completion state
+- Scheme names listed as bullet points below button
+- Zip fallback: if individual blob downloads fail, falls back to `/api/download-all-zip?pdf_ids=...` (GET)
+- Agnost tracking via GET `/api/download-all?user_id=...&count=N`
+- Hindi error message on network failure: "डाउनलोड विफल हुआ। कृपया पुनः प्रयास करें।"
+- Tested: 100% backend (9/9) and 100% frontend (7/7) in iteration_15
+
 ### Database Seed (3 Schemes)
 1. Pradhan Mantri Awas Yojana
 2. Vidyasiri Scholarship
@@ -57,7 +67,6 @@ Build a full-stack, mobile-first chat application called 'Nagarik Sahayak' - a W
 
 ## Upcoming Tasks
 - P0: Migrate Frontend to Next.js (deferred until after VibeCon)
-- P1: Real Speech-to-Text via Sarvam AI
 - P1: Dynamic RAG with uploaded PDF documents
 - P2: Refactor monolithic server.py into modules
 - P3: Real OTP authentication service
