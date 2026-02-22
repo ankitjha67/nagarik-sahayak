@@ -963,14 +963,13 @@ async def get_chat_history(user_id: str):
 # --- VOICE / TRANSCRIBE ---
 
 @api_router.post("/transcribe")
-async def transcribe_audio(audio: UploadFile = File(...), user_id: str = Form("")):
+async def transcribe_audio(audio: UploadFile = File(...), user_id: str = Form(""), language: str = Form("hi")):
     audio_bytes = await audio.read()
     audio_msg_id = str(uuid.uuid4())
     audio_path = AUDIO_DIR / f"{audio_msg_id}.webm"
     with open(audio_path, "wb") as af:
         af.write(audio_bytes)
 
-    # Try Sarvam, fallback to mock
     transcript_hi = ""
     transcript_en = ""
     sarvam_key = os.environ.get("SARVAM_API_KEY", "")
@@ -981,25 +980,46 @@ async def transcribe_audio(audio: UploadFile = File(...), user_id: str = Form(""
             with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
                 tmp.write(audio_bytes)
                 tmp_path = tmp.name
-            with open(tmp_path, "rb") as f:
-                resp_hi = sarvam_client.speech_to_text.transcribe(file=f, model="saaras:v3", mode="transcribe")
-            transcript_hi = resp_hi.transcript or ""
-            with open(tmp_path, "rb") as f:
-                resp_en = sarvam_client.speech_to_text.transcribe(file=f, model="saaras:v3", mode="translate")
-            transcript_en = resp_en.transcript or ""
-            os.unlink(tmp_path)
-        except Exception as e:
-            logger.error(f"Sarvam failed, using mock: {e}")
 
-    # Mock fallback
-    if not transcript_hi:
+            # Transcribe in original language (auto-detect Hindi/English)
+            with open(tmp_path, "rb") as f:
+                resp_orig = sarvam_client.speech_to_text.transcribe(
+                    file=f, model="saaras:v3", mode="transcribe"
+                )
+            original_text = resp_orig.transcript or ""
+
+            # Translate to English if user prefers English, or get both
+            if language == "en":
+                transcript_en = original_text
+                with open(tmp_path, "rb") as f:
+                    resp_hi = sarvam_client.speech_to_text.transcribe(
+                        file=f, model="saaras:v3", mode="transcribe", language_code="hi-IN"
+                    )
+                transcript_hi = resp_hi.transcript or original_text
+            else:
+                transcript_hi = original_text
+                with open(tmp_path, "rb") as f:
+                    resp_en = sarvam_client.speech_to_text.transcribe(
+                        file=f, model="saaras:v3", mode="translate"
+                    )
+                transcript_en = resp_en.transcript or ""
+
+            os.unlink(tmp_path)
+            logger.info(f"Sarvam STT success: hi='{transcript_hi[:50]}' en='{transcript_en[:50]}'")
+        except Exception as e:
+            logger.error(f"Sarvam STT failed: {e}")
+
+    # Mock fallback only if Sarvam produced nothing
+    is_mock = False
+    if not transcript_hi and not transcript_en:
+        is_mock = True
         transcript_hi = "मेरा बेटा 10th पास है, कॉलेज के लिए पैसा चाहिए"
         transcript_en = "My son passed 10th, need money for college"
 
     audio_url = f"/api/audio/{audio_msg_id}"
-    display = f"[Hindi] {transcript_hi}"
+    display = f"[Hindi] {transcript_hi}" if transcript_hi else ""
     if transcript_en:
-        display += f"\n[English] {transcript_en}"
+        display += f"\n[English] {transcript_en}" if display else f"[English] {transcript_en}"
 
     user_msg = {
         "id": audio_msg_id, "user_id": user_id, "role": "user", "content": display,
@@ -1010,8 +1030,8 @@ async def transcribe_audio(audio: UploadFile = File(...), user_id: str = Form(""
     if user_id:
         await save_chat_prisma(user_id, user_msg, "user")
 
-    # Bot response
-    query_text = transcript_hi
+    # Use Hindi transcript for profiler (primary language), fall back to English
+    query_text = transcript_hi or transcript_en
     profiler_result = await profiler_agent_respond(user_id, query_text) if user_id else None
     if profiler_result:
         bot_msg = {"id": str(uuid.uuid4()), "user_id": user_id, "role": "assistant",
@@ -1019,21 +1039,35 @@ async def transcribe_audio(audio: UploadFile = File(...), user_id: str = Form(""
             "created_at": datetime.now(timezone.utc).isoformat(),
             "tool_calls": profiler_result.get("tool_calls", []),
             "type": profiler_result.get("type", "profiler"),
-            "profiler_field": profiler_result.get("profiler_field", "")}
+            "profiler_field": profiler_result.get("profiler_field", ""),
+            "eligibility_results": profiler_result.get("eligibility_results", []),
+            "pdf_url": profiler_result.get("pdf_url", ""),
+            "tool_progress": profiler_result.get("tool_progress", []),
+        }
     else:
-        mcp = get_bot_response_with_mcp(query_text, "hi")
+        mcp = get_bot_response_with_mcp(query_text, language)
         bot_msg = {"id": str(uuid.uuid4()), "user_id": user_id, "role": "assistant",
             "content": mcp["content"], "status": "delivered",
             "created_at": datetime.now(timezone.utc).isoformat(), "tool_calls": mcp["tool_calls"]}
     if user_id:
         await save_chat_prisma(user_id, bot_msg, "agent")
+
+    if _agnost_key:
+        try:
+            agnost.track(user_id=user_id or "api", agent_name="nagarik_tool",
+                input=f"audio_{len(audio_bytes)}bytes", output=query_text[:100],
+                properties={"tool": "sarvam_stt", "is_mock": is_mock, "language": language},
+                success=not is_mock, latency=0)
+        except Exception:
+            pass
+
     return {"success": True, "transcript_hi": transcript_hi, "transcript_en": transcript_en,
-        "user_message": user_msg, "bot_message": bot_msg}
+        "is_mock": is_mock, "user_message": user_msg, "bot_message": bot_msg}
 
 
 @api_router.post("/chat/voice")
 async def voice_to_text(audio: UploadFile = File(...), user_id: str = Form(""), language: str = Form("hi")):
-    return await transcribe_audio(audio=audio, user_id=user_id)
+    return await transcribe_audio(audio=audio, user_id=user_id, language=language)
 
 
 # --- MCP Tool Endpoints ---
