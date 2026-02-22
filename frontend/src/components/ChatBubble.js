@@ -298,35 +298,55 @@ export const ChatBubble = ({ message }) => {
           <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line font-['Nunito']">{message.content}</p>
         )}
 
-        {/* PDF Download Buttons — download ALL eligible forms at once */}
+        {/* PDF Download — ALL eligible forms at once */}
         {message.pdf_urls && message.pdf_urls.length > 0 ? (
           <div className="mt-2.5 space-y-2">
             <button
               data-testid="pdf-download-all-btn"
-              onClick={() => {
-                message.pdf_urls.forEach((pdfItem, i) => {
+              onClick={async () => {
+                const urls = message.pdf_urls;
+                let blocked = false;
+                urls.forEach((pdfItem, i) => {
                   setTimeout(() => {
                     const link = document.createElement("a");
                     link.href = `${backendUrl}${pdfItem.pdf_url}`;
                     link.download = `${pdfItem.scheme_name.replace(/\s+/g, "_")}_Form.pdf`;
+                    link.style.display = "none";
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
                   }, i * 500);
                 });
+                // Track via Agnost (fire-and-forget)
+                try {
+                  const api = (await import("../lib/api")).default;
+                  api.get(`/download-all?user_id=${message.user_id || ""}`);
+                } catch {}
+                // Zip fallback hint after delay
+                setTimeout(() => {
+                  if (blocked) {
+                    window.location.href = `${backendUrl}/api/download-all-zip?user_id=${message.user_id || ""}`;
+                  }
+                }, urls.length * 600 + 500);
               }}
-              className="w-full flex items-center gap-2 px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
+              className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#FF9933] to-[#FF8000] hover:from-[#FF8800] hover:to-[#E67300] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
             >
-              <FileDown size={16} />
+              <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                <FileDown size={18} />
+              </div>
               <div className="flex-1 text-left">
-                <span className="text-xs font-bold font-['Mukta'] block">
+                <span className="text-sm font-bold font-['Mukta'] block">
                   सभी {message.pdf_urls.length} फॉर्म डाउनलोड करें
                 </span>
-                <span className="text-[10px] opacity-75 font-['Nunito']">
-                  {message.pdf_urls.map(p => p.scheme_name).join(" + ")}
-                </span>
+                <ul className="mt-0.5">
+                  {message.pdf_urls.map((p, i) => (
+                    <li key={i} className="text-[10px] opacity-90 font-['Nunito'] leading-tight">
+                      {i + 1}. {p.scheme_name}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <Download size={14} className="flex-shrink-0" />
+              <Download size={16} className="flex-shrink-0 opacity-80" />
             </button>
             <WhatsAppShareBtn pdfUrl={`${backendUrl}${message.pdf_urls[0].pdf_url}`} schemeName={
               message.pdf_urls.map(p => p.scheme_name).join(", ")
@@ -337,14 +357,16 @@ export const ChatBubble = ({ message }) => {
             <a
               href={`${backendUrl}${message.pdf_url}`}
               data-testid="pdf-download-btn"
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
+              className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#FF9933] to-[#FF8000] hover:from-[#FF8800] hover:to-[#E67300] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
             >
-              <FileDown size={16} />
-              <div>
-                <span className="text-xs font-bold font-['Mukta'] block">PDF डाउनलोड करें</span>
-                <span className="text-[10px] opacity-75 font-['Nunito']">Pre-filled Application Form</span>
+              <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+                <FileDown size={18} />
               </div>
-              <Download size={14} className="ml-auto" />
+              <div>
+                <span className="text-sm font-bold font-['Mukta'] block">PDF डाउनलोड करें</span>
+                <span className="text-[10px] opacity-90 font-['Nunito']">Pre-filled Application Form</span>
+              </div>
+              <Download size={16} className="ml-auto opacity-80" />
             </a>
             <WhatsAppShareBtn pdfUrl={`${backendUrl}${message.pdf_url}`} schemeName={
               message.eligibility_results?.find(r => r.eligible)?.scheme || "Government Scheme"
