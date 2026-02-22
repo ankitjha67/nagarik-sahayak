@@ -298,24 +298,36 @@ export const ChatBubble = ({ message }) => {
           <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line font-['Nunito']">{message.content}</p>
         )}
 
-        {/* PDF Download Buttons — one per eligible scheme */}
+        {/* PDF Download Buttons — download ALL eligible forms at once */}
         {message.pdf_urls && message.pdf_urls.length > 0 ? (
           <div className="mt-2.5 space-y-2">
-            {message.pdf_urls.map((pdfItem, idx) => (
-              <a
-                key={idx}
-                href={`${backendUrl}${pdfItem.pdf_url}`}
-                data-testid={`pdf-download-btn-${idx}`}
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
-              >
-                <FileDown size={16} />
-                <div>
-                  <span className="text-xs font-bold font-['Mukta'] block">{pdfItem.scheme_name}</span>
-                  <span className="text-[10px] opacity-75 font-['Nunito']">Pre-filled Application Form</span>
-                </div>
-                <Download size={14} className="ml-auto" />
-              </a>
-            ))}
+            <button
+              data-testid="pdf-download-all-btn"
+              onClick={() => {
+                message.pdf_urls.forEach((pdfItem, i) => {
+                  setTimeout(() => {
+                    const link = document.createElement("a");
+                    link.href = `${backendUrl}${pdfItem.pdf_url}`;
+                    link.download = `${pdfItem.scheme_name.replace(/\s+/g, "_")}_Form.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }, i * 500);
+                });
+              }}
+              className="w-full flex items-center gap-2 px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
+            >
+              <FileDown size={16} />
+              <div className="flex-1 text-left">
+                <span className="text-xs font-bold font-['Mukta'] block">
+                  सभी {message.pdf_urls.length} फॉर्म डाउनलोड करें
+                </span>
+                <span className="text-[10px] opacity-75 font-['Nunito']">
+                  {message.pdf_urls.map(p => p.scheme_name).join(" + ")}
+                </span>
+              </div>
+              <Download size={14} className="flex-shrink-0" />
+            </button>
             <WhatsAppShareBtn pdfUrl={`${backendUrl}${message.pdf_urls[0].pdf_url}`} schemeName={
               message.pdf_urls.map(p => p.scheme_name).join(", ")
             } />
