@@ -298,7 +298,29 @@ export const ChatBubble = ({ message }) => {
           <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line font-['Nunito']">{message.content}</p>
         )}
 
-        {(hasPdf || isPdfReport) && message.pdf_url && (
+        {/* PDF Download Buttons — one per eligible scheme */}
+        {message.pdf_urls && message.pdf_urls.length > 0 ? (
+          <div className="mt-2.5 space-y-2">
+            {message.pdf_urls.map((pdfItem, idx) => (
+              <a
+                key={idx}
+                href={`${backendUrl}${pdfItem.pdf_url}`}
+                data-testid={`pdf-download-btn-${idx}`}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#000080] hover:bg-[#000066] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
+              >
+                <FileDown size={16} />
+                <div>
+                  <span className="text-xs font-bold font-['Mukta'] block">{pdfItem.scheme_name}</span>
+                  <span className="text-[10px] opacity-75 font-['Nunito']">Pre-filled Application Form</span>
+                </div>
+                <Download size={14} className="ml-auto" />
+              </a>
+            ))}
+            <WhatsAppShareBtn pdfUrl={`${backendUrl}${message.pdf_urls[0].pdf_url}`} schemeName={
+              message.pdf_urls.map(p => p.scheme_name).join(", ")
+            } />
+          </div>
+        ) : (hasPdf || isPdfReport) && message.pdf_url ? (
           <div className="mt-2.5 space-y-2">
             <a
               href={`${backendUrl}${message.pdf_url}`}
@@ -316,7 +338,7 @@ export const ChatBubble = ({ message }) => {
               message.eligibility_results?.find(r => r.eligible)?.scheme || "Government Scheme"
             } />
           </div>
-        )}
+        ) : null}
 
         <div className="flex items-center justify-end gap-1 mt-1">
           <span className="text-[10px] text-gray-400">{formatTime(message.created_at)}</span>
