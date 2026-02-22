@@ -404,18 +404,26 @@ def demo_stage_response(user_id: str = "demo") -> dict:
     from pdf_generator import generate_filled_form_pdf
     t0 = _time.time()
     results = [VIDYASIRI_RESULT, PMKISAN_DEMO_RESULT]
-    pdf_id = str(uuid.uuid4())
-    generate_filled_form_pdf(
-        profile=DEMO_PROFILE,
-        scheme_name="Vidyasiri Scholarship",
-        scheme_criteria="Karnataka resident, passed 10th or equivalent, family income < 1.5 lakh, studying in Karnataka.",
-        output_path=str(PDF_DIR / f"{pdf_id}.pdf"),
-    )
-    pdf_url = f"/api/pdf/{pdf_id}"
+
+    # Generate PDFs for ALL eligible schemes
+    pdf_urls = []
+    demo_schemes = [
+        ("Vidyasiri Scholarship", "Karnataka resident, passed 10th or equivalent, family income < 1.5 lakh, studying in Karnataka."),
+        ("PM-KISAN Samman Nidhi", "Indian farmer, family income < 2 lakh/year, owns cultivable land."),
+    ]
+    for scheme_name, scheme_criteria in demo_schemes:
+        pid = str(uuid.uuid4())
+        generate_filled_form_pdf(
+            profile=DEMO_PROFILE, scheme_name=scheme_name,
+            scheme_criteria=scheme_criteria,
+            output_path=str(PDF_DIR / f"{pid}.pdf"),
+        )
+        pdf_urls.append({"pdf_url": f"/api/pdf/{pid}", "scheme_name": scheme_name})
+
     try:
         if _agnost_key:
             agnost.track(user_id=user_id, agent_name="nagarik_tool", input="mera beta 10th pass hai",
-                output=pdf_url, properties={"tool": "demo_stage", "pdf_id": pdf_id},
+                output=str(len(pdf_urls)), properties={"tool": "demo_stage", "pdf_count": len(pdf_urls)},
                 success=True, latency=int((_time.time() - t0) * 1000))
     except Exception:
         pass
@@ -427,14 +435,16 @@ def demo_stage_response(user_id: str = "demo") -> dict:
         "पात्रता जांच पूरी हुई!\n\n"
         f"[+] विद्यासिरी छात्रवृत्ति: पात्र\n    कारण: {VIDYASIRI_RESULT['reason']}\n    लाभ: {VIDYASIRI_RESULT['benefit']}\n\n"
         f"[+] पीएम-किसान सम्मान निधि: पात्र\n    कारण: {PMKISAN_DEMO_RESULT['reason']}\n    लाभ: {PMKISAN_DEMO_RESULT['benefit']}\n\n"
-        "भरा हुआ आवेदन फॉर्म तैयार है! नीचे डाउनलोड करें।"
+        f"{len(pdf_urls)} भरे हुए आवेदन फॉर्म तैयार हैं! नीचे डाउनलोड करें।"
     )
     return {
         "content": summary,
         "tool_calls": [{"tool_name": "eligibility_matcher", "tool_input": {"profile": DEMO_PROFILE},
             "documents_scanned": ["Vidyasiri Scholarship Guidelines", "PM-KISAN Operational Guidelines"],
             "match_found": True, "results": results}],
-        "type": "profiler_complete", "profiler_field": "", "eligibility_results": results, "pdf_url": pdf_url,
+        "type": "profiler_complete", "profiler_field": "", "eligibility_results": results,
+        "pdf_url": pdf_urls[0]["pdf_url"] if pdf_urls else "",
+        "pdf_urls": pdf_urls,
         "tool_progress": [
             {"step": "reading_pdf", "text_hi": "विद्यासिरी छात्रवृत्ति PDF पढ़ रहे हैं...", "text_en": "Reading Vidyasiri Scholarship PDF..."},
             {"step": "checking_eligibility", "text_hi": "पात्रता मानदंड जांच रहे हैं...", "text_en": "Checking eligibility criteria..."},
