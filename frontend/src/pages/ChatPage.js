@@ -153,18 +153,18 @@ export default function ChatPage({ userId, language = "hi" }) {
       const formData = new FormData();
       formData.append("audio", blob, "recording.webm");
       formData.append("user_id", userId);
+      formData.append("language", sttLang);
 
       const res = await transcribeAudio(formData);
       if (res.data.success) {
         const { user_message, bot_message } = res.data;
         setMessages((prev) => [...prev, user_message, bot_message]);
 
-        const hi = res.data.transcript_hi || "";
-        const en = res.data.transcript_en || "";
-        if (hi || en) {
-          toast.success("Transcribed via Sarvam Saaras v3");
+        const isMock = res.data.is_mock;
+        if (isMock) {
+          toast.info("Demo mode — mock transcript used");
         } else {
-          toast.warning("No speech detected");
+          toast.success(`Sarvam Saaras v3 (${sttLang === "hi" ? "हिंदी" : "English"})`);
         }
       } else {
         toast.error("Transcription failed");
