@@ -256,13 +256,14 @@ async def profiler_agent_respond(user_id: str, content: str) -> Optional[dict]:
             # Step 2: eligibility_matcher_prisma
             matcher_result = await eligibility_matcher_prisma(user_id)
 
-            # Step 3: Generate filled form for first eligible scheme
-            pdf_url = ""
+            # Step 3: Generate filled forms for ALL eligible schemes
+            pdf_urls = []
             eligible_results = [r for r in matcher_result.get("results", []) if r["eligible"]]
-            if eligible_results and eligible_results[0].get("scheme_id"):
-                form_result = await generate_filled_form(user_id, eligible_results[0]["scheme_id"])
-                if form_result.get("success"):
-                    pdf_url = form_result["pdf_url"]
+            for er in eligible_results:
+                if er.get("scheme_id"):
+                    form_result = await generate_filled_form(user_id, er["scheme_id"])
+                    if form_result.get("success"):
+                        pdf_urls.append({"pdf_url": form_result["pdf_url"], "scheme_name": er["scheme"]})
 
             # Build Hindi reply with progress steps
             reply = "प्रोफाइल पूरी हो गई!\n\n"
@@ -276,8 +277,8 @@ async def profiler_agent_respond(user_id: str, content: str) -> Optional[dict]:
                 if r["eligible"] and r.get("benefit"):
                     reply += f"    लाभ: {r['benefit']}\n"
                 reply += "\n"
-            if pdf_url:
-                reply += "भरा हुआ आवेदन फॉर्म तैयार है! नीचे डाउनलोड करें।"
+            if pdf_urls:
+                reply += f"{len(pdf_urls)} भरे हुए आवेदन फॉर्म तैयार हैं! नीचे डाउनलोड करें।"
 
             # Tool progress steps for frontend streaming bullets
             tool_progress = [
