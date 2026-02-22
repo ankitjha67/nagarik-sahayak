@@ -134,8 +134,9 @@ export default function ChatPage({ userId, language = "hi" }) {
           mediaRecorderRef.current.stop();
         }
       }, RECORD_DURATION * 1000);
-    } catch {
-      toast.error("Microphone access denied");
+    } catch (err) {
+      setMicBlocked(true);
+      toast.error("माइक्रोफोन उपलब्ध नहीं है। कृपया टाइप करके भेजें।", { duration: 4000 });
     }
   }, [isRecording, loading]);
 
