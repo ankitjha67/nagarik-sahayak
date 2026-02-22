@@ -42,9 +42,13 @@ Build a full-stack, mobile-first chat application called 'Nagarik Sahayak' - a W
 2. Vidyasiri Scholarship
 3. Vidya Lakshmi Education Loan
 
-## Mocked Components
-- Authentication (static OTP 1234)
-- Speech-to-Text (hardcoded mock, Sarvam AI ready)
+### Sarvam AI STT Integration (COMPLETED Feb 2026)
+- Sarvam Saaras v3 model for speech-to-text
+- Supports Hindi and English — user toggles via "हि"/"EN" button in input bar
+- Language preference persisted in localStorage
+- Mock fallback when Sarvam returns empty transcript (silence)
+- Both Hindi and English transcripts shown in chat bubble
+- Agnost tracking for STT calls
 
 ### UX Features (COMPLETED Feb 2026)
 - Paperclip PDF upload button (left of mic, accepts .pdf only, max 10MB)
