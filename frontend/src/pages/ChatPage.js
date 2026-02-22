@@ -292,16 +292,14 @@ export default function ChatPage({ userId, language = "hi" }) {
             data-testid="chat-mic-btn"
             onClick={isRecording ? stopRecording : startRecording}
             disabled={loading && !isRecording}
-            title={micBlocked ? "माइक्रोफोन उपलब्ध नहीं — टाइप करें" : "बोलकर पूछें"}
+            title={isRecording ? "रिकॉर्डिंग बंद करें" : "बोलकर पूछें"}
             className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
               isRecording
                 ? "bg-red-500 text-white recording-pulse"
-                : micBlocked
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-[#FFF0E0] text-[#FF9933] hover:bg-[#FFE0C0] active:scale-95"
+                : "bg-[#FFF0E0] text-[#FF9933] hover:bg-[#FFE0C0] active:scale-95"
             }`}
           >
-            {isRecording ? <MicOff size={18} /> : micBlocked ? <MicOff size={18} /> : <Mic size={18} />}
+            {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
             {isRecording && recordCountdown > 0 && (
               <span
                 data-testid="mic-countdown"
