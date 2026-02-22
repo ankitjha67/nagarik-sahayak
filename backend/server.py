@@ -938,6 +938,7 @@ async def send_chat_message(req: ChatMessageRequest):
             "profiler_field": profiler_result.get("profiler_field", ""),
             "eligibility_results": profiler_result.get("eligibility_results", []),
             "pdf_url": profiler_result.get("pdf_url", ""),
+            "pdf_urls": profiler_result.get("pdf_urls", []),
             "tool_progress": profiler_result.get("tool_progress", []),
         }
         await save_chat_prisma(req.user_id, bot_msg, "agent")
