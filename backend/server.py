@@ -299,7 +299,8 @@ async def profiler_agent_respond(user_id: str, content: str) -> Optional[dict]:
                 "type": "profiler_complete",
                 "profiler_field": "",
                 "eligibility_results": matcher_result.get("results", []),
-                "pdf_url": pdf_url,
+                "pdf_url": pdf_urls[0]["pdf_url"] if pdf_urls else "",
+                "pdf_urls": pdf_urls,
                 "tool_progress": tool_progress,
             }
         else:
