@@ -1197,44 +1197,42 @@ async def demo_toggle():
 
 # --- Download All PDFs ---
 
-class DownloadAllRequest(BaseModel):
-    pdf_urls: list = []
-    user_id: str = ""
-
-@api_router.post("/download-all")
-async def download_all_pdfs(req: DownloadAllRequest):
-    """Track multi-PDF download event via Agnost."""
+@api_router.get("/download-all")
+async def download_all_pdfs(user_id: str = "", count: int = 0):
+    """Track multi-PDF download event via Agnost (GET for browser compatibility)."""
     if _agnost_key:
         try:
-            agnost.track(user_id=req.user_id or "api", agent_name="nagarik_tool",
-                input="multi_pdf_download", output=str(len(req.pdf_urls)),
-                properties={"tool": "multi_pdf_download", "scheme_count": len(req.pdf_urls), "user_id": req.user_id},
+            agnost.track(user_id=user_id or "api", agent_name="nagarik_tool",
+                input="multi_pdf_download_success", output=str(count),
+                properties={"tool": "multi_pdf_download", "scheme_count": count, "user_id": user_id},
                 success=True, latency=0)
         except Exception:
             pass
-    return {"tracked": True, "count": len(req.pdf_urls)}
+    return {"tracked": True, "count": count}
 
 
-@api_router.post("/download-all-zip")
-async def download_all_zip(req: DownloadAllRequest):
-    """Generate a zip bundle of PDFs from provided URLs."""
+@api_router.get("/download-all-zip")
+async def download_all_zip(pdf_ids: str = "", user_id: str = ""):
+    """Generate a zip bundle of PDFs. pdf_ids = comma-separated PDF file IDs."""
     import zipfile as zf
+    if not pdf_ids:
+        raise HTTPException(status_code=400, detail="No pdf_ids provided")
+    ids = [x.strip() for x in pdf_ids.split(",") if x.strip()]
     zip_id = str(uuid.uuid4())
     zip_path = PDF_DIR / f"{zip_id}.zip"
     count = 0
     with zf.ZipFile(zip_path, "w", zf.ZIP_DEFLATED) as z:
-        for item in req.pdf_urls:
-            pdf_url = item.get("pdf_url", "") if isinstance(item, dict) else str(item)
-            scheme_name = item.get("scheme_name", f"Scheme_{count}") if isinstance(item, dict) else f"Scheme_{count}"
-            pdf_id = pdf_url.split("/")[-1]
-            pdf_file = PDF_DIR / f"{pdf_id}.pdf"
+        for pdf_id in ids:
+            clean_id = pdf_id.replace(".pdf", "")
+            pdf_file = PDF_DIR / f"{clean_id}.pdf"
             if pdf_file.exists():
-                safe_name = scheme_name.replace(" ", "_")
-                z.write(pdf_file, f"{safe_name}_Form.pdf")
+                z.write(pdf_file, f"Form_{count + 1}.pdf")
                 count += 1
+    if count == 0:
+        raise HTTPException(status_code=404, detail="No PDFs found for given IDs")
     if _agnost_key:
         try:
-            agnost.track(user_id=req.user_id or "api", agent_name="nagarik_tool",
+            agnost.track(user_id=user_id or "api", agent_name="nagarik_tool",
                 input="download_all_zip", output=str(count),
                 properties={"tool": "multi_pdf_download", "scheme_count": count, "format": "zip"},
                 success=True, latency=0)
