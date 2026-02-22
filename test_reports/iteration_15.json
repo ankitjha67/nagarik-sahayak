@@ -1,0 +1,86 @@
+{
+  "summary": "Iteration 15: 405 Method Not Allowed bug fix verified. GET /api/download-all and GET /api/download-all-zip endpoints now work correctly. Backend: 9/9 tests passed. Frontend: All features verified via Playwright - green download button, loading state, completion state, no 405 errors.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "BACKEND: GET /api/download-all?user_id=test&count=2 returns 200 with {tracked: true}",
+    "BACKEND: GET /api/download-all returns count parameter in response",
+    "BACKEND: GET /api/download-all-zip without pdf_ids returns 400",
+    "BACKEND: GET /api/download-all-zip with nonexistent IDs returns 404",
+    "BACKEND: GET /api/download-all-zip with valid IDs returns application/zip",
+    "BACKEND: GET /api/pdf/{uuid} returns 200 for valid PDF",
+    "BACKEND: GET /api/pdf/{uuid} returns 404 for nonexistent PDF",
+    "BACKEND: POST /api/chat 'scholarship' trigger returns pdf_urls array with 2 items (Vidyasiri + PM-KISAN)",
+    "BACKEND: pdf_urls contains pdf_url and scheme_name for each PDF",
+    "FRONTEND: Login with phone 9876543210 and OTP 1234 works",
+    "FRONTEND: Sending 'scholarship' in DEMO_MODE returns response with 2 eligible schemes",
+    "FRONTEND: Green download button appears with data-testid='pdf-download-all-btn'",
+    "FRONTEND: Button text shows 'सभी 2 फॉर्म डाउनलोड करें' with scheme names listed",
+    "FRONTEND: Clicking download button triggers download (no 405 error)",
+    "FRONTEND: Button shows completion state 'डाउनलोड पूर्ण!' after download",
+    "FRONTEND: No 405 Method Not Allowed errors in console",
+    "FRONTEND: No network request failures during download"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_download_405_fix.py",
+    "/app/test_reports/pytest/download_405_fix_results.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "405 fix confirmed: /api/download-all and /api/download-all-zip now accept GET requests (previously POST-only)",
+    "Frontend MultiPdfDownloadBlock uses fetch() to get blobs and createObjectURL for downloads",
+    "Fallback to zip download implemented if individual downloads fail",
+    "Green button (#16a34a) styling correctly applied",
+    "Loading spinner and completion state working correctly"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_download_405_fix.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (9/9 tests passed)",
+    "frontend": "100% (All 7 features verified)"
+  },
+
+  "test_credentials": {
+    "phone": "9876543210",
+    "otp": "1234",
+    "demo_trigger": "scholarship"
+  },
+
+  "seed_data_creation": "Demo mode generates 2 PDFs (Vidyasiri Scholarship + PM-KISAN) when 'scholarship' is sent",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "405 bug fix verified in iteration 15. The root cause was backend endpoints /api/download-all and /api/download-all-zip were POST-only but frontend called them with GET. Now both are GET endpoints. Frontend uses fetch+blob approach for downloads with zip fallback. Green button (#16a34a) shows loading spinner during download and 'डाउनलोड पूर्ण!' on completion.",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "POST /api/auth/verify-otp - Static OTP 1234",
+      "DEMO_MODE=true - 'scholarship' triggers demo response with 2 PDFs"
+    ]
+  },
+
+  "bug_fix_verification": {
+    "original_issue": "405 Method Not Allowed when clicking multi-PDF download button",
+    "root_cause": "Backend endpoints /api/download-all and /api/download-all-zip were POST-only, frontend called with GET",
+    "fix_applied": "Changed both endpoints to GET method",
+    "verification": "All tests pass - no 405 errors in console, download completes successfully"
+  }
+}
