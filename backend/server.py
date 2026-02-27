@@ -1295,6 +1295,61 @@ async def reset_chat(req: dict = {}):
     return {"success": True, "message": "Chat reset. Profile cleared."}
 
 
+# --- V2.0: Form Extraction Engine ---
+
+@api_router.post("/v2/extract-form-fields")
+async def api_extract_form_fields(req: dict = {}):
+    """Extract form fields from a PDF URL or uploaded file using Claude Sonnet 4.5."""
+    from form_extractor import extract_form_fields
+    pdf_url = req.get("pdf_url", "")
+    scheme_hint = req.get("scheme_hint", "")
+    if not pdf_url:
+        raise HTTPException(status_code=400, detail="pdf_url is required")
+
+    t0 = _time.time()
+    result = await extract_form_fields(pdf_url=pdf_url, scheme_hint=scheme_hint)
+
+    if "error" in result:
+        if _agnost_key:
+            try:
+                agnost.track(user_id="system", agent_name="nagarik_tool",
+                    input="extract_form_fields", output=result["error"],
+                    properties={"tool": "form_extractor", "pdf_url": pdf_url},
+                    success=False, latency=int((_time.time() - t0) * 1000))
+            except Exception:
+                pass
+        raise HTTPException(status_code=422, detail=result["error"])
+
+    # Optionally save to FormTemplate collection
+    if result.get("schemeName") and req.get("save_to_db", False):
+        from prisma import Json
+        existing = await prisma.formtemplate.find_first(where={"schemeName": result["schemeName"]})
+        data = {
+            "schemeName": result["schemeName"],
+            "schemeNameHindi": result.get("schemeNameHindi", ""),
+            "officialPdfUrl": pdf_url,
+            "category": result.get("category", "general"),
+            "totalFields": result.get("totalFields", len(result.get("extractedFields", []))),
+            "extractedFields": Json(result.get("extractedFields", [])),
+            "sections": Json(result.get("sections", [])),
+        }
+        if existing:
+            await prisma.formtemplate.update(where={"id": existing.id}, data=data)
+        else:
+            await prisma.formtemplate.create(data=data)
+
+    if _agnost_key:
+        try:
+            agnost.track(user_id="system", agent_name="nagarik_tool",
+                input="extract_form_fields", output=str(result.get("totalFields", 0)),
+                properties={"tool": "form_extractor", "scheme": result.get("schemeName", ""), "fields": result.get("totalFields", 0)},
+                success=True, latency=int((_time.time() - t0) * 1000))
+        except Exception:
+            pass
+
+    return result
+
+
 # --- V2.0: Schemes & FormTemplates API ---
 
 @api_router.get("/v2/schemes")
