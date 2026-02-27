@@ -10,21 +10,46 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(auto()) @map("_id") @db.ObjectId
-  phone        String        @unique
-  language     String        @default("hi")
-  profile      Json?
-  createdAt    DateTime      @default(now())
-  chatLogs     ChatLog[]
-  applications Application[]
+  id                 String        @id @default(auto()) @map("_id") @db.ObjectId
+  phone              String        @unique
+  language           String        @default("hi")
+  profile            Json?
+  fullProfile        Json?
+  profileLastUpdated DateTime?
+  schemeHistory      Json?
+  createdAt          DateTime      @default(now())
+  chatLogs           ChatLog[]
+  applications       Application[]
 }
 
 model Scheme {
   id                      String        @id @default(auto()) @map("_id") @db.ObjectId
-  name                    String
+  name                    String        @unique
+  nameHindi               String        @default("")
+  category                String        @default("general")
   eligibilityCriteriaText String
+  description             String        @default("")
+  descriptionHindi        String        @default("")
+  officialWebsite         String        @default("")
   pdfUrl                  String
   applications            Application[]
+}
+
+model FormTemplate {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  schemeName         String   @unique
+  schemeNameHindi    String   @default("")
+  officialPdfUrl     String
+  officialWebsite    String   @default("")
+  description        String   @default("")
+  descriptionHindi   String   @default("")
+  category           String   @default("general")
+  extractedFields    Json
+  eligibilityCriteria Json?
+  totalFields        Int      @default(0)
+  sections           Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 model ChatLog {
@@ -37,11 +62,14 @@ model ChatLog {
 }
 
 model Application {
-  id       String  @id @default(auto()) @map("_id") @db.ObjectId
-  userId   String  @db.ObjectId
-  schemeId String  @db.ObjectId
-  status   String
-  formUrl  String?
-  user     User    @relation(fields: [userId], references: [id])
-  scheme   Scheme  @relation(fields: [schemeId], references: [id])
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @db.ObjectId
+  schemeId     String    @db.ObjectId
+  status       String    @default("pending")
+  formUrl      String?
+  filledFields Json?
+  downloadedAt DateTime?
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id])
+  scheme       Scheme    @relation(fields: [schemeId], references: [id])
 }
