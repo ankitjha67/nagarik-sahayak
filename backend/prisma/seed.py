@@ -285,12 +285,20 @@ async def main():
     # ── Seed FormTemplates ──
     print("Seeding FormTemplates...")
     for ft in FORM_TEMPLATES:
+        # Wrap Json fields for Prisma
+        data = {**ft}
+        data["extractedFields"] = Json(ft["extractedFields"])
+        if ft.get("sections"):
+            data["sections"] = Json(ft["sections"])
+        if ft.get("eligibilityCriteria"):
+            data["eligibilityCriteria"] = Json(ft["eligibilityCriteria"])
+
         existing = await db.formtemplate.find_first(where={"schemeName": ft["schemeName"]})
         if existing:
-            await db.formtemplate.update(where={"id": existing.id}, data=ft)
+            await db.formtemplate.update(where={"id": existing.id}, data=data)
             print(f"  Updated: {ft['schemeName']} ({ft['totalFields']} fields)")
         else:
-            await db.formtemplate.create(data=ft)
+            await db.formtemplate.create(data=data)
             print(f"  Created: {ft['schemeName']} ({ft['totalFields']} fields)")
     ft_count = await db.formtemplate.count()
     print(f"FormTemplate table: {ft_count} records\n")
