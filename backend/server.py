@@ -1295,6 +1295,115 @@ async def reset_chat(req: dict = {}):
     return {"success": True, "message": "Chat reset. Profile cleared."}
 
 
+# --- V2.0: Schemes & FormTemplates API ---
+
+@api_router.get("/v2/schemes")
+async def get_all_schemes_v2():
+    """Return all 4 real schemes with metadata."""
+    schemes = await prisma.scheme.find_many()
+    result = []
+    for s in schemes:
+        result.append({
+            "id": s.id,
+            "name": s.name,
+            "nameHindi": s.nameHindi,
+            "category": s.category,
+            "description": s.description,
+            "descriptionHindi": s.descriptionHindi,
+            "officialWebsite": s.officialWebsite,
+            "eligibilityCriteriaText": s.eligibilityCriteriaText,
+        })
+    return {"schemes": result, "count": len(result)}
+
+
+@api_router.get("/v2/form-template/{scheme_name}")
+async def get_form_template(scheme_name: str):
+    """Return the full form template with all extracted fields for a scheme."""
+    ft = await prisma.formtemplate.find_first(where={"schemeName": scheme_name})
+    if not ft:
+        raise HTTPException(status_code=404, detail=f"Form template not found for: {scheme_name}")
+    fields = ft.extractedFields if isinstance(ft.extractedFields, list) else json.loads(ft.extractedFields) if isinstance(ft.extractedFields, str) else []
+    sections = ft.sections if isinstance(ft.sections, list) else json.loads(ft.sections) if isinstance(ft.sections, str) else []
+    eligibility = ft.eligibilityCriteria if isinstance(ft.eligibilityCriteria, dict) else json.loads(ft.eligibilityCriteria) if isinstance(ft.eligibilityCriteria, str) else {}
+    return {
+        "id": ft.id,
+        "schemeName": ft.schemeName,
+        "schemeNameHindi": ft.schemeNameHindi,
+        "officialPdfUrl": ft.officialPdfUrl,
+        "officialWebsite": ft.officialWebsite,
+        "description": ft.description,
+        "descriptionHindi": ft.descriptionHindi,
+        "category": ft.category,
+        "totalFields": ft.totalFields,
+        "sections": sections,
+        "eligibilityCriteria": eligibility,
+        "extractedFields": fields,
+    }
+
+
+@api_router.get("/v2/form-templates")
+async def get_all_form_templates():
+    """Return summary of all form templates."""
+    templates = await prisma.formtemplate.find_many()
+    result = []
+    for ft in templates:
+        result.append({
+            "id": ft.id,
+            "schemeName": ft.schemeName,
+            "schemeNameHindi": ft.schemeNameHindi,
+            "category": ft.category,
+            "totalFields": ft.totalFields,
+            "description": ft.description,
+            "descriptionHindi": ft.descriptionHindi,
+        })
+    return {"templates": result, "count": len(result)}
+
+
+@api_router.get("/v2/user-profile/{user_id}")
+async def get_user_full_profile(user_id: str):
+    """Return persistent full profile for a user."""
+    try:
+        user = await prisma.user.find_unique(where={"id": user_id})
+    except Exception:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    full_profile = {}
+    if user.fullProfile:
+        full_profile = user.fullProfile if isinstance(user.fullProfile, dict) else json.loads(user.fullProfile) if isinstance(user.fullProfile, str) else {}
+    return {
+        "user_id": user.id,
+        "phone": user.phone,
+        "fullProfile": full_profile,
+        "profileLastUpdated": user.profileLastUpdated.isoformat() if user.profileLastUpdated else None,
+        "schemeHistory": user.schemeHistory if isinstance(user.schemeHistory, list) else json.loads(user.schemeHistory) if isinstance(user.schemeHistory, str) and user.schemeHistory else [],
+    }
+
+
+@api_router.post("/v2/user-profile/{user_id}")
+async def update_user_full_profile(user_id: str, req: dict = {}):
+    """Update persistent full profile with new field values. Merges, never overwrites."""
+    fields = req.get("fields", {})
+    if not fields:
+        raise HTTPException(status_code=400, detail="No fields provided")
+    try:
+        user = await prisma.user.find_unique(where={"id": user_id})
+    except Exception:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    existing = {}
+    if user.fullProfile:
+        existing = user.fullProfile if isinstance(user.fullProfile, dict) else json.loads(user.fullProfile) if isinstance(user.fullProfile, str) else {}
+    existing.update(fields)
+    from prisma import Json
+    await prisma.user.update(where={"id": user_id}, data={
+        "fullProfile": Json(existing),
+        "profileLastUpdated": datetime.now(timezone.utc),
+    })
+    return {"success": True, "fullProfile": existing, "fieldsUpdated": list(fields.keys())}
+
+
 # --- Mount ---
 
 app.include_router(api_router)
