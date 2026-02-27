@@ -4,6 +4,8 @@ import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
 import { ChatBubble, TypingIndicator, ToolProgressIndicator } from "../components/ChatBubble";
+import { SchemeSelector } from "../components/SchemeSelector";
+import { SmartProfiler } from "../components/SmartProfiler";
 import { sendMessage, getChatHistory, transcribeAudio, uploadPdf, resetChat } from "../lib/api";
 import { toast } from "sonner";
 import { SendHorizontal, Mic, MicOff, Loader2, Paperclip } from "lucide-react";
