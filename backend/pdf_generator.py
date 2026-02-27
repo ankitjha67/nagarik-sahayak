@@ -340,3 +340,155 @@ def generate_filled_form_pdf(
 
     pdf.output(output_path)
     return output_path
+
+
+
+def generate_real_filled_form_pdf(
+    filled_fields: dict,
+    scheme_name: str,
+    scheme_name_hindi: str = "",
+    sections: list = None,
+    form_fields: list = None,
+    output_path: str = "/tmp/filled_form.pdf",
+) -> str:
+    """Generate a production-grade pre-filled application form PDF with all real fields."""
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+
+    pdf.add_font("NS", "", str(FONTS_DIR / "NotoSans-Regular.ttf"))
+    pdf.add_font("NS", "B", str(FONTS_DIR / "NotoSans-Bold.ttf"))
+    pdf.add_font("NH", "", str(FONTS_DIR / "NotoSansDevanagari-Regular.ttf"))
+
+    pdf.add_page()
+
+    # === HEADER BAR ===
+    pdf.set_fill_color(255, 153, 51)
+    pdf.rect(0, 0, 210, 20, "F")
+    pdf.set_fill_color(19, 136, 8)
+    pdf.rect(0, 20, 210, 2, "F")
+
+    pdf.set_y(3)
+    pdf.set_font("NS", "B", 14)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(0, 8, "Nagarik Sahayak", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("NS", size=8)
+    pdf.cell(0, 5, "Digital India Initiative", align="C", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.set_y(24)
+    pdf.set_font("NS", "B", 12)
+    pdf.set_text_color(0, 0, 128)
+    pdf.cell(0, 7, "PRE-FILLED APPLICATION FORM", align="C", new_x="LMARGIN", new_y="NEXT")
+
+    display_name = scheme_name
+    if scheme_name_hindi:
+        display_name = f"{scheme_name} / {scheme_name_hindi}"
+    pdf.set_font("NS", "B", 10)
+    pdf.set_text_color(0, 0, 128)
+    pdf.cell(0, 6, display_name, align="C", new_x="LMARGIN", new_y="NEXT")
+
+    now = datetime.now(timezone.utc)
+    date_str = now.strftime("%d/%m/%Y")
+    ref_id = now.strftime("%Y%m%d%H%M%S")
+    pdf.set_font("NS", size=7)
+    pdf.set_text_color(120, 120, 120)
+    pdf.cell(0, 5, f"Ref: NS-{ref_id}  |  Date: {date_str}", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    if not form_fields:
+        form_fields = []
+    if not sections:
+        sections = [{"name": "Application Details", "nameHindi": ""}]
+
+    section_fields = {}
+    for f in form_fields:
+        sec = f.get("section", "Other")
+        section_fields.setdefault(sec, []).append(f)
+
+    for sec in sections:
+        sec_name = sec.get("name", "")
+        sec_hindi = sec.get("nameHindi", "")
+        fields_in_sec = section_fields.get(sec_name, [])
+        if not fields_in_sec:
+            continue
+
+        header_text = f"  {sec_name}"
+        if sec_hindi:
+            header_text += f" / {sec_hindi}"
+        pdf.set_fill_color(240, 240, 248)
+        pdf.set_draw_color(0, 0, 128)
+        pdf.set_font("NS", "B", 10)
+        pdf.set_text_color(0, 0, 128)
+        pdf.cell(0, 7, header_text, fill=True, new_x="LMARGIN", new_y="NEXT", border="B")
+        pdf.ln(3)
+
+        for field in fields_in_sec:
+            pk = field.get("profileKey", field.get("fieldName", ""))
+            value = filled_fields.get(pk, "")
+            if value == "" or value is None:
+                value = "_______________"
+            else:
+                value = str(value)
+
+            label_en = field.get("labelEnglish", "")
+            label_hi = field.get("labelHindi", "")
+            label = label_en
+            if label_hi:
+                label = f"{label_hi} / {label_en}"
+            if field.get("required", False):
+                label += " *"
+
+            pdf.set_font("NS", "B", 8)
+            pdf.set_text_color(80, 80, 80)
+            pdf.cell(80, 7, label[:55])
+
+            pdf.set_font("NS", size=9)
+            pdf.set_text_color(30, 30, 30)
+            pdf.set_fill_color(255, 255, 255)
+            pdf.set_draw_color(180, 180, 200)
+            pdf.cell(0, 7, f"  {value[:60]}", border=1, fill=True, new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(1)
+
+        pdf.ln(3)
+
+    # Declaration
+    pdf.set_fill_color(240, 240, 248)
+    pdf.set_draw_color(0, 0, 128)
+    pdf.set_font("NS", "B", 10)
+    pdf.set_text_color(0, 0, 128)
+    pdf.cell(0, 7, "  Declaration / Ghoshana", fill=True, new_x="LMARGIN", new_y="NEXT", border="B")
+    pdf.ln(3)
+
+    pdf.set_font("NS", size=8)
+    pdf.set_text_color(60, 60, 60)
+    pdf.multi_cell(0, 4, (
+        "I hereby declare that the information provided above is true and correct "
+        "to the best of my knowledge and belief. I understand that any false statement "
+        "may lead to rejection of my application and/or legal action.\n\n"
+        "Main yeh ghoshana karta/karti hoon ki upar di gayi sabhi jaankari meri jaankari "
+        "ke anusaar sahi aur satya hai."
+    ))
+    pdf.ln(6)
+
+    pdf.set_font("NS", "B", 8)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(90, 5, "Signature / Hastakshar:")
+    pdf.cell(0, 5, f"Date / Tithi: {date_str}", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_draw_color(100, 100, 100)
+    pdf.line(10, pdf.get_y() + 12, 80, pdf.get_y() + 12)
+    pdf.line(120, pdf.get_y() + 12, 200, pdf.get_y() + 12)
+    pdf.set_y(pdf.get_y() + 18)
+
+    # Footer
+    pdf.set_draw_color(200, 200, 200)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(2)
+    pdf.set_font("NS", size=6)
+    pdf.set_text_color(150, 150, 150)
+    pdf.multi_cell(0, 3, (
+        "This is an auto-generated application form by Nagarik Sahayak. "
+        "Submit with required documents at your nearest CSC or government office.\n"
+        "Generated by Nagarik Sahayak | Digital India Initiative"
+    ), align="C")
+
+    pdf.output(output_path)
+    return output_path
