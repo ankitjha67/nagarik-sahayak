@@ -238,25 +238,102 @@ export default function ChatPage({ userId, language = "hi" }) {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 max-w-md mx-auto w-full pb-36">
-        {messages.length === 0 && !initialLoad && (
-          <div className="text-center py-12 animate-fade-in-up">
-            <div className="w-16 h-16 rounded-full bg-[#FFF0E0] flex items-center justify-center mx-auto mb-4">
-              <Mic size={28} className="text-[#FF9933]" />
+        {/* V2 Flow: Scheme Selection (shown when no messages and idle) */}
+        {messages.length === 0 && !initialLoad && v2Mode === "idle" && (
+          <div className="animate-fade-in-up">
+            <div className="text-center py-4 mb-2">
+              <img
+                src="/logo.png"
+                alt="Nagarik Sahayak"
+                className="w-14 h-14 mx-auto mb-2 rounded-xl"
+                onError={(e) => { e.target.style.display = "none"; }}
+              />
+              <h3 className="text-base font-bold text-[#000080] font-['Mukta']">
+                नमस्ते! नागरिक सहायक में आपका स्वागत है
+              </h3>
+              <p className="text-xs text-gray-400 font-['Nunito'] mt-1">
+                सरकारी योजनाओं के लिए आवेदन फॉर्म भरने में सहायता
+              </p>
             </div>
-            <h3 className="text-lg font-bold text-[#000080] font-['Mukta'] mb-1">
-              बातचीत शुरू करें
-            </h3>
-            <p className="text-sm text-gray-400 font-['Nunito']">
-              Type or tap mic to record 5s voice
-            </p>
+            <SchemeSelector
+              userId={userId}
+              onSchemesSelected={(schemes) => {
+                setSelectedSchemes(schemes);
+                setV2Mode("profiling");
+                // Add system message
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: `sys-${Date.now()}`,
+                    role: "assistant",
+                    content: `आपने ${schemes.length} योजना(एं) चुनी हैं:\n${schemes.map((s, i) => `${i + 1}. ${s}`).join("\n")}\n\nअब हम आपकी प्रोफ़ाइल पूरी करेंगे। कृपया नीचे दिए गए सवालों का जवाब दें।`,
+                    created_at: new Date().toISOString(),
+                  },
+                ]);
+              }}
+            />
+            {/* Legacy chat option */}
+            <div className="text-center mt-4 pt-3 border-t border-gray-100">
+              <p className="text-[10px] text-gray-400 font-['Nunito'] mb-1">या बातचीत से शुरू करें</p>
+              <button
+                data-testid="start-chat-btn"
+                onClick={async () => {
+                  setV2Mode("chat");
+                  setLoading(true);
+                  try {
+                    const res = await sendMessage(userId, "namaste", language);
+                    setMessages([res.data.user_message, res.data.bot_message]);
+                  } catch {}
+                  setLoading(false);
+                }}
+                className="text-xs text-[#000080] font-bold font-['Mukta'] hover:underline"
+              >
+                बातचीत शुरू करें
+              </button>
+            </div>
           </div>
         )}
 
-        <div className="space-y-3 stagger-children">
-          {messages.map((msg) => (
-            <ChatBubble key={msg.id} message={msg} />
-          ))}
-        </div>
+        {/* V2 Smart Profiler */}
+        {v2Mode === "profiling" && (
+          <div className="mb-4">
+            <div className="space-y-3 stagger-children">
+              {messages.map((msg) => (
+                <ChatBubble key={msg.id} message={msg} />
+              ))}
+            </div>
+            <div className="mt-3">
+              <SmartProfiler
+                userId={userId}
+                schemeNames={selectedSchemes}
+                onMessage={(msg) => setMessages((prev) => [...prev, { ...msg, id: `p-${Date.now()}-${Math.random()}` }])}
+                onComplete={(data) => {
+                  setV2Mode("complete");
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: `done-${Date.now()}`,
+                      role: "assistant",
+                      content: `${data.count} आवेदन फॉर्म सफलतापूर्वक तैयार हो गए! ऊपर डाउनलोड बटन से डाउनलोड करें।`,
+                      created_at: new Date().toISOString(),
+                      pdf_urls: data.pdf_urls,
+                      user_id: userId,
+                    },
+                  ]);
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Regular chat messages (legacy or v2 complete) */}
+        {(v2Mode === "chat" || v2Mode === "complete") && (
+          <div className="space-y-3 stagger-children">
+            {messages.map((msg) => (
+              <ChatBubble key={msg.id} message={msg} />
+            ))}
+          </div>
+        )}
 
         {loading && <ToolProgressIndicator />}
         <div ref={messagesEndRef} />
