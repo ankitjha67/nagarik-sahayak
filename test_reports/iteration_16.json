@@ -1,0 +1,109 @@
+{
+  "summary": "Nagarik Sahayak v2.0 - All V2 API endpoints and frontend features verified. Backend: 28/28 tests passed. Frontend: All 13 requested features verified via Playwright.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "BACKEND: GET /api/v2/schemes returns 4 schemes (PMAY-U, Vidyasiri, Startup India Seed Fund, PM-KISAN)",
+    "BACKEND: All 4 schemes have correct categories (housing, education, startup, agriculture)",
+    "BACKEND: GET /api/v2/form-templates returns 4 templates with correct totalFields",
+    "BACKEND: PMAY-U template has 22 fields",
+    "BACKEND: Vidyasiri template has 20 fields",
+    "BACKEND: Startup India Seed Fund template has 21 fields",
+    "BACKEND: PM-KISAN template has 19 fields",
+    "BACKEND: GET /api/v2/form-template/PM-KISAN%20Samman%20Nidhi returns 19 extractedFields and 5 sections",
+    "BACKEND: Form template fields have labelHindi, labelEnglish, profileKey, required properties",
+    "BACKEND: Nonexistent form template returns 404",
+    "BACKEND: POST /api/v2/user-profile/{user_id} saves profile fields correctly",
+    "BACKEND: GET /api/v2/user-profile/{user_id} returns saved fullProfile",
+    "BACKEND: Profile update merges fields (doesn't overwrite existing)",
+    "BACKEND: Invalid user_id returns 404",
+    "BACKEND: POST /api/v2/smart-profiler returns filledCount, missingCount, totalFields, progress",
+    "BACKEND: Smart profiler returns nextQuestion with questionHindi and profileKey",
+    "BACKEND: Smart profiler works with multiple schemes (fields deduplicated)",
+    "BACKEND: POST /api/v2/generate-filled-forms returns pdf_urls array",
+    "BACKEND: PDF URL format is correct (/api/pdf/{uuid})",
+    "BACKEND: GET /api/pdf/{uuid} downloads generated PDF with application/pdf content-type",
+    "BACKEND: Invalid PDF UUID returns 404",
+    "FRONTEND: Login flow with phone 9876543210 and OTP 1234 works",
+    "FRONTEND: Chat page shows SchemeSelector when no messages and v2Mode is idle",
+    "FRONTEND: All 4 scheme cards visible (housing, education, startup, agriculture)",
+    "FRONTEND: Selecting scheme shows Proceed button",
+    "FRONTEND: Clicking Proceed transitions to SmartProfiler mode (profiling)",
+    "FRONTEND: SmartProfiler shows progress bar (0/19 0%)",
+    "FRONTEND: SmartProfiler shows current question in Hindi ('कृपया बताएं: किसान का नाम')",
+    "FRONTEND: SmartProfiler shows section name (FARMER DETAILS)",
+    "FRONTEND: SmartProfiler shows submit button ('आगे बढ़ें')",
+    "FRONTEND: New Chat button resets to scheme selection view",
+    "FRONTEND: Toast shows 'नई चैट शुरू हो गई!' on reset"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_v2_api_endpoints.py",
+    "/app/test_reports/pytest/v2_api_results.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "V2 API endpoints properly implemented with correct response formats",
+    "FormTemplate collection seeded with 82 total fields across 4 schemes",
+    "Smart profiler correctly deduplicates fields when multiple schemes selected",
+    "User fullProfile stored in MongoDB and merged on updates",
+    "SchemeSelector uses data-testid for all 4 category cards",
+    "SmartProfiler shows Hindi labels with English translations"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_v2_api_endpoints.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (28/28 tests passed)",
+    "frontend": "100% (All 13 features verified)"
+  },
+
+  "test_credentials": {
+    "phone": "Any 10-digit number",
+    "otp": "1234 (hardcoded)",
+    "fresh_user_phones": ["5555555555", "5555555556", "5555555557"]
+  },
+
+  "seed_data_creation": "4 Schemes and 4 FormTemplates seeded via prisma/seed.py with 82 total form fields",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+
+  "context_for_next_testing_agent": "Iteration 16 verified Nagarik Sahayak v2.0 upgrade. All V2 endpoints working: /api/v2/schemes (4 schemes), /api/v2/form-templates (4 templates with 19-22 fields each), /api/v2/form-template/{name} (full field details), /api/v2/user-profile (save/get fullProfile), /api/v2/smart-profiler (tracks filled/missing fields), /api/v2/generate-filled-forms (generates PDFs). Frontend SchemeSelector shows 4 cards with category icons. SmartProfiler guides user through questions with progress bar. New Chat button resets to scheme selection.",
+
+  "mocked_apis": {
+    "has_mocked_apis": true,
+    "mocked_apis_list": [
+      "POST /api/auth/verify-otp - Static OTP 1234",
+      "DEMO_MODE=true - scholarship triggers demo response"
+    ]
+  },
+
+  "v2_feature_verification": {
+    "v2_schemes_endpoint": true,
+    "v2_form_templates_endpoint": true,
+    "v2_single_form_template_endpoint": true,
+    "v2_user_profile_save": true,
+    "v2_user_profile_get": true,
+    "v2_smart_profiler": true,
+    "v2_generate_filled_forms": true,
+    "pdf_download": true,
+    "scheme_selector_ui": true,
+    "smart_profiler_ui": true,
+    "new_chat_reset": true
+  }
+}
