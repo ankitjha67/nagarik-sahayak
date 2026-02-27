@@ -1297,6 +1297,147 @@ async def reset_chat(req: dict = {}):
 
 # --- V2.0: Form Extraction Engine ---
 
+@api_router.post("/v2/generate-filled-forms")
+async def generate_real_filled_forms(req: dict = {}):
+    """Generate real pre-filled PDFs for selected schemes using full form template fields."""
+    from pdf_generator import generate_real_filled_form_pdf
+    from prisma import Json
+
+    user_id = req.get("user_id", "")
+    scheme_names = req.get("scheme_names", [])
+    if not user_id or not scheme_names:
+        raise HTTPException(status_code=400, detail="user_id and scheme_names required")
+
+    # Get user profile
+    user = await prisma.user.find_unique(where={"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    full_profile = {}
+    if user.fullProfile:
+        full_profile = user.fullProfile if isinstance(user.fullProfile, dict) else json.loads(user.fullProfile) if isinstance(user.fullProfile, str) else {}
+    # Merge basic profile too
+    if user.profile:
+        basic = user.profile if isinstance(user.profile, dict) else json.loads(user.profile) if isinstance(user.profile, str) else {}
+        for k, v in basic.items():
+            if k not in full_profile or not full_profile[k]:
+                full_profile[k] = v
+
+    t0 = _time.time()
+    pdf_urls = []
+    for sname in scheme_names:
+        ft = await prisma.formtemplate.find_first(where={"schemeName": sname})
+        if not ft:
+            continue
+        fields = ft.extractedFields if isinstance(ft.extractedFields, list) else json.loads(ft.extractedFields) if isinstance(ft.extractedFields, str) else []
+        sections = ft.sections if isinstance(ft.sections, list) else json.loads(ft.sections) if isinstance(ft.sections, str) else []
+
+        pid = str(uuid.uuid4())
+        out_path = str(PDF_DIR / f"{pid}.pdf")
+        generate_real_filled_form_pdf(
+            filled_fields=full_profile,
+            scheme_name=sname,
+            scheme_name_hindi=ft.schemeNameHindi or "",
+            sections=sections,
+            form_fields=fields,
+            output_path=out_path,
+        )
+        pdf_urls.append({"pdf_url": f"/api/pdf/{pid}", "scheme_name": sname, "scheme_name_hindi": ft.schemeNameHindi or ""})
+
+        # Save application record
+        scheme = await prisma.scheme.find_first(where={"name": sname})
+        if scheme:
+            await prisma.application.create(data={
+                "userId": user_id,
+                "schemeId": scheme.id,
+                "status": "form_generated",
+                "formUrl": f"/api/pdf/{pid}",
+                "filledFields": Json(full_profile),
+            })
+
+    if _agnost_key:
+        try:
+            agnost.track(user_id=user_id, agent_name="nagarik_tool",
+                input="generate_real_filled_forms", output=str(len(pdf_urls)),
+                properties={"tool": "v2_pdf_gen", "schemes": scheme_names, "pdf_count": len(pdf_urls)},
+                success=True, latency=int((_time.time() - t0) * 1000))
+        except Exception:
+            pass
+
+    return {"pdf_urls": pdf_urls, "count": len(pdf_urls), "profile_fields_used": len(full_profile)}
+
+
+@api_router.post("/v2/smart-profiler")
+async def smart_profiler(req: dict = {}):
+    """Intelligent profiler: given selected schemes, return which fields are needed,
+    which are already filled, and the next question to ask."""
+    user_id = req.get("user_id", "")
+    scheme_names = req.get("scheme_names", [])
+    if not user_id or not scheme_names:
+        raise HTTPException(status_code=400, detail="user_id and scheme_names required")
+
+    # Get user full profile
+    user = await prisma.user.find_unique(where={"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    full_profile = {}
+    if user.fullProfile:
+        full_profile = user.fullProfile if isinstance(user.fullProfile, dict) else json.loads(user.fullProfile) if isinstance(user.fullProfile, str) else {}
+
+    # Collect ALL unique fields from selected schemes
+    all_fields = []
+    seen_keys = set()
+    for sname in scheme_names:
+        ft = await prisma.formtemplate.find_first(where={"schemeName": sname})
+        if not ft:
+            continue
+        fields = ft.extractedFields if isinstance(ft.extractedFields, list) else json.loads(ft.extractedFields) if isinstance(ft.extractedFields, str) else []
+        for f in fields:
+            pk = f.get("profileKey", f.get("fieldName", ""))
+            if pk not in seen_keys:
+                seen_keys.add(pk)
+                all_fields.append(f)
+
+    filled = []
+    missing = []
+    for f in all_fields:
+        pk = f.get("profileKey", f.get("fieldName", ""))
+        if pk in full_profile and full_profile[pk]:
+            filled.append({**f, "currentValue": full_profile[pk]})
+        else:
+            if f.get("required", False):
+                missing.append(f)
+
+    # Next question: first missing required field
+    next_question = None
+    if missing:
+        nf = missing[0]
+        label_hi = nf.get("labelHindi", "")
+        label_en = nf.get("labelEnglish", "")
+        q_text = f"{label_hi}"
+        if label_en:
+            q_text += f" ({label_en})"
+        if nf.get("type") == "select" and nf.get("options"):
+            q_text += f"\nOptions: {', '.join(nf['options'])}"
+        next_question = {
+            "field": nf,
+            "questionHindi": f"कृपया बताएं: {label_hi}",
+            "questionEnglish": f"Please provide: {label_en}",
+            "questionText": q_text,
+            "profileKey": nf.get("profileKey", nf.get("fieldName", "")),
+        }
+
+    return {
+        "totalFields": len(all_fields),
+        "filledCount": len(filled),
+        "missingCount": len(missing),
+        "progress": round(len(filled) / max(len(all_fields), 1) * 100, 1),
+        "filled": filled,
+        "missing": missing,
+        "nextQuestion": next_question,
+        "allComplete": len(missing) == 0,
+    }
+
+
 @api_router.post("/v2/extract-form-fields")
 async def api_extract_form_fields(req: dict = {}):
     """Extract form fields from a PDF URL or uploaded file using Claude Sonnet 4.5."""
