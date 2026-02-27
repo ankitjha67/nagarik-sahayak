@@ -1,6 +1,8 @@
 """Seed the database with 4 real government schemes and their official form fields."""
 import asyncio
+import json as _json
 from prisma import Prisma
+from prisma import Json
 
 
 # ──────────────────────────────────────────────────────────────
