@@ -23,6 +23,8 @@ export default function ChatPage({ userId, language = "hi" }) {
   const [initialLoad, setInitialLoad] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sttLang, setSttLang] = useState(() => localStorage.getItem("ns_stt_lang") || "hi");
+  const [v2Mode, setV2Mode] = useState("idle"); // idle | selecting | profiling | complete
+  const [selectedSchemes, setSelectedSchemes] = useState([]);
   const messagesEndRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
