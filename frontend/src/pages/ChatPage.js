@@ -216,15 +216,9 @@ export default function ChatPage({ userId, language = "hi" }) {
       await resetChat(userId);
       setMessages([]);
       setInput("");
+      setV2Mode("idle");
+      setSelectedSchemes([]);
       toast.success("नई चैट शुरू हो गई!");
-      // Auto-trigger profiler greeting
-      setLoading(true);
-      try {
-        const res = await sendMessage(userId, "namaste", language);
-        const { user_message, bot_message } = res.data;
-        setMessages([user_message, bot_message]);
-      } catch {}
-      setLoading(false);
     } catch {
       toast.error("Chat reset failed");
     }
