@@ -1,5 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { CheckCheck, Check as CheckIcon, FileSearch, FileText, Check, X, Languages, Play, Pause, ShieldCheck, ShieldX, Download, FileDown, Loader2, Search, ClipboardCheck, FileOutput, Volume2, VolumeX, Share2 } from "lucide-react";
+import api from "../lib/api";
+
+function escapeHtml(str) {
+  if (typeof str !== "string") return str;
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 const EligibilityCard = ({ result }) => {
   const isEligible = result.eligible;
@@ -86,6 +97,17 @@ const TranscriptionBlock = ({ message }) => {
   const audioUrl = message.audio_url || "";
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.onended = null;
+        audioRef.current.onerror = null;
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   const togglePlay = () => {
     if (!audioUrl) return;
@@ -312,7 +334,6 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
         setDone(true);
         // Track success
         try {
-          const api = (await import("../lib/api")).default;
           await api.get(`/download-all?user_id=${userId || ""}&count=${pdfUrls.length}`);
         } catch {}
       } else {
@@ -336,7 +357,6 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
           setError("डाउनलोड विफल हुआ। कृपया पुनः प्रयास करें।");
           // Track error
           try {
-            const api = (await import("../lib/api")).default;
             await api.get(`/download-all?user_id=${userId || ""}&count=0`);
           } catch {}
         }
@@ -430,7 +450,7 @@ export const ChatBubble = ({ message }) => {
         {isTranscription ? (
           <TranscriptionBlock message={message} />
         ) : (
-          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line font-['Nunito']">{message.content}</p>
+          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line font-['Nunito']">{escapeHtml(message.content)}</p>
         )}
 
         {/* PDF Download — ALL eligible forms at once */}

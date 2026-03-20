@@ -85,7 +85,7 @@ class TestChatReset:
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
         
         # Verify OTP
-        verify_resp = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
+        verify_resp = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         assert verify_resp.status_code == 200
         user_id = verify_resp.json()['user_id']
         

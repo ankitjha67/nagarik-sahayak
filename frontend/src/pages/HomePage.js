@@ -10,7 +10,6 @@ export default function HomePage({ userId }) {
   const navigate = useNavigate();
   const [recentChats, setRecentChats] = useState([]);
   const [schemes, setSchemes] = useState([]);
-  const [isRecording, setIsRecording] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -75,11 +74,7 @@ export default function HomePage({ userId }) {
           <button
             data-testid="mic-button"
             onClick={handleMicClick}
-            className={`w-20 h-20 rounded-full flex items-center justify-center shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 ${
-              isRecording
-                ? "bg-red-500 recording-pulse"
-                : "bg-[#FF9933] mic-pulse"
-            }`}
+            className="w-20 h-20 rounded-full flex items-center justify-center shadow-xl transition-all duration-200 hover:scale-105 active:scale-95 bg-[#FF9933] mic-pulse"
           >
             <Mic size={32} className="text-white" strokeWidth={2.5} />
           </button>

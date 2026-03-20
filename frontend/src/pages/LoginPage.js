@@ -25,7 +25,7 @@ export default function LoginPage({ onLogin }) {
     try {
       const res = await sendOTP(phone);
       if (res.data.success) {
-        toast.success("OTP भेजा गया! (Use 1234)");
+        toast.success("OTP भेजा गया!");
         setStep("otp");
       }
     } catch {
@@ -36,7 +36,7 @@ export default function LoginPage({ onLogin }) {
   };
 
   const handleVerifyOTP = async () => {
-    if (otp.length !== 4) return;
+    if (otp.length !== 6) return;
     setLoading(true);
     try {
       const res = await verifyOTP(phone, otp);
@@ -107,9 +107,6 @@ export default function LoginPage({ onLogin }) {
               )}
             </Button>
 
-            <p className="text-center text-xs text-gray-400 font-['Nunito']">
-              Demo: Any number works. OTP is always 1234
-            </p>
           </div>
         ) : (
           <div className="space-y-5 animate-fade-in-up">
@@ -126,26 +123,34 @@ export default function LoginPage({ onLogin }) {
               <div className="flex justify-center">
                 <InputOTP
                   data-testid="otp-input"
-                  maxLength={4}
+                  maxLength={6}
                   value={otp}
                   onChange={setOtp}
                 >
                   <InputOTPGroup>
                     <InputOTPSlot
                       index={0}
-                      className="w-14 h-14 text-xl font-bold text-[#000080] border-gray-200 rounded-xl"
+                      className="w-12 h-12 text-xl font-bold text-[#000080] border-gray-200 rounded-xl"
                     />
                     <InputOTPSlot
                       index={1}
-                      className="w-14 h-14 text-xl font-bold text-[#000080] border-gray-200 rounded-xl"
+                      className="w-12 h-12 text-xl font-bold text-[#000080] border-gray-200 rounded-xl"
                     />
                     <InputOTPSlot
                       index={2}
-                      className="w-14 h-14 text-xl font-bold text-[#000080] border-gray-200 rounded-xl"
+                      className="w-12 h-12 text-xl font-bold text-[#000080] border-gray-200 rounded-xl"
                     />
                     <InputOTPSlot
                       index={3}
-                      className="w-14 h-14 text-xl font-bold text-[#000080] border-gray-200 rounded-xl"
+                      className="w-12 h-12 text-xl font-bold text-[#000080] border-gray-200 rounded-xl"
+                    />
+                    <InputOTPSlot
+                      index={4}
+                      className="w-12 h-12 text-xl font-bold text-[#000080] border-gray-200 rounded-xl"
+                    />
+                    <InputOTPSlot
+                      index={5}
+                      className="w-12 h-12 text-xl font-bold text-[#000080] border-gray-200 rounded-xl"
                     />
                   </InputOTPGroup>
                 </InputOTP>
@@ -155,7 +160,7 @@ export default function LoginPage({ onLogin }) {
             <Button
               data-testid="verify-otp-btn"
               onClick={handleVerifyOTP}
-              disabled={otp.length !== 4 || loading}
+              disabled={otp.length !== 6 || loading}
               className="w-full h-12 rounded-full bg-[#000080] hover:bg-[#000066] text-white font-semibold text-base shadow-lg shadow-blue-200 transition-all duration-200 hover:-translate-y-0.5"
             >
               {loading ? (

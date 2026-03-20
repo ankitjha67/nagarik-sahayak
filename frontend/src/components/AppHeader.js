@@ -10,6 +10,7 @@ export const AppHeader = ({ title = "नागरिक सहायक", showBa
         <button
           data-testid="header-back-btn"
           onClick={onBack}
+          aria-label="Go back"
           className="p-1 -ml-1 text-[#000080] hover:bg-gray-50 rounded-full transition-colors"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -20,6 +21,7 @@ export const AppHeader = ({ title = "नागरिक सहायक", showBa
         <button
           data-testid="header-menu-btn"
           onClick={onMenuClick}
+          aria-label="Open menu"
           className="p-1.5 -ml-1 text-[#000080] hover:bg-gray-50 rounded-lg transition-colors"
         >
           <Menu size={20} />

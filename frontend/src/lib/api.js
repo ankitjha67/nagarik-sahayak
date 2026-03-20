@@ -8,6 +8,35 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// Request interceptor — attach user_id from localStorage
+api.interceptors.request.use((config) => {
+  const userId = localStorage.getItem("ns_user_id");
+  if (userId) {
+    config.headers["X-User-Id"] = userId;
+  }
+  return config;
+});
+
+// Response interceptor — handle 401/403
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      localStorage.removeItem("ns_user_id");
+      localStorage.removeItem("ns_phone");
+      localStorage.removeItem("ns_language");
+      window.location.href = "/";
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Cancel token helper using AbortController
+export const createCancelToken = () => {
+  const controller = new AbortController();
+  return { signal: controller.signal, cancel: () => controller.abort() };
+};
+
 // Auth
 export const sendOTP = (phone) => api.post("/auth/send-otp", { phone });
 export const verifyOTP = (phone, otp) => api.post("/auth/verify-otp", { phone, otp });

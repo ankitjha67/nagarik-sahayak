@@ -48,7 +48,7 @@ class TestAuthEndpoints:
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
         
         # Verify with 1234
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -76,7 +76,7 @@ class TestProfilerFlow:
         """Create a fresh user for testing"""
         phone = f"98765{int(time.time()) % 100000:05d}"
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         return response.json()["user_id"]
     
     def test_profiler_greeting_asks_name(self, user_id):
@@ -176,7 +176,7 @@ class TestEligibilityRules:
     def user_id(self):
         phone = f"98765{int(time.time()) % 100000:05d}"
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         return response.json()["user_id"]
     
     def test_vidyasiri_eligible_under_150000_karnataka(self, user_id):
@@ -200,7 +200,7 @@ class TestEligibilityRules:
         """Income > 150000/year = Vidyasiri ineligible"""
         phone = f"98765{int(time.time()) % 100000:05d}"
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         user_id = response.json()["user_id"]
         
         # Complete profile with income > 1.5 lakh
@@ -226,7 +226,7 @@ class TestDemoMode:
     def user_id(self):
         phone = f"98765{int(time.time()) % 100000:05d}"
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         return response.json()["user_id"]
     
     def test_demo_beta_trigger(self, user_id):
@@ -279,7 +279,7 @@ class TestPDFDownload:
         # First trigger DEMO mode to generate a PDF
         phone = f"98765{int(time.time()) % 100000:05d}"
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         user_id = response.json()["user_id"]
         
         # Trigger DEMO mode

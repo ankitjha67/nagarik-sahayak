@@ -58,7 +58,9 @@ model ChatLog {
   message   String
   timestamp DateTime @default(now())
   sender    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Application {
@@ -70,6 +72,9 @@ model Application {
   filledFields Json?
   downloadedAt DateTime?
   createdAt    DateTime  @default(now())
-  user         User      @relation(fields: [userId], references: [id])
-  scheme       Scheme    @relation(fields: [schemeId], references: [id])
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheme       Scheme    @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([schemeId])
 }

@@ -25,6 +25,7 @@ export const BottomNav = () => {
               key={path}
               data-testid={`nav-${label.toLowerCase()}`}
               onClick={() => navigate(path)}
+              aria-label={label}
               className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-200 ${
                 isActive
                   ? "text-[#FF9933]"

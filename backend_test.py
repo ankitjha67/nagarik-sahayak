@@ -74,7 +74,7 @@ class NagarikSahayakAPITester:
     def test_verify_otp(self):
         """Test OTP verification"""
         try:
-            payload = {"phone": self.phone, "otp": "1234"}
+            payload = {"phone": self.phone, "otp": "123456"}
             response = requests.post(f"{self.base_url}/auth/verify-otp", json=payload, timeout=10)
             
             if response.status_code == 200:
@@ -309,7 +309,7 @@ class NagarikSahayakAPITester:
             # Setup new user
             requests.post(f"{self.base_url}/auth/send-otp", json={"phone": test_phone}, timeout=10)
             verify_response = requests.post(f"{self.base_url}/auth/verify-otp",
-                                          json={"phone": test_phone, "otp": "1234"}, timeout=10)
+                                          json={"phone": test_phone, "otp": "123456"}, timeout=10)
             
             if verify_response.status_code != 200:
                 self.log_test("Invalid Age Test Setup", False, "Failed to create test user")

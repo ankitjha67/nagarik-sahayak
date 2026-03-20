@@ -40,7 +40,7 @@ class TestAuthAPI:
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": "9999777701"})
         
         # Then verify
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": "9999777701", "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": "9999777701", "otp": "123456"})
         assert response.status_code == 200
         data = response.json()
         assert data["success"] == True
@@ -71,7 +71,7 @@ class TestChatProfilerFlow:
         # Use timestamp to create unique phone numbers
         phone = f"8888{int(time.time()) % 1000000:06d}"
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         return response.json()["user_id"]
     
     def test_greeting_triggers_name_question(self, user_id):
@@ -157,7 +157,7 @@ class TestProfileAPI:
         import time
         phone = f"7777{int(time.time()) % 1000000:06d}"
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         uid = response.json()["user_id"]
         
         # Complete profiler flow
@@ -193,7 +193,7 @@ class TestChatHistoryAPI:
         # Create user with unique phone and send messages
         phone = f"6666{int(time.time()) % 1000000:06d}"
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         user_id = response.json()["user_id"]
         
         # Send a message
@@ -244,12 +244,12 @@ class TestDemoMode:
         demo_status = requests.get(f"{BASE_URL}/api/demo/status").json()
         if not demo_status.get("demo_mode"):
             # Enable demo mode
-            requests.post(f"{BASE_URL}/api/demo/toggle")
+            requests.post(f"{BASE_URL}/api/demo/toggle", headers={"X-Admin-Secret": os.environ.get("ADMIN_SECRET", "test-secret")})
         
         # Create user with unique phone
         phone = f"5555{int(time.time()) % 1000000:06d}"
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         user_id = response.json()["user_id"]
         
         # Send demo trigger
@@ -289,13 +289,13 @@ class TestAnalyticsEndpoints:
         initial_state = response.json()["demo_mode"]
         
         # Toggle
-        response = requests.post(f"{BASE_URL}/api/demo/toggle")
+        response = requests.post(f"{BASE_URL}/api/demo/toggle", headers={"X-Admin-Secret": os.environ.get("ADMIN_SECRET", "test-secret")})
         assert response.status_code == 200
         new_state = response.json()["demo_mode"]
         assert new_state != initial_state
         
         # Toggle back
-        requests.post(f"{BASE_URL}/api/demo/toggle")
+        requests.post(f"{BASE_URL}/api/demo/toggle", headers={"X-Admin-Secret": os.environ.get("ADMIN_SECRET", "test-secret")})
         print(f"✓ Demo toggle works: {initial_state} -> {new_state} -> {initial_state}")
 
 

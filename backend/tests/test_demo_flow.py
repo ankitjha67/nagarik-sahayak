@@ -29,7 +29,7 @@ class TestDemoFlowBackend:
         # Verify OTP
         verify_resp = requests.post(
             f"{BASE_URL}/api/auth/verify-otp",
-            json={"phone": "9876543210", "otp": "1234"}
+            json={"phone": "9876543210", "otp": "123456"}
         )
         assert verify_resp.status_code == 200
         data = verify_resp.json()

@@ -20,7 +20,7 @@ import json
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://govt-assistant-app.preview.emergentagent.com').rstrip('/')
 
 # Test user data
-TEST_PHONE = f"555000{int(time.time()) % 10000:04d}"
+TEST_PHONE = f"900000{int(time.time()) % 10000:04d}"
 TEST_USER_ID = None
 
 
@@ -38,7 +38,7 @@ class TestAuth:
     def test_verify_otp(self):
         """Verify OTP and get user_id"""
         global TEST_USER_ID
-        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": TEST_PHONE, "otp": "1234"})
+        response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": TEST_PHONE, "otp": "123456"})
         assert response.status_code == 200
         data = response.json()
         assert data["success"] == True

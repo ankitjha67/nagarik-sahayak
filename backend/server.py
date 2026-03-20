@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -7,11 +7,16 @@ from prisma import Prisma
 import os
 import json
 import logging
+import traceback
 import tempfile
 import uuid
 import re
+import asyncio
+import secrets
+import hashlib
+from collections import defaultdict
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import time as _time
@@ -26,6 +31,60 @@ if _agnost_key:
     agnost.init(_agnost_key)
 
 DEMO_MODE = os.environ.get("DEMO_MODE", "").lower() in ("true", "1", "yes")
+ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
+_demo_lock = asyncio.Lock()
+
+# --- In-memory rate limiter ---
+_rate_limit_store: Dict[str, list] = defaultdict(list)
+RATE_LIMIT_MAX = 5  # max requests
+RATE_LIMIT_WINDOW = 60  # per 60 seconds
+
+
+def _check_rate_limit(key: str) -> bool:
+    """Return True if rate-limited (too many requests)."""
+    now = _time.time()
+    # Clean old entries
+    _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < RATE_LIMIT_WINDOW]
+    if len(_rate_limit_store[key]) >= RATE_LIMIT_MAX:
+        return True
+    _rate_limit_store[key].append(now)
+    return False
+
+
+def _validate_phone(phone: str) -> bool:
+    """Validate Indian phone number: 10 digits, starts with 6-9."""
+    return bool(re.match(r'^[6-9]\d{9}$', phone))
+
+
+def _generate_otp() -> str:
+    """Generate a cryptographically secure 6-digit OTP."""
+    return str(secrets.randbelow(900000) + 100000)
+
+
+def _sanitize_input(text: str, max_length: int = 10000) -> str:
+    """Sanitize user input: strip control chars, limit length."""
+    if not text:
+        return ""
+    # Remove control characters except newline and tab
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+    return text[:max_length].strip()
+
+
+def _validate_path_within(path: Path, base_dir: Path) -> bool:
+    """Validate a resolved path is within the base directory (prevent path traversal)."""
+    try:
+        resolved = path.resolve()
+        return resolved.is_relative_to(base_dir.resolve())
+    except (ValueError, OSError):
+        return False
+
+
+PDF_MAGIC_BYTES = b'%PDF-'
+
+
+def _validate_pdf_content(content: bytes) -> bool:
+    """Check if file content starts with PDF magic bytes."""
+    return content[:5] == PDF_MAGIC_BYTES
 
 AUDIO_DIR = ROOT_DIR / "audio_files"
 AUDIO_DIR.mkdir(exist_ok=True)
@@ -53,9 +112,25 @@ logger = logging.getLogger(__name__)
 class SendOTPRequest(BaseModel):
     phone: str
 
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v):
+        v = re.sub(r'\D', '', v.strip())
+        if not _validate_phone(v):
+            raise ValueError('Invalid Indian phone number (10 digits, starting with 6-9)')
+        return v
+
 class VerifyOTPRequest(BaseModel):
     phone: str
     otp: str
+
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v):
+        v = re.sub(r'\D', '', v.strip())
+        if not _validate_phone(v):
+            raise ValueError('Invalid phone number')
+        return v
 
 class AuthResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -98,8 +173,10 @@ async def save_chat_prisma(user_id: str, msg_dict: dict, sender: str):
             "message": json.dumps(msg_dict, ensure_ascii=False, default=str),
             "sender": sender,
         })
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.error(f"ChatLog serialization failed: {e}")
     except Exception as e:
-        logger.error(f"Prisma ChatLog save failed: {e}")
+        logger.error(f"Prisma ChatLog save failed: {e}\n{traceback.format_exc()}")
 
 
 async def get_chat_history_prisma(user_id: str) -> list:
@@ -121,7 +198,7 @@ async def get_chat_history_prisma(user_id: str) -> list:
             messages.append(msg)
         return messages
     except Exception as e:
-        logger.error(f"Prisma ChatLog read failed: {e}")
+        logger.error(f"Prisma ChatLog read failed: {e}\n{traceback.format_exc()}")
         return []
 
 
@@ -638,7 +715,7 @@ async def generate_filled_form(user_id: str, scheme_id: str) -> dict:
             "status": "generated", "formUrl": pdf_url,
         })
     except Exception as e:
-        logger.error(f"Application create failed: {e}")
+        logger.error(f"Application create failed: {e}\n{traceback.format_exc()}")
 
     latency = int((_time.time() - t0) * 1000)
     if _agnost_key:
@@ -814,7 +891,7 @@ async def startup():
                 if not existing:
                     await prisma.scheme.create(data=s)
         except Exception as e:
-            logger.error(f"Seed failed: {e}")
+            logger.error(f"Seed failed: {e}\n{traceback.format_exc()}")
     scheme_count = await prisma.scheme.count()
     logger.info(f"Prisma Scheme table: {scheme_count} records")
 
@@ -831,24 +908,50 @@ async def shutdown():
 
 @api_router.post("/auth/send-otp", response_model=AuthResponse)
 async def send_otp(req: SendOTPRequest):
-    if not req.phone or len(req.phone) < 10:
-        raise HTTPException(status_code=400, detail="Invalid phone number")
+    # Rate limiting
+    if _check_rate_limit(f"otp:{req.phone}"):
+        raise HTTPException(status_code=429, detail="Too many OTP requests. Please wait 60 seconds.")
+
+    # Generate OTP: use "123456" in DEMO_MODE, real OTP otherwise
+    otp_code = "123456" if DEMO_MODE else _generate_otp()
+
     await motor_db.otp_sessions.update_one(
         {"phone": req.phone},
-        {"$set": {"phone": req.phone, "otp": "1234", "verified": False,
+        {"$set": {"phone": req.phone, "otp": otp_code, "verified": False,
             "created_at": datetime.now(timezone.utc).isoformat()}},
         upsert=True)
+
+    # In production, send OTP via SMS gateway here
+    logger.info(f"OTP generated for {req.phone[:4]}****")
     return AuthResponse(success=True, message="OTP sent successfully")
 
 
 @api_router.post("/auth/verify-otp", response_model=AuthResponse)
 async def verify_otp(req: VerifyOTPRequest):
-    if req.otp != "1234":
-        return AuthResponse(success=False, message="Invalid OTP")
+    # Rate limiting on verification too
+    if _check_rate_limit(f"verify:{req.phone}"):
+        raise HTTPException(status_code=429, detail="Too many verification attempts. Please wait 60 seconds.")
+
     session = await motor_db.otp_sessions.find_one({"phone": req.phone}, {"_id": 0})
     if not session:
         return AuthResponse(success=False, message="OTP session not found. Please request OTP first.")
-    await motor_db.otp_sessions.update_one({"phone": req.phone}, {"$set": {"verified": True}})
+
+    # Validate OTP against stored value
+    stored_otp = session.get("otp", "")
+    if not stored_otp or req.otp != stored_otp:
+        return AuthResponse(success=False, message="Invalid OTP")
+
+    # Check OTP expiry (5 minutes)
+    created_at = session.get("created_at", "")
+    if created_at:
+        try:
+            otp_time = datetime.fromisoformat(created_at)
+            if (datetime.now(timezone.utc) - otp_time).total_seconds() > 300:
+                return AuthResponse(success=False, message="OTP expired. Please request a new one.")
+        except (ValueError, TypeError):
+            pass
+
+    await motor_db.otp_sessions.update_one({"phone": req.phone}, {"$set": {"verified": True, "otp": ""}})
 
     # Prisma User — find or create
     user = await prisma.user.find_unique(where={"phone": req.phone})
@@ -913,6 +1016,11 @@ async def get_schemes():
 
 @api_router.post("/chat")
 async def send_chat_message(req: ChatMessageRequest):
+    # Sanitize input
+    req.content = _sanitize_input(req.content, max_length=5000)
+    if not req.content:
+        raise HTTPException(status_code=400, detail="Message content is required")
+
     now = datetime.now(timezone.utc).isoformat()
     user_msg = {
         "id": str(uuid.uuid4()), "user_id": req.user_id, "role": "user",
@@ -988,6 +1096,7 @@ async def transcribe_audio(audio: UploadFile = File(...), user_id: str = Form(""
     transcript_en = ""
     sarvam_key = os.environ.get("SARVAM_API_KEY", "")
     if sarvam_key:
+        tmp_path = None
         try:
             from sarvamai import SarvamAI
             sarvam_client = SarvamAI(api_subscription_key=sarvam_key)
@@ -1018,17 +1127,27 @@ async def transcribe_audio(audio: UploadFile = File(...), user_id: str = Form(""
                     )
                 transcript_en = resp_en.transcript or ""
 
-            os.unlink(tmp_path)
-            logger.info(f"Sarvam STT success: hi='{transcript_hi[:50]}' en='{transcript_en[:50]}'")
+            logger.info(f"Sarvam STT success: lang={language}")
         except Exception as e:
-            logger.error(f"Sarvam STT failed: {e}")
+            logger.error(f"Sarvam STT failed: {e}\n{traceback.format_exc()}")
+        finally:
+            if tmp_path:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
 
-    # Mock fallback only if Sarvam produced nothing
+    # Mock fallback only in DEMO_MODE when Sarvam produced nothing
     is_mock = False
     if not transcript_hi and not transcript_en:
-        is_mock = True
-        transcript_hi = "मेरा बेटा 10th पास है, कॉलेज के लिए पैसा चाहिए"
-        transcript_en = "My son passed 10th, need money for college"
+        if DEMO_MODE:
+            is_mock = True
+            transcript_hi = "मेरा बेटा 10th पास है, कॉलेज के लिए पैसा चाहिए"
+            transcript_en = "My son passed 10th, need money for college"
+        else:
+            return {"success": False, "error": "Speech transcription failed. Please try again or type your message.",
+                "transcript_hi": "", "transcript_en": "", "is_mock": False,
+                "user_message": None, "bot_message": None}
 
     audio_url = f"/api/audio/{audio_msg_id}"
     display = f"[Hindi] {transcript_hi}" if transcript_hi else ""
@@ -1159,16 +1278,24 @@ async def generate_pdf_endpoint(req: GeneratePDFRequest):
 
 @api_router.get("/pdf/{pdf_id}")
 async def serve_pdf(pdf_id: str):
-    pdf_path = PDF_DIR / f"{pdf_id}.pdf"
+    # Sanitize: only allow UUID-like characters
+    safe_id = re.sub(r'[^a-zA-Z0-9\-]', '', pdf_id)
+    pdf_path = PDF_DIR / f"{safe_id}.pdf"
+    if not _validate_path_within(pdf_path, PDF_DIR):
+        raise HTTPException(status_code=400, detail="Invalid PDF ID")
     if not pdf_path.exists():
         raise HTTPException(status_code=404, detail="PDF not found")
     return FileResponse(path=str(pdf_path), media_type="application/pdf",
-        filename=f"Nagarik_Sahayak_Report_{pdf_id[:8]}.pdf")
+        filename=f"Nagarik_Sahayak_Report_{safe_id[:8]}.pdf")
 
 
 @api_router.get("/audio/{msg_id}")
 async def serve_audio(msg_id: str):
-    audio_path = AUDIO_DIR / f"{msg_id}.webm"
+    # Sanitize: only allow UUID-like characters
+    safe_id = re.sub(r'[^a-zA-Z0-9\-]', '', msg_id)
+    audio_path = AUDIO_DIR / f"{safe_id}.webm"
+    if not _validate_path_within(audio_path, AUDIO_DIR):
+        raise HTTPException(status_code=400, detail="Invalid audio ID")
     if not audio_path.exists():
         raise HTTPException(status_code=404, detail="Audio not found")
     return FileResponse(path=str(audio_path), media_type="audio/webm")
@@ -1189,9 +1316,14 @@ async def demo_status():
     return {"demo_mode": DEMO_MODE}
 
 @api_router.post("/demo/toggle")
-async def demo_toggle():
+async def demo_toggle(request: Request):
     global DEMO_MODE
-    DEMO_MODE = not DEMO_MODE
+    # Require admin secret header
+    admin_secret = request.headers.get("X-Admin-Secret", "")
+    if not ADMIN_SECRET or admin_secret != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Admin authentication required")
+    async with _demo_lock:
+        DEMO_MODE = not DEMO_MODE
     return {"demo_mode": DEMO_MODE}
 
 
@@ -1223,8 +1355,10 @@ async def download_all_zip(pdf_ids: str = "", user_id: str = ""):
     count = 0
     with zf.ZipFile(zip_path, "w", zf.ZIP_DEFLATED) as z:
         for pdf_id in ids:
-            clean_id = pdf_id.replace(".pdf", "")
+            clean_id = re.sub(r'[^a-zA-Z0-9\-]', '', pdf_id.replace(".pdf", ""))
             pdf_file = PDF_DIR / f"{clean_id}.pdf"
+            if not _validate_path_within(pdf_file, PDF_DIR):
+                continue
             if pdf_file.exists():
                 z.write(pdf_file, f"Form_{count + 1}.pdf")
                 count += 1
@@ -1250,16 +1384,22 @@ UPLOADS_DIR = PDF_DIR  # reuse the same directory
 async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("")):
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+    # Validate MIME type
+    if file.content_type and file.content_type not in ("application/pdf", "application/octet-stream"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Only PDF files are accepted.")
     file_bytes = await file.read()
     if len(file_bytes) > 10 * 1024 * 1024:  # 10MB limit
         raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+    # Validate PDF magic bytes
+    if not _validate_pdf_content(file_bytes):
+        raise HTTPException(status_code=400, detail="Invalid PDF file content")
     pdf_id = str(uuid.uuid4())
-    safe_name = file.filename.replace(" ", "_")
+    safe_name = re.sub(r'[^a-zA-Z0-9._\-]', '_', file.filename)
     pdf_path = UPLOADS_DIR / f"{pdf_id}.pdf"
     with open(pdf_path, "wb") as f:
         f.write(file_bytes)
     pdf_url = f"/api/pdf/{pdf_id}"
-    logger.info(f"PDF uploaded: {safe_name} -> {pdf_id} by user {user_id}")
+    logger.info(f"PDF uploaded: {safe_name} -> {pdf_id[:8]}")
     if _agnost_key:
         try:
             agnost.track(user_id=user_id or "api", agent_name="nagarik_tool",
@@ -1603,6 +1743,14 @@ async def update_user_full_profile(user_id: str, req: dict = {}):
 # --- Mount ---
 
 app.include_router(api_router)
-app.add_middleware(CORSMiddleware, allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"], allow_headers=["*"])
+
+# CORS: explicit origins only, never wildcard with credentials
+_cors_origins_raw = os.environ.get('CORS_ORIGINS', 'http://localhost:3000')
+_cors_origins = [o.strip() for o in _cors_origins_raw.split(',') if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-User-Id", "X-Admin-Secret"],
+)

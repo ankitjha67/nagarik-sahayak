@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Component } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
@@ -7,6 +7,42 @@ import HomePage from "@/pages/HomePage";
 import ChatPage from "@/pages/ChatPage";
 import SchemesPage from "@/pages/SchemesPage";
 import ProfilePage from "@/pages/ProfilePage";
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-gray-50">
+          <h1 className="text-xl font-bold text-red-600 mb-2">कुछ गलत हो गया</h1>
+          <p className="text-sm text-gray-600 mb-4">Something went wrong. Please try again.</p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.href = "/";
+            }}
+            className="px-4 py-2 bg-[#FF9933] text-white rounded-lg font-semibold"
+          >
+            होम पेज पर जाएं
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function App() {
   const [userId, setUserId] = useState(() => localStorage.getItem("ns_user_id") || null);
@@ -33,6 +69,7 @@ function App() {
   return (
     <div className="App">
       <BrowserRouter>
+        <ErrorBoundary>
         <Routes>
           <Route
             path="/"
@@ -70,6 +107,7 @@ function App() {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </ErrorBoundary>
       </BrowserRouter>
       <Toaster position="top-center" richColors />
     </div>

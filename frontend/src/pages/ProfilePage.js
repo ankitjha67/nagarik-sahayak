@@ -28,6 +28,7 @@ export default function ProfilePage({ userId, onLogout }) {
   }, [userId]);
 
   const handleSave = async () => {
+    if (!profile) return;
     setSaving(true);
     try {
       const res = await updateProfile(userId, { name, language });

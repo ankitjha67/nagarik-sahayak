@@ -37,6 +37,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       {isOpen && (
         <div
           data-testid="sidebar-overlay"
+          role="presentation"
           className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 transition-opacity"
           onClick={onClose}
         />
@@ -44,6 +45,8 @@ export const Sidebar = ({ isOpen, onClose }) => {
 
       <div
         data-testid="sidebar-panel"
+        role="dialog"
+        aria-label="Navigation menu"
         className={`fixed top-0 left-0 h-full w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}

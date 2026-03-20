@@ -1,5 +1,6 @@
 """Form Extraction Engine — Uses Claude Sonnet 4.5 via Emergent LLM to analyze PDFs and extract form fields."""
 import os
+import re
 import json
 import logging
 import tempfile
@@ -10,6 +11,23 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / '.env')
 logger = logging.getLogger(__name__)
+
+# PDF magic bytes: %PDF
+PDF_MAGIC = b"%PDF"
+# Maximum text length to send to LLM
+MAX_PDF_TEXT_LENGTH = 15000
+# Download timeout in seconds
+PDF_DOWNLOAD_TIMEOUT = 60
+
+
+def _sanitize_pdf_text(text: str) -> str:
+    """Strip control characters (except newline/tab) and limit length for LLM input."""
+    # Remove control chars except \n \r \t
+    cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+    # Collapse excessive whitespace
+    cleaned = re.sub(r'[ \t]{4,}', '   ', cleaned)
+    cleaned = re.sub(r'\n{4,}', '\n\n\n', cleaned)
+    return cleaned[:MAX_PDF_TEXT_LENGTH]
 
 EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
 
@@ -62,24 +80,56 @@ async def extract_text_from_pdf(pdf_path: str) -> str:
                     for row in table:
                         if row:
                             text_parts.append(" | ".join([str(cell or "") for cell in row]))
-    except Exception as e:
-        logger.error(f"PDF text extraction failed: {e}")
+    except (OSError, IOError) as e:
+        logger.error(f"PDF text extraction I/O error: {e}")
+    except pdfplumber.exceptions.PSException as e:
+        logger.error(f"PDF parsing error (corrupted/invalid PDF): {e}")
+    except ValueError as e:
+        logger.error(f"PDF text extraction value error: {e}")
     return "\n\n".join(text_parts)
 
 
 async def download_pdf(url: str) -> str:
     """Download a PDF from URL to a temp file. Returns file path."""
+    tmp_path = ""
     try:
-        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        timeout = httpx.Timeout(PDF_DOWNLOAD_TIMEOUT, connect=15.0)
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
             resp = await client.get(url)
             resp.raise_for_status()
+            content = resp.content
+            # Validate PDF magic bytes
+            if not content or not content[:4].startswith(PDF_MAGIC):
+                logger.error(f"Downloaded file from {url} is not a valid PDF (bad magic bytes)")
+                return ""
             tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
-            tmp.write(resp.content)
+            tmp_path = tmp.name
+            tmp.write(content)
             tmp.close()
-            return tmp.name
-    except Exception as e:
-        logger.error(f"PDF download failed from {url}: {e}")
+            return tmp_path
+    except httpx.TimeoutException:
+        logger.error(f"PDF download timed out from {url} (limit={PDF_DOWNLOAD_TIMEOUT}s)")
+        if tmp_path:
+            _safe_unlink(tmp_path)
         return ""
+    except httpx.HTTPStatusError as e:
+        logger.error(f"PDF download HTTP error from {url}: {e.response.status_code}")
+        if tmp_path:
+            _safe_unlink(tmp_path)
+        return ""
+    except (httpx.RequestError, OSError) as e:
+        logger.error(f"PDF download failed from {url}: {e}")
+        if tmp_path:
+            _safe_unlink(tmp_path)
+        return ""
+
+
+def _safe_unlink(path: str) -> None:
+    """Safely remove a file, ignoring errors."""
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
 
 
 async def extract_form_fields_llm(pdf_text: str, scheme_hint: str = "") -> dict:
@@ -96,7 +146,8 @@ async def extract_form_fields_llm(pdf_text: str, scheme_hint: str = "") -> dict:
         system_message=EXTRACTION_SYSTEM_PROMPT,
     ).with_model("anthropic", "claude-sonnet-4-20250514")
 
-    prompt = f"Analyze this government form/document and extract ALL fields:\n\n{pdf_text[:15000]}"
+    sanitized_text = _sanitize_pdf_text(pdf_text)
+    prompt = f"Analyze this government form/document and extract ALL fields:\n\n{sanitized_text}"
     if scheme_hint:
         prompt = f"Scheme: {scheme_hint}\n\n{prompt}"
 
@@ -116,8 +167,8 @@ async def extract_form_fields_llm(pdf_text: str, scheme_hint: str = "") -> dict:
     except json.JSONDecodeError as e:
         logger.error(f"LLM response JSON parse failed: {e}\nRaw: {response[:500]}")
         return {"error": f"Failed to parse LLM response: {str(e)}"}
-    except Exception as e:
-        logger.error(f"LLM form extraction failed: {e}")
+    except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
+        logger.error(f"LLM form extraction failed: {type(e).__name__}: {e}")
         return {"error": str(e)}
 
 
@@ -127,27 +178,26 @@ async def extract_form_fields(pdf_url: str = "", pdf_path: str = "", scheme_hint
     Returns a complete FormTemplate-compatible dict with extractedFields.
     """
     local_path = pdf_path
-    if pdf_url and not pdf_path:
-        local_path = await download_pdf(pdf_url)
-        if not local_path:
-            return {"error": f"Could not download PDF from {pdf_url}"}
+    is_temp_file = False
+    try:
+        if pdf_url and not pdf_path:
+            local_path = await download_pdf(pdf_url)
+            is_temp_file = True
+            if not local_path:
+                return {"error": f"Could not download PDF from {pdf_url}"}
 
-    if not local_path or not Path(local_path).exists():
-        return {"error": "No valid PDF file provided"}
+        if not local_path or not Path(local_path).exists():
+            return {"error": "No valid PDF file provided"}
 
-    # Step 1: Extract text
-    pdf_text = await extract_text_from_pdf(local_path)
-    if not pdf_text or len(pdf_text.strip()) < 50:
-        return {"error": "Could not extract sufficient text from PDF. The PDF may be image-based (scanned)."}
+        # Step 1: Extract text
+        pdf_text = await extract_text_from_pdf(local_path)
+        if not pdf_text or len(pdf_text.strip()) < 50:
+            return {"error": "Could not extract sufficient text from PDF. The PDF may be image-based (scanned)."}
 
-    # Step 2: LLM analysis
-    result = await extract_form_fields_llm(pdf_text, scheme_hint)
-
-    # Clean up temp file if we downloaded it
-    if pdf_url and local_path and not pdf_path:
-        try:
-            os.unlink(local_path)
-        except Exception:
-            pass
-
-    return result
+        # Step 2: LLM analysis
+        result = await extract_form_fields_llm(pdf_text, scheme_hint)
+        return result
+    finally:
+        # Always clean up temp file if we downloaded it
+        if is_temp_file and local_path:
+            _safe_unlink(local_path)
