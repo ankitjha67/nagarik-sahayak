@@ -31,16 +31,26 @@ def _format_phone(value: str) -> str:
     return str(value)
 
 
-def _mask_aadhaar(value: str) -> str:
-    """Mask Aadhaar number for display: XXXX XXXX 1234."""
+def _mask_aadhaar(value: str, full: bool = False) -> str:
+    """Format Aadhaar number for display.
+
+    full=False (default): Masked for draft — XXXX XXXX 1234
+    full=True: Full number with spacing — 1234 5678 9012
+    """
     digits = re.sub(r'\D', '', str(value))
     if len(digits) == 12:
+        if full:
+            return f"{digits[:4]} {digits[4:8]} {digits[8:]}"
         return f"XXXX XXXX {digits[8:]}"
     return str(value)
 
 
-def _format_field_value(value, field_type: str = "text") -> str:
-    """Format field value based on type."""
+def _format_field_value(value, field_type: str = "text", is_draft: bool = True) -> str:
+    """Format field value based on type.
+
+    is_draft=True: Aadhaar masked (XXXX XXXX 1234)
+    is_draft=False: Full Aadhaar shown (1234 5678 9012) for official submission
+    """
     if value is None or value == "":
         return "_______________"
     val = str(value)
@@ -49,7 +59,7 @@ def _format_field_value(value, field_type: str = "text") -> str:
     elif field_type == "phone":
         return _format_phone(val)
     elif field_type == "aadhaar":
-        return _mask_aadhaar(val)
+        return _mask_aadhaar(val, full=not is_draft)
     return val
 
 
@@ -445,14 +455,15 @@ def _add_page_footer(pdf: FPDF, page_num: int, total_pages_placeholder: str = ""
     pdf.cell(0, 3, f"Page {page_num}", align="R", new_x="LMARGIN", new_y="NEXT")
 
 
-def _ensure_space(pdf: FPDF, needed_height: float, scheme_name: str, scheme_name_hindi: str, ref_id: str, date_str: str, page_counter: list):
+def _ensure_space(pdf: FPDF, needed_height: float, scheme_name: str, scheme_name_hindi: str, ref_id: str, date_str: str, page_counter: list, is_draft: bool = True):
     """Check if enough space remains on the page; if not, add a new page with header."""
     if pdf.get_y() + needed_height > pdf.h - 22:
         _add_page_footer(pdf, page_counter[0])
         pdf.add_page()
         page_counter[0] += 1
         _add_page_header(pdf, scheme_name, scheme_name_hindi, ref_id, date_str)
-        _add_watermark(pdf)
+        if is_draft:
+            _add_watermark(pdf)
 
 
 def generate_real_filled_form_pdf(
@@ -462,11 +473,15 @@ def generate_real_filled_form_pdf(
     sections: list = None,
     form_fields: list = None,
     output_path: str = "/tmp/filled_form.pdf",
+    is_draft: bool = True,
 ) -> str:
     """Generate a production-grade pre-filled application form PDF with all real fields.
 
     Handles multi-page forms, field value formatting (date, phone, aadhaar masking),
-    page numbers, draft watermark, and long textarea values.
+    page numbers, and long textarea values.
+
+    is_draft=True (default): Adds DRAFT watermark, masks Aadhaar
+    is_draft=False: No watermark, full Aadhaar — for official submission
     """
     pdf = FPDF()
     pdf.set_auto_page_break(auto=False)  # Manual page break control
@@ -484,7 +499,8 @@ def generate_real_filled_form_pdf(
     # First page
     pdf.add_page()
     _add_page_header(pdf, scheme_name, scheme_name_hindi, ref_id, date_str)
-    _add_watermark(pdf)
+    if is_draft:
+        _add_watermark(pdf)
 
     # --- Form number box (government form style) ---
     pdf.set_fill_color(245, 245, 252)
@@ -519,7 +535,7 @@ def generate_real_filled_form_pdf(
             continue
 
         # Ensure space for section header + at least one field
-        _ensure_space(pdf, 22, scheme_name, scheme_name_hindi, ref_id, date_str, page_counter)
+        _ensure_space(pdf, 22, scheme_name, scheme_name_hindi, ref_id, date_str, page_counter, is_draft)
 
         # Section header with numbering (government form style)
         header_text = f"  Section {sec_idx + 1}: {sec_name}"
@@ -540,7 +556,7 @@ def generate_real_filled_form_pdf(
             field_type = field.get("type", "text")
 
             # Format value based on field type
-            formatted_value = _format_field_value(raw_value, field_type)
+            formatted_value = _format_field_value(raw_value, field_type, is_draft=is_draft)
 
             label_en = field.get("labelEnglish", "")
             label_hi = field.get("labelHindi", "")
@@ -554,7 +570,7 @@ def generate_real_filled_form_pdf(
 
             if is_long_text:
                 # Textarea / long text: label on top, multi_cell value below
-                _ensure_space(pdf, 28, scheme_name, scheme_name_hindi, ref_id, date_str, page_counter)
+                _ensure_space(pdf, 28, scheme_name, scheme_name_hindi, ref_id, date_str, page_counter, is_draft)
 
                 # Field number + label
                 pdf.set_font("NS", "B", 8)
@@ -575,7 +591,7 @@ def generate_real_filled_form_pdf(
                 pdf.ln(2)
             else:
                 # Standard single-line field: label left, value right
-                _ensure_space(pdf, 12, scheme_name, scheme_name_hindi, ref_id, date_str, page_counter)
+                _ensure_space(pdf, 12, scheme_name, scheme_name_hindi, ref_id, date_str, page_counter, is_draft)
 
                 # Field number + label
                 pdf.set_font("NS", "B", 8)
@@ -594,7 +610,7 @@ def generate_real_filled_form_pdf(
         pdf.ln(2)
 
     # === DECLARATION SECTION ===
-    _ensure_space(pdf, 55, scheme_name, scheme_name_hindi, ref_id, date_str, page_counter)
+    _ensure_space(pdf, 55, scheme_name, scheme_name_hindi, ref_id, date_str, page_counter, is_draft)
 
     pdf.set_fill_color(230, 235, 248)
     pdf.set_draw_color(0, 0, 128)
@@ -625,7 +641,7 @@ def generate_real_filled_form_pdf(
     pdf.set_y(pdf.get_y() + 16)
 
     # === OFFICE USE ONLY section (government form style) ===
-    _ensure_space(pdf, 25, scheme_name, scheme_name_hindi, ref_id, date_str, page_counter)
+    _ensure_space(pdf, 25, scheme_name, scheme_name_hindi, ref_id, date_str, page_counter, is_draft)
     pdf.set_fill_color(245, 245, 245)
     pdf.set_draw_color(150, 150, 150)
     pdf.set_font("NS", "B", 8)

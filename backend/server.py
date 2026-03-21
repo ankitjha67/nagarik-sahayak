@@ -1546,8 +1546,14 @@ async def reset_chat(req: dict = {}):
 
 @api_router.post("/v2/generate-filled-forms")
 async def generate_real_filled_forms(req: dict = {}):
-    """Generate real pre-filled PDFs for selected schemes using full form template fields."""
+    """Generate pre-filled PDFs for selected schemes.
+
+    Strategy per scheme:
+    1. If original government PDF exists locally → try AcroForm fill or text overlay
+    2. Fallback → generate new styled PDF (no DRAFT watermark if from real extraction)
+    """
     from pdf_generator import generate_real_filled_form_pdf
+    from pdf_filler import fill_pdf_form
     from prisma import Json
 
     user_id = req.get("user_id", "")
@@ -1580,15 +1586,50 @@ async def generate_real_filled_forms(req: dict = {}):
 
         pid = str(uuid.uuid4())
         out_path = str(PDF_DIR / f"{pid}.pdf")
-        generate_real_filled_form_pdf(
-            filled_fields=full_profile,
-            scheme_name=sname,
-            scheme_name_hindi=ft.schemeNameHindi or "",
-            sections=sections,
-            form_fields=fields,
-            output_path=out_path,
-        )
-        pdf_urls.append({"pdf_url": f"/api/pdf/{pid}", "scheme_name": sname, "scheme_name_hindi": ft.schemeNameHindi or ""})
+        fill_method = "generated"
+
+        # Strategy 1: Try to fill the original government PDF
+        original_pdf_url = ft.officialPdfUrl or ""
+        source_pdf_path = ""
+        if original_pdf_url.startswith("/api/pdf/"):
+            # Local PDF — extract the UUID and find the file
+            local_id = original_pdf_url.replace("/api/pdf/", "").strip("/")
+            candidate = PDF_DIR / f"{local_id}.pdf"
+            if candidate.exists():
+                source_pdf_path = str(candidate)
+
+        if source_pdf_path:
+            fill_result = fill_pdf_form(
+                source_pdf_path=source_pdf_path,
+                output_path=out_path,
+                field_values=full_profile,
+                form_fields=fields,
+            )
+            if fill_result.get("success"):
+                fill_method = fill_result.get("method", "filled")
+                logger.info(f"PDF filled via {fill_method} for '{sname}': "
+                            f"{fill_result.get('filled_count', 0)} fields")
+
+        # Strategy 2: Generate new styled PDF (fallback)
+        if fill_method == "generated":
+            # No DRAFT watermark if fields came from real extraction (has officialPdfUrl)
+            is_draft = not bool(original_pdf_url)
+            generate_real_filled_form_pdf(
+                filled_fields=full_profile,
+                scheme_name=sname,
+                scheme_name_hindi=ft.schemeNameHindi or "",
+                sections=sections,
+                form_fields=fields,
+                output_path=out_path,
+                is_draft=is_draft,
+            )
+
+        pdf_urls.append({
+            "pdf_url": f"/api/pdf/{pid}",
+            "scheme_name": sname,
+            "scheme_name_hindi": ft.schemeNameHindi or "",
+            "fill_method": fill_method,
+        })
 
         # Save application record
         scheme = await prisma.scheme.find_first(where={"name": sname})

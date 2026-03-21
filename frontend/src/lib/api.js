@@ -103,4 +103,11 @@ export const smartProfiler = (userId, schemeNames) =>
 export const generateRealFilledForms = (userId, schemeNames) =>
   api.post("/v2/generate-filled-forms", { user_id: userId, scheme_names: schemeNames });
 
+// Upload PDF and extract form fields (new scheme onboarding)
+export const uploadAndExtract = (formData) =>
+  api.post("/upload-and-extract", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 120000, // 2 min — extraction can take time
+  });
+
 export default api;

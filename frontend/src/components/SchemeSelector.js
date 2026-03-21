@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { getV2Schemes } from "../lib/api";
-import { Home, GraduationCap, Rocket, Wheat, ChevronRight, Check } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { getV2Schemes, uploadAndExtract } from "../lib/api";
+import { Home, GraduationCap, Rocket, Wheat, ChevronRight, Check, Upload, FileText, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const CATEGORY_CONFIG = {
   housing: { icon: Home, color: "#FF6B35", bg: "#FFF3ED" },
@@ -13,6 +14,15 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
   const [schemes, setSchemes] = useState([]);
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const refreshSchemes = () => {
+    getV2Schemes()
+      .then((res) => setSchemes(res.data.schemes || []))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     getV2Schemes()
@@ -20,6 +30,50 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const handleUploadForm = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Only PDF files are accepted");
+      return;
+    }
+    setUploading(true);
+    setUploadResult(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("user_id", userId || "");
+      formData.append("save_to_db", "true");
+      const res = await uploadAndExtract(formData);
+      const data = res.data;
+      if (data.success) {
+        setUploadResult({
+          success: true,
+          scheme: data.scheme,
+          totalFields: data.totalFields,
+          method: data.extraction_method,
+        });
+        toast.success(`${data.totalFields} fields extracted from "${data.scheme}"`);
+        // Refresh schemes list to include the new one
+        refreshSchemes();
+        // Auto-select the newly extracted scheme
+        if (data.scheme) {
+          setSelected((prev) => prev.includes(data.scheme) ? prev : [...prev, data.scheme]);
+        }
+      } else {
+        setUploadResult({ success: false, error: data.error });
+        toast.error(data.error || "Failed to extract fields from PDF");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || "Upload failed";
+      setUploadResult({ success: false, error: msg });
+      toast.error(msg);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const toggleScheme = (name) => {
     setSelected((prev) =>
@@ -104,6 +158,60 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
           </button>
         );
       })}
+
+      {/* Upload your own form */}
+      <div className="border-t border-gray-100 pt-3 mt-2">
+        <p className="text-xs text-gray-500 font-['Nunito'] text-center mb-2">
+          या अपना सरकारी फॉर्म अपलोड करें / Or upload your own government form
+        </p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf"
+          className="hidden"
+          onChange={handleUploadForm}
+          data-testid="scheme-upload-input"
+        />
+        <button
+          data-testid="scheme-upload-btn"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="w-full py-2.5 border-2 border-dashed border-gray-300 hover:border-[#FF9933] rounded-xl text-sm font-['Nunito'] text-gray-600 hover:text-[#FF9933] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {uploading ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              <span>Extracting fields...</span>
+            </>
+          ) : (
+            <>
+              <Upload size={16} />
+              <span>Upload PDF Form</span>
+            </>
+          )}
+        </button>
+        {uploadResult && (
+          <div
+            className={`mt-2 p-2 rounded-lg text-xs font-['Nunito'] ${
+              uploadResult.success
+                ? "bg-green-50 text-green-700 border border-green-200"
+                : "bg-red-50 text-red-600 border border-red-200"
+            }`}
+          >
+            {uploadResult.success ? (
+              <div className="flex items-center gap-1.5">
+                <FileText size={14} />
+                <span>
+                  <strong>{uploadResult.scheme}</strong> — {uploadResult.totalFields} fields extracted
+                  ({uploadResult.method})
+                </span>
+              </div>
+            ) : (
+              <span>{uploadResult.error}</span>
+            )}
+          </div>
+        )}
+      </div>
 
       {selected.length > 0 && (
         <button
