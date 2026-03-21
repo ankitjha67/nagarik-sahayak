@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { X, BarChart3, ExternalLink, Zap } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { X, BarChart3, ExternalLink, Zap, Globe, GraduationCap, Download } from "lucide-react";
 
 export const Sidebar = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
   const [analyticsStatus, setAnalyticsStatus] = useState(null);
   const [demoOn, setDemoOn] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -117,6 +119,45 @@ export const Sidebar = ({ isOpen, onClose }) => {
               />
             </button>
           </div>
+
+          {/* Divider */}
+          <div className="border-t border-gray-100 my-2 mx-3" />
+
+          {/* Discovery Dashboard */}
+          <button
+            onClick={() => { onClose(); navigate("/discovery"); }}
+            className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-blue-50 group transition-colors w-full text-left"
+          >
+            <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+              <Globe size={18} className="text-[#000080]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
+                Scheme Discovery
+              </span>
+              <span className="text-xs text-gray-400 font-['Nunito']">
+                Crawl portals, view health
+              </span>
+            </div>
+          </button>
+
+          {/* Exams */}
+          <button
+            onClick={() => { onClose(); navigate("/exams"); }}
+            className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-purple-50 group transition-colors w-full text-left"
+          >
+            <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+              <GraduationCap size={18} className="text-purple-700" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
+                Exam Alerts
+              </span>
+              <span className="text-xs text-gray-400 font-['Nunito']">
+                Deadlines, admit cards, results
+              </span>
+            </div>
+          </button>
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 px-5 py-4 border-t border-gray-100">

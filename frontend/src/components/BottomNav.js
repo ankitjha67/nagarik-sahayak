@@ -1,10 +1,11 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, BookOpen, UserCircle2, MessageCircle } from "lucide-react";
+import { Home, BookOpen, UserCircle2, MessageCircle, GraduationCap } from "lucide-react";
 
 const navItems = [
   { path: "/home", icon: Home, label: "Home", labelHi: "होम" },
   { path: "/chat", icon: MessageCircle, label: "Chat", labelHi: "चैट" },
   { path: "/schemes", icon: BookOpen, label: "Schemes", labelHi: "योजनाएं" },
+  { path: "/exams", icon: GraduationCap, label: "Exams", labelHi: "परीक्षा" },
   { path: "/profile", icon: UserCircle2, label: "Profile", labelHi: "प्रोफाइल" },
 ];
 

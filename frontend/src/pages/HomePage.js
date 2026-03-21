@@ -3,23 +3,26 @@ import { useNavigate } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
-import { getChatHistory, getSchemes } from "../lib/api";
-import { Mic, MessageCircle, BookOpen, ChevronRight, Sparkles } from "lucide-react";
+import { getChatHistory, getSchemes, getExamAlerts, getDiscoveryStats } from "../lib/api";
+import { Mic, MessageCircle, BookOpen, ChevronRight, Sparkles, GraduationCap, Clock, Globe, Search as SearchIcon } from "lucide-react";
 
 export default function HomePage({ userId }) {
   const navigate = useNavigate();
   const [recentChats, setRecentChats] = useState([]);
   const [schemes, setSchemes] = useState([]);
+  const [examAlerts, setExamAlerts] = useState([]);
+  const [discoveryStats, setDiscoveryStats] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (userId) {
       getChatHistory(userId).then((r) => {
         const msgs = r.data || [];
-        // Get last 5 messages
         setRecentChats(msgs.slice(-5).reverse());
       }).catch(() => {});
       getSchemes().then((r) => setSchemes(r.data || [])).catch(() => {});
+      getExamAlerts(14).then((r) => setExamAlerts((r.data.alerts || []).slice(0, 3))).catch(() => {});
+      getDiscoveryStats().then((r) => setDiscoveryStats(r.data)).catch(() => {});
     }
   }, [userId]);
 
@@ -119,6 +122,78 @@ export default function HomePage({ userId }) {
             ))}
           </div>
         </div>
+
+        {/* Exam Alerts */}
+        {examAlerts.length > 0 && (
+          <div className="mb-5 animate-fade-in-up" style={{ animationDelay: "0.17s" }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-bold text-[#000080] font-['Mukta']">
+                परीक्षा अलर्ट
+              </h3>
+              <button
+                onClick={() => navigate("/exams")}
+                className="text-xs text-[#FF9933] font-semibold flex items-center gap-0.5 hover:underline"
+              >
+                सभी देखें <ChevronRight size={14} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {examAlerts.map((alert, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => navigate("/exams")}
+                  className={`w-full text-left rounded-xl p-3 border transition-all hover:shadow-sm ${
+                    alert.urgency === "critical" ? "bg-red-50 border-red-200" :
+                    alert.urgency === "high" ? "bg-orange-50 border-orange-200" :
+                    "bg-blue-50 border-blue-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Clock size={14} className={
+                      alert.urgency === "critical" ? "text-red-600" :
+                      alert.urgency === "high" ? "text-orange-600" :
+                      "text-blue-600"
+                    } />
+                    <span className="text-sm font-semibold text-gray-800 font-['Mukta'] truncate">
+                      {alert.exam_name}
+                    </span>
+                    {alert.days_left != null && (
+                      <span className={`text-[10px] font-bold ml-auto flex-shrink-0 ${
+                        alert.urgency === "critical" ? "text-red-700" : "text-orange-700"
+                      }`}>
+                        {alert.days_left}d left
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-0.5 ml-6">{alert.message_hi}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Discovery Stats */}
+        {discoveryStats && discoveryStats.total_schemes > 0 && (
+          <div className="mb-5 animate-fade-in-up" style={{ animationDelay: "0.19s" }}>
+            <button
+              onClick={() => navigate("/discovery")}
+              className="w-full bg-gradient-to-r from-[#000080] to-[#1a1aab] rounded-xl p-4 text-white text-left hover:opacity-95 transition-opacity"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+                  <Globe size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold font-['Mukta']">योजना खोज इंजन</p>
+                  <p className="text-xs opacity-80 font-['Nunito']">
+                    {discoveryStats.total_schemes} schemes from {Object.keys(discoveryStats.by_sector || {}).length} sectors
+                  </p>
+                </div>
+                <ChevronRight size={18} className="ml-auto opacity-60" />
+              </div>
+            </button>
+          </div>
+        )}
 
         {/* Recent Chat */}
         <div className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>

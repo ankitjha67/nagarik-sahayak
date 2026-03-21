@@ -6,6 +6,8 @@ import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import ChatPage from "@/pages/ChatPage";
 import SchemesPage from "@/pages/SchemesPage";
+import ExamsPage from "@/pages/ExamsPage";
+import DiscoveryPage from "@/pages/DiscoveryPage";
 import ProfilePage from "@/pages/ProfilePage";
 
 class ErrorBoundary extends Component {
@@ -93,6 +95,18 @@ function App() {
             path="/schemes"
             element={
               isLoggedIn ? <SchemesPage language={language} /> : <Navigate to="/" replace />
+            }
+          />
+          <Route
+            path="/exams"
+            element={
+              isLoggedIn ? <ExamsPage language={language} /> : <Navigate to="/" replace />
+            }
+          />
+          <Route
+            path="/discovery"
+            element={
+              isLoggedIn ? <DiscoveryPage language={language} /> : <Navigate to="/" replace />
             }
           />
           <Route

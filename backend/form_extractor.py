@@ -367,6 +367,42 @@ def _safe_unlink(path: str) -> None:
         pass
 
 
+def _hardened_json_parse(raw_response: str, context: str = "") -> dict | None:
+    """Use V3 LLM Hardener for robust JSON extraction and validation.
+    Returns parsed dict or None if hardener is unavailable."""
+    try:
+        import sys
+        from pathlib import Path as _Path
+        project_root = str(_Path(__file__).resolve().parent.parent)
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+
+        from src.resilience.llm_hardener import LLMResponseHardener
+
+        valid_enums = {
+            "category": ["housing", "education", "agriculture", "health", "startup", "finance", "general"],
+            "type": ["text", "number", "date", "select", "phone", "email", "aadhaar", "textarea"],
+        }
+        hardener = LLMResponseHardener(valid_enums=valid_enums)
+        data, penalty = hardener.parse_and_validate(
+            raw_response,
+            required_fields=["extractedFields"],
+            date_fields=[],
+        )
+        if data is not None:
+            if penalty > 0:
+                logger.info(f"LLM response repaired (penalty={penalty:.2f}) for {context}")
+                data["_llm_repair_penalty"] = penalty
+            return data
+        return None
+    except ImportError:
+        logger.debug("LLM Hardener not available, falling back to manual JSON parse")
+        return None
+    except Exception as e:
+        logger.debug(f"LLM Hardener failed: {e}, falling back to manual JSON parse")
+        return None
+
+
 async def extract_form_fields_llm(pdf_text: str, scheme_hint: str = "") -> dict:
     """Use Claude Sonnet 4.5 to analyze PDF text and extract structured form fields."""
     if not EMERGENT_KEY:
@@ -394,9 +430,13 @@ async def extract_form_fields_llm(pdf_text: str, scheme_hint: str = "") -> dict:
 
     try:
         response = await chat.send_message(UserMessage(text=prompt))
-        # Parse the JSON response
+        # Parse the JSON response — use LLM Hardener for robust extraction
+        result = _hardened_json_parse(response, scheme_hint)
+        if result is not None:
+            return result
+
+        # Fallback: manual strip of markdown
         text = response.strip()
-        # Remove markdown code blocks if present
         if text.startswith("```"):
             text = text.split("\n", 1)[1] if "\n" in text else text[3:]
         if text.endswith("```"):

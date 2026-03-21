@@ -110,4 +110,32 @@ export const uploadAndExtract = (formData) =>
     timeout: 120000, // 2 min — extraction can take time
   });
 
+// ── V3 Discovery APIs ──
+
+export const getDiscoveryStatus = () => api.get("/discovery/status");
+export const triggerDiscoveryCrawl = (portalNames) =>
+  api.post("/discovery/crawl", portalNames ? { portal_names: portalNames } : {});
+export const getDiscoveryPortals = () => api.get("/discovery/portals");
+export const getPortalHealth = () => api.get("/discovery/portal-health");
+export const getDiscoveryStats = () => api.get("/discovery/stats");
+
+// ── V3 Exam APIs ──
+
+export const getExams = (params = {}) =>
+  api.get("/exams", { params });
+export const getExamAlerts = (daysAhead = 30) =>
+  api.get("/exams/alerts", { params: { days_ahead: daysAhead } });
+export const getExamCategories = () => api.get("/exams/categories");
+export const getExamStats = () => api.get("/exams/stats");
+export const getExamDetail = (examId) => api.get(`/exams/${examId}`);
+
+// ── V3 Report APIs ──
+
+export const downloadSchemesExcel = () =>
+  api.get("/reports/schemes-excel", { responseType: "blob" });
+export const downloadExamsExcel = () =>
+  api.get("/reports/exams-excel", { responseType: "blob" });
+export const getNotificationConfig = () => api.get("/reports/notification-config");
+export const sendSchemeAlert = (data) => api.post("/reports/send-alert", data);
+
 export default api;
