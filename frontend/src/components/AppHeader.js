@@ -34,6 +34,7 @@ export const AppHeader = ({ title = "नागरिक सहायक", showBa
           data-testid="new-chat-btn"
           onClick={onNewChat}
           title="नई चैट शुरू करें"
+          aria-label="Start new chat"
           className="p-2 text-[#000080] hover:bg-[#FFF0E0] hover:text-[#FF9933] rounded-lg transition-all"
         >
           <RotateCcw size={18} />

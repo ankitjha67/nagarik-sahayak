@@ -56,6 +56,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           <button
             data-testid="sidebar-close-btn"
             onClick={onClose}
+            aria-label="Close menu"
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
           >
             <X size={20} />
@@ -104,6 +105,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               data-testid="demo-toggle-btn"
               onClick={handleToggle}
               disabled={toggling}
+              aria-label={demoOn ? "Disable demo mode" : "Enable demo mode"}
               className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none ${
                 demoOn ? "bg-amber-400" : "bg-gray-300"
               }`}
