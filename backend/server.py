@@ -1412,6 +1412,113 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("")):
         "size": len(file_bytes)}
 
 
+@api_router.post("/upload-and-extract")
+async def upload_and_extract_pdf(
+    file: UploadFile = File(...),
+    user_id: str = Form(""),
+    scheme_hint: str = Form(""),
+    save_to_db: bool = Form(True),
+):
+    """Upload a PDF and immediately extract form fields using the multi-strategy pipeline.
+
+    Combines upload + extraction in a single call. Supports:
+    - Digital (text-selectable) PDFs
+    - Fillable AcroForm PDFs
+    - Scanned/image-based PDFs (via OCR if pytesseract installed)
+
+    Automatically saves extracted fields to FormTemplate collection when save_to_db=True.
+    """
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+    if file.content_type and file.content_type not in ("application/pdf", "application/octet-stream"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Only PDF files are accepted.")
+    file_bytes = await file.read()
+    if len(file_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+    if not _validate_pdf_content(file_bytes):
+        raise HTTPException(status_code=400, detail="Invalid PDF file content")
+
+    # Save file
+    pdf_id = str(uuid.uuid4())
+    safe_name = re.sub(r'[^a-zA-Z0-9._\-]', '_', file.filename)
+    pdf_path = UPLOADS_DIR / f"{pdf_id}.pdf"
+    with open(pdf_path, "wb") as f:
+        f.write(file_bytes)
+
+    # Extract form fields
+    from form_extractor import extract_form_fields
+    t0 = _time.time()
+    result = await extract_form_fields(pdf_path=str(pdf_path), scheme_hint=scheme_hint)
+    latency = int((_time.time() - t0) * 1000)
+
+    if "error" in result:
+        logger.warning(f"Extraction failed for {safe_name}: {result['error']}")
+        return {
+            "success": False,
+            "pdf_id": pdf_id,
+            "pdf_url": f"/api/pdf/{pdf_id}",
+            "filename": safe_name,
+            "error": result["error"],
+            "extraction_method": result.get("extraction_method", "unknown"),
+        }
+
+    # Auto-save to FormTemplate
+    saved_to_db = False
+    if save_to_db and result.get("schemeName"):
+        try:
+            from prisma import Json
+            scheme_name = result["schemeName"]
+            existing = await prisma.formtemplate.find_first(where={"schemeName": scheme_name})
+            data = {
+                "schemeName": scheme_name,
+                "schemeNameHindi": result.get("schemeNameHindi", ""),
+                "officialPdfUrl": f"/api/pdf/{pdf_id}",
+                "category": result.get("category", "general"),
+                "totalFields": result.get("totalFields", len(result.get("extractedFields", []))),
+                "extractedFields": Json(result.get("extractedFields", [])),
+                "sections": Json(result.get("sections", [])),
+            }
+            if existing:
+                await prisma.formtemplate.update(where={"id": existing.id}, data=data)
+            else:
+                await prisma.formtemplate.create(data=data)
+            saved_to_db = True
+            logger.info(f"FormTemplate saved for '{scheme_name}' ({result.get('totalFields', 0)} fields)")
+        except Exception as e:
+            logger.error(f"Failed to save FormTemplate: {e}")
+
+    if _agnost_key:
+        try:
+            agnost.track(user_id=user_id or "api", agent_name="nagarik_tool",
+                input=f"upload_extract:{safe_name}", output=str(result.get("totalFields", 0)),
+                properties={
+                    "tool": "upload_and_extract",
+                    "filename": safe_name,
+                    "scheme": result.get("schemeName", ""),
+                    "fields": result.get("totalFields", 0),
+                    "method": result.get("_extraction_method", ""),
+                },
+                success=True, latency=latency)
+        except Exception:
+            pass
+
+    return {
+        "success": True,
+        "pdf_id": pdf_id,
+        "pdf_url": f"/api/pdf/{pdf_id}",
+        "filename": safe_name,
+        "saved_to_db": saved_to_db,
+        "extraction_method": result.get("_extraction_method", "unknown"),
+        "acroform_fields_found": result.get("_acroform_field_count", 0),
+        "text_length": result.get("_text_length", 0),
+        "scheme": result.get("schemeName", ""),
+        "totalFields": result.get("totalFields", 0),
+        "extractedFields": result.get("extractedFields", []),
+        "sections": result.get("sections", []),
+        "category": result.get("category", "general"),
+    }
+
+
 # --- New Chat / Reset Profiler ---
 
 @api_router.post("/chat/reset")
@@ -1580,7 +1687,11 @@ async def smart_profiler(req: dict = {}):
 
 @api_router.post("/v2/extract-form-fields")
 async def api_extract_form_fields(req: dict = {}):
-    """Extract form fields from a PDF URL or uploaded file using Claude Sonnet 4.5."""
+    """Extract form fields from a PDF URL or uploaded file using Claude Sonnet 4.5.
+
+    Multi-strategy pipeline: pdfplumber → PyMuPDF → OCR → AcroForm.
+    Auto-saves to FormTemplate by default (set save_to_db=false to disable).
+    """
     from form_extractor import extract_form_fields
     pdf_url = req.get("pdf_url", "")
     scheme_hint = req.get("scheme_hint", "")
@@ -1601,8 +1712,8 @@ async def api_extract_form_fields(req: dict = {}):
                 pass
         raise HTTPException(status_code=422, detail=result["error"])
 
-    # Optionally save to FormTemplate collection
-    if result.get("schemeName") and req.get("save_to_db", False):
+    # Save to FormTemplate by default (previously opt-in, now opt-out)
+    if result.get("schemeName") and req.get("save_to_db", True):
         from prisma import Json
         existing = await prisma.formtemplate.find_first(where={"schemeName": result["schemeName"]})
         data = {

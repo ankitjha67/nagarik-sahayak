@@ -610,11 +610,11 @@ class TestFormExtractor:
     """Test form extractor helper functions."""
 
     def test_sanitize_pdf_text(self):
-        from form_extractor import _sanitize_pdf_text
+        from form_extractor import _sanitize_pdf_text, MAX_PDF_TEXT_LENGTH
         # Should truncate long text
-        long_text = "x" * 20000
+        long_text = "x" * (MAX_PDF_TEXT_LENGTH + 10000)
         result = _sanitize_pdf_text(long_text)
-        assert len(result) <= 15000
+        assert len(result) <= MAX_PDF_TEXT_LENGTH
         # Should strip null bytes
         assert "\x00" not in _sanitize_pdf_text("hello\x00world")
 
