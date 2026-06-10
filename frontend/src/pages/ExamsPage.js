@@ -2,12 +2,16 @@ import { useState, useEffect } from "react";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
-import { getExamAlerts, getExams, getExamStats } from "../lib/api";
-import { Badge } from "../components/ui/badge";
 import {
-  AlertTriangle, Bell, Calendar, ChevronDown, ChevronUp,
+  getExamAlerts, getExams, getExamStats,
+  getExamSubscriptions, subscribeToExam, unsubscribeFromExam,
+} from "../lib/api";
+import { Badge } from "../components/ui/badge";
+import { toast } from "sonner";
+import {
+  Bell, BellRing, Calendar, ChevronDown, ChevronUp,
   Clock, ExternalLink, FileText, GraduationCap, Search,
-  Shield, Users, TrendingUp, Download,
+  Users, TrendingUp,
 } from "lucide-react";
 
 const URGENCY_STYLES = {
@@ -37,7 +41,7 @@ const CATEGORY_COLORS = {
   State_PSC: "bg-amber-100 text-amber-800",
 };
 
-export default function ExamsPage({ language = "hi" }) {
+export default function ExamsPage({ userId, language = "hi" }) {
   const [alerts, setAlerts] = useState([]);
   const [exams, setExams] = useState([]);
   const [stats, setStats] = useState(null);
@@ -47,12 +51,50 @@ export default function ExamsPage({ language = "hi" }) {
   const [expandedId, setExpandedId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Map of exam_id → subscription_id for the current user
+  const [subscriptions, setSubscriptions] = useState({});
 
   const isHindi = language === "hi";
 
   useEffect(() => {
     loadData();
-  }, []);
+    if (userId) {
+      getExamSubscriptions(userId)
+        .then((r) => {
+          const map = {};
+          (r.data.subscriptions || []).forEach((s) => { map[s.exam_id] = s.id; });
+          setSubscriptions(map);
+        })
+        .catch(() => {});
+    }
+  }, [userId]);
+
+  const handleToggleSubscribe = async (exam) => {
+    if (!userId) return;
+    const subId = subscriptions[exam.exam_id];
+    try {
+      if (subId) {
+        await unsubscribeFromExam(userId, subId);
+        setSubscriptions((prev) => {
+          const next = { ...prev };
+          delete next[exam.exam_id];
+          return next;
+        });
+        toast.success(isHindi ? "अलर्ट बंद किया गया" : "Alert unsubscribed");
+      } else {
+        const res = await subscribeToExam(userId, {
+          exam_id: exam.exam_id,
+          exam_name: exam.exam_name,
+          category: exam.category || "",
+          alert_types: ["deadline", "admit_card", "result"],
+        });
+        setSubscriptions((prev) => ({ ...prev, [exam.exam_id]: res.data.id }));
+        toast.success(isHindi ? "अलर्ट चालू किया गया!" : "Alert subscribed!");
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to update subscription");
+    }
+  };
 
   useEffect(() => {
     if (tab === "browse") loadExams();
@@ -301,6 +343,19 @@ export default function ExamsPage({ language = "hi" }) {
                           </div>
                         )}
                         <div className="flex gap-2 mt-2 flex-wrap">
+                          <button
+                            onClick={() => handleToggleSubscribe(exam)}
+                            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                              subscriptions[exam.exam_id]
+                                ? "bg-[#138808] text-white"
+                                : "bg-green-50 text-[#138808] border border-green-200"
+                            }`}
+                          >
+                            {subscriptions[exam.exam_id] ? <BellRing size={11} /> : <Bell size={11} />}
+                            {subscriptions[exam.exam_id]
+                              ? (isHindi ? "अलर्ट चालू" : "Subscribed")
+                              : (isHindi ? "अलर्ट पाएं" : "Get Alerts")}
+                          </button>
                           {exam.apply_url && (
                             <a href={exam.apply_url} target="_blank" rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#FF9933] text-white rounded-full text-xs font-semibold">

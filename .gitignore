@@ -87,3 +87,9 @@ android-sdk/
 # Keys
 *.key
 *.pub
+
+# V3 crawler SQLite databases and output
+backend/data/
+data/
+output/
+*.db

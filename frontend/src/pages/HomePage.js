@@ -4,7 +4,7 @@ import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
 import { getChatHistory, getSchemes, getExamAlerts, getDiscoveryStats } from "../lib/api";
-import { Mic, MessageCircle, BookOpen, ChevronRight, Sparkles, GraduationCap, Clock, Globe, Search as SearchIcon } from "lucide-react";
+import { Mic, MessageCircle, BookOpen, ChevronRight, Sparkles, Clock, Globe } from "lucide-react";
 
 export default function HomePage({ userId }) {
   const navigate = useNavigate();

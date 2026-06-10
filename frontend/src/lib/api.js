@@ -132,10 +132,30 @@ export const getExamDetail = (examId) => api.get(`/exams/${examId}`);
 // ── V3 Report APIs ──
 
 export const downloadSchemesExcel = () =>
-  api.get("/reports/schemes-excel", { responseType: "blob" });
+  api.get("/reports/schemes-excel", { responseType: "blob", timeout: 120000 });
 export const downloadExamsExcel = () =>
-  api.get("/reports/exams-excel", { responseType: "blob" });
+  api.get("/reports/exams-excel", { responseType: "blob", timeout: 120000 });
 export const getNotificationConfig = () => api.get("/reports/notification-config");
 export const sendSchemeAlert = (data) => api.post("/reports/send-alert", data);
+
+// ── Discovered Schemes (V3 crawler DB) ──
+
+export const getDiscoveredSchemes = (params = {}) =>
+  api.get("/discovery/schemes", { params });
+export const resetPortalHealth = (portalName) =>
+  api.post(`/discovery/portal-health/${encodeURIComponent(portalName)}/reset`);
+
+// ── Notification Preferences & Exam Subscriptions ──
+
+export const getNotificationPreferences = (userId) =>
+  api.get(`/notifications/preferences/${userId}`);
+export const updateNotificationPreferences = (userId, prefs) =>
+  api.put(`/notifications/preferences/${userId}`, prefs);
+export const getExamSubscriptions = (userId) =>
+  api.get(`/notifications/subscriptions/${userId}`);
+export const subscribeToExam = (userId, data) =>
+  api.post(`/notifications/subscriptions/${userId}`, data);
+export const unsubscribeFromExam = (userId, subscriptionId) =>
+  api.delete(`/notifications/subscriptions/${userId}/${subscriptionId}`);
 
 export default api;

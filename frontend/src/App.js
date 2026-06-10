@@ -100,7 +100,7 @@ function App() {
           <Route
             path="/exams"
             element={
-              isLoggedIn ? <ExamsPage language={language} /> : <Navigate to="/" replace />
+              isLoggedIn ? <ExamsPage userId={userId} language={language} /> : <Navigate to="/" replace />
             }
           />
           <Route

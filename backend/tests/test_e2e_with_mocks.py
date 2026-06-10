@@ -28,13 +28,13 @@ class TestSecurityHelpers:
     """Test security helper functions directly."""
 
     def test_validate_phone_valid(self):
-        from server import _validate_phone
+        from config import validate_phone as _validate_phone
         assert _validate_phone("9876543210") is True
         assert _validate_phone("6000000000") is True
         assert _validate_phone("7999999999") is True
 
     def test_validate_phone_invalid(self):
-        from server import _validate_phone
+        from config import validate_phone as _validate_phone
         assert _validate_phone("1234567890") is False  # starts with 1
         assert _validate_phone("5555555555") is False  # starts with 5
         assert _validate_phone("123") is False  # too short
@@ -43,7 +43,7 @@ class TestSecurityHelpers:
         assert _validate_phone("abcdefghij") is False
 
     def test_generate_otp_format(self):
-        from server import _generate_otp
+        from config import generate_otp as _generate_otp
         for _ in range(100):
             otp = _generate_otp()
             assert len(otp) == 6
@@ -51,13 +51,13 @@ class TestSecurityHelpers:
             assert 100000 <= int(otp) <= 999999
 
     def test_generate_otp_randomness(self):
-        from server import _generate_otp
+        from config import generate_otp as _generate_otp
         otps = {_generate_otp() for _ in range(50)}
         # With 50 attempts we should get many unique values
         assert len(otps) > 30
 
     def test_sanitize_input_strips_control_chars(self):
-        from server import _sanitize_input
+        from config import sanitize_input as _sanitize_input
         assert _sanitize_input("hello\x00world") == "helloworld"
         assert _sanitize_input("test\x07\x08data") == "testdata"
         # Preserves newlines and tabs
@@ -65,31 +65,31 @@ class TestSecurityHelpers:
         assert _sanitize_input("hello\tworld") == "hello\tworld"
 
     def test_sanitize_input_length_limit(self):
-        from server import _sanitize_input
+        from config import sanitize_input as _sanitize_input
         long_text = "a" * 20000
         result = _sanitize_input(long_text, max_length=100)
         assert len(result) == 100
 
     def test_sanitize_input_empty(self):
-        from server import _sanitize_input
+        from config import sanitize_input as _sanitize_input
         assert _sanitize_input("") == ""
         assert _sanitize_input(None) == ""
 
     def test_validate_path_within_safe(self):
-        from server import _validate_path_within
+        from config import validate_path_within as _validate_path_within
         base = Path("/tmp/test_pdfs")
         safe_path = Path("/tmp/test_pdfs/report.pdf")
         assert _validate_path_within(safe_path, base) is True
 
     def test_validate_path_traversal_blocked(self):
-        from server import _validate_path_within
+        from config import validate_path_within as _validate_path_within
         base = Path("/tmp/test_pdfs")
         # Path traversal attempts
         assert _validate_path_within(Path("/tmp/test_pdfs/../../../etc/passwd"), base) is False
         assert _validate_path_within(Path("/etc/passwd"), base) is False
 
     def test_validate_pdf_content(self):
-        from server import _validate_pdf_content
+        from config import validate_pdf_content as _validate_pdf_content
         assert _validate_pdf_content(b'%PDF-1.4 ...') is True
         assert _validate_pdf_content(b'%PDF-2.0 ...') is True
         assert _validate_pdf_content(b'not a pdf') is False
@@ -97,7 +97,7 @@ class TestSecurityHelpers:
         assert _validate_pdf_content(b'PK\x03\x04') is False  # ZIP file
 
     def test_rate_limiter(self):
-        from server import _check_rate_limit, _rate_limit_store, RATE_LIMIT_MAX
+        from config import check_rate_limit as _check_rate_limit, _rate_limit_store, RATE_LIMIT_MAX
         key = f"test_rate_{secrets.token_hex(4)}"
         # First N requests should pass
         for i in range(RATE_LIMIT_MAX):
@@ -106,7 +106,7 @@ class TestSecurityHelpers:
         assert _check_rate_limit(key) is True
 
     def test_rate_limiter_different_keys(self):
-        from server import _check_rate_limit
+        from config import check_rate_limit as _check_rate_limit
         key1 = f"test_a_{secrets.token_hex(4)}"
         key2 = f"test_b_{secrets.token_hex(4)}"
         assert _check_rate_limit(key1) is False
@@ -117,22 +117,22 @@ class TestPydanticModels:
     """Test request/response model validation."""
 
     def test_send_otp_request_valid(self):
-        from server import SendOTPRequest
+        from models import SendOTPRequest
         req = SendOTPRequest(phone="9876543210")
         assert req.phone == "9876543210"
 
     def test_send_otp_request_invalid_phone(self):
-        from server import SendOTPRequest
+        from models import SendOTPRequest
         with pytest.raises(Exception):
             SendOTPRequest(phone="123")
 
     def test_chat_message_request(self):
-        from server import ChatMessageRequest
+        from models import ChatMessageRequest
         req = ChatMessageRequest(user_id="abc123", content="hello", language="hi")
         assert req.content == "hello"
 
     def test_verify_otp_request(self):
-        from server import VerifyOTPRequest
+        from models import VerifyOTPRequest
         req = VerifyOTPRequest(phone="9876543210", otp="123456")
         assert req.otp == "123456"
 
@@ -141,20 +141,20 @@ class TestBotResponseLogic:
     """Test the MCP bot response logic (no DB needed)."""
 
     def test_greeting_response(self):
-        from server import get_bot_response_with_mcp
+        from routes.chat import get_bot_response_with_mcp
         resp = get_bot_response_with_mcp("namaste", "hi")
         assert resp["content"]  # Should return greeting
         assert isinstance(resp["tool_calls"], list)
 
     def test_scheme_query_response(self):
-        from server import get_bot_response_with_mcp
+        from routes.chat import get_bot_response_with_mcp
         resp = get_bot_response_with_mcp("kisan योजना", "hi")
         assert resp["content"]
         # Should trigger tool call
         assert len(resp["tool_calls"]) > 0
 
     def test_default_response(self):
-        from server import get_bot_response_with_mcp
+        from routes.chat import get_bot_response_with_mcp
         resp = get_bot_response_with_mcp("random text xyz", "hi")
         assert resp["content"]
 
@@ -163,18 +163,18 @@ class TestSearchSchemes:
     """Test scheme search logic."""
 
     def test_search_kisan(self):
-        from server import search_schemes
+        from services.search import search_schemes_sync as search_schemes
         result = search_schemes("kisan", "hi")
         assert "match_found" in result
         assert "documents_scanned" in result
 
     def test_search_health(self):
-        from server import search_schemes
+        from services.search import search_schemes_sync as search_schemes
         result = search_schemes("ayushman health", "hi")
         assert "match_found" in result
 
     def test_search_no_match(self):
-        from server import search_schemes
+        from services.search import search_schemes_sync as search_schemes
         result = search_schemes("quantum computing", "hi")
         assert result["match_found"] is False
 
@@ -198,7 +198,7 @@ def client():
 @pytest.fixture(autouse=True)
 def clear_rate_limits():
     """Clear rate limits between tests."""
-    from server import _rate_limit_store
+    from config import _rate_limit_store
     _rate_limit_store.clear()
     yield
 
@@ -215,7 +215,7 @@ class TestAuthEndpoints:
     @pytest.mark.asyncio
     async def test_send_otp_rate_limit(self, client):
         """Should rate limit after 5 requests."""
-        from server import _rate_limit_store
+        from config import _rate_limit_store
         phone = "9876543210"
         # Pre-fill rate limit store
         key = f"otp:{phone}"

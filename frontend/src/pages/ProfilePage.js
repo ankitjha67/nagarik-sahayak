@@ -2,11 +2,38 @@ import { useState, useEffect } from "react";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
-import { getProfile, updateProfile } from "../lib/api";
+import {
+  getProfile, updateProfile,
+  getNotificationPreferences, updateNotificationPreferences,
+} from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
-import { UserCircle2, Phone, Globe, LogOut, Save, Loader2 } from "lucide-react";
+import { UserCircle2, Phone, Globe, LogOut, Save, Loader2, Bell, Mail } from "lucide-react";
+
+function PrefToggle({ label, labelHi, checked, onChange }) {
+  return (
+    <div className="flex items-center justify-between py-2">
+      <div>
+        <p className="text-sm font-semibold text-gray-700 font-['Mukta']">{labelHi}</p>
+        <p className="text-[11px] text-gray-400 font-['Nunito']">{label}</p>
+      </div>
+      <button
+        onClick={() => onChange(!checked)}
+        aria-label={`${label}: ${checked ? "on" : "off"}`}
+        className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none ${
+          checked ? "bg-[#FF9933]" : "bg-gray-300"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-300 ${
+            checked ? "translate-x-5" : "translate-x-0"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
 
 export default function ProfilePage({ userId, onLogout }) {
   const [profile, setProfile] = useState(null);
@@ -14,6 +41,13 @@ export default function ProfilePage({ userId, onLogout }) {
   const [language, setLanguage] = useState("hi");
   const [saving, setSaving] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [prefs, setPrefs] = useState({
+    scheme_deadline_alerts: false,
+    exam_deadline_alerts: false,
+    new_scheme_alerts: false,
+    email: "",
+  });
+  const [savingPrefs, setSavingPrefs] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -24,8 +58,28 @@ export default function ProfilePage({ userId, onLogout }) {
           setLanguage(r.data.language || "hi");
         })
         .catch(() => {});
+      getNotificationPreferences(userId)
+        .then((r) => setPrefs({
+          scheme_deadline_alerts: !!r.data.scheme_deadline_alerts,
+          exam_deadline_alerts: !!r.data.exam_deadline_alerts,
+          new_scheme_alerts: !!r.data.new_scheme_alerts,
+          email: r.data.email || "",
+        }))
+        .catch(() => {});
     }
   }, [userId]);
+
+  const handleSavePrefs = async () => {
+    setSavingPrefs(true);
+    try {
+      await updateNotificationPreferences(userId, prefs);
+      toast.success("नोटिफिकेशन सेटिंग सेव हो गई!");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to save preferences");
+    } finally {
+      setSavingPrefs(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!profile) return;
@@ -135,6 +189,65 @@ export default function ProfilePage({ userId, onLogout }) {
               <>
                 <Save size={16} />
                 सेव करें
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Notification Preferences */}
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm mt-5 animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
+          <div className="flex items-center gap-2 mb-3">
+            <Bell size={16} className="text-[#FF9933]" />
+            <h3 className="text-sm font-bold text-[#000080] font-['Mukta']">
+              अलर्ट सेटिंग / Alert Settings
+            </h3>
+          </div>
+
+          <PrefToggle
+            label="Scheme deadline alerts"
+            labelHi="योजना डेडलाइन अलर्ट"
+            checked={prefs.scheme_deadline_alerts}
+            onChange={(v) => setPrefs((p) => ({ ...p, scheme_deadline_alerts: v }))}
+          />
+          <PrefToggle
+            label="Exam deadline alerts"
+            labelHi="परीक्षा डेडलाइन अलर्ट"
+            checked={prefs.exam_deadline_alerts}
+            onChange={(v) => setPrefs((p) => ({ ...p, exam_deadline_alerts: v }))}
+          />
+          <PrefToggle
+            label="New scheme notifications"
+            labelHi="नई योजना सूचनाएं"
+            checked={prefs.new_scheme_alerts}
+            onChange={(v) => setPrefs((p) => ({ ...p, new_scheme_alerts: v }))}
+          />
+
+          {/* Alert Email */}
+          <div className="mt-3">
+            <label className="text-sm font-semibold text-gray-700 font-['Mukta'] flex items-center gap-2 mb-2">
+              <Mail size={14} className="text-[#FF9933]" />
+              अलर्ट ईमेल / Alert Email
+            </label>
+            <Input
+              type="email"
+              value={prefs.email}
+              onChange={(e) => setPrefs((p) => ({ ...p, email: e.target.value }))}
+              placeholder="email@example.com"
+              className="h-10 rounded-xl border-gray-200 font-['Nunito']"
+            />
+          </div>
+
+          <Button
+            onClick={handleSavePrefs}
+            disabled={savingPrefs}
+            className="w-full h-10 mt-4 rounded-full bg-[#000080] hover:bg-[#000060] text-white font-semibold transition-all"
+          >
+            {savingPrefs ? (
+              <Loader2 className="animate-spin" size={16} />
+            ) : (
+              <>
+                <Save size={14} />
+                अलर्ट सेव करें
               </>
             )}
           </Button>

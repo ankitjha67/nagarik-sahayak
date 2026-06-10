@@ -10,7 +10,13 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL').rstrip('/')
+_BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL')
+if not _BACKEND_URL:
+    pytest.skip(
+        "REACT_APP_BACKEND_URL not set — integration tests need a running backend",
+        allow_module_level=True,
+    )
+BASE_URL = _BACKEND_URL.rstrip('/')
 
 
 class TestDemoFlowBackend:

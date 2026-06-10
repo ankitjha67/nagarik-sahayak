@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
-import { getSchemes, getV2Schemes, downloadSchemesExcel } from "../lib/api";
+import { getSchemes, getV2Schemes, getDiscoveredSchemes, downloadSchemesExcel } from "../lib/api";
 import { Badge } from "../components/ui/badge";
 import {
   Sprout, HeartPulse, Baby, ExternalLink, ChevronDown, ChevronUp,
   Users, IndianRupee, Home, GraduationCap, Rocket, Briefcase,
-  Search, Download, Filter, Building2,
+  Search, Download, Building2,
 } from "lucide-react";
 
 const ICON_MAP = {
@@ -42,15 +42,18 @@ export default function SchemesPage({ language = "hi" }) {
   const [categoryFilter, setCategoryFilter] = useState("");
 
   useEffect(() => {
-    // Load from both V1 and V2 endpoints, merge results
+    // Load curated (V1+V2) and crawler-discovered (V3) schemes, merge results
     Promise.all([
       getSchemes().catch(() => ({ data: [] })),
       getV2Schemes().catch(() => ({ data: { schemes: [] } })),
-    ]).then(([v1Res, v2Res]) => {
+      getDiscoveredSchemes({ limit: 100 }).catch(() => ({ data: { schemes: [] } })),
+    ]).then(([v1Res, v2Res, v3Res]) => {
       const v1 = v1Res.data || [];
       const v2 = v2Res.data.schemes || [];
-      // Merge: V2 data takes priority, add V1 entries not in V2
+      const v3 = v3Res.data.schemes || [];
+      // Merge: V2 (curated, has forms) first, then V1 not in V2, then V3 discovered
       const v2Names = new Set(v2.map(s => s.name));
+      const curatedNames = new Set([...v2Names, ...v1.map(s => s.title)]);
       const merged = [
         ...v2.map(s => ({
           ...s,
@@ -63,6 +66,24 @@ export default function SchemesPage({ language = "hi" }) {
           category: s.category || "general",
         })),
         ...v1.filter(s => !v2Names.has(s.title)),
+        ...v3
+          .filter(s => s.name && !curatedNames.has(s.name))
+          .map(s => ({
+            id: s.scheme_id,
+            title: s.name,
+            title_hi: s.name,
+            description: s.summary || "",
+            description_hi: s.summary || "",
+            eligibility: s.eligibility || "",
+            eligibility_hi: s.eligibility || "",
+            benefits: s.benefit_amount || "",
+            benefits_hi: s.benefit_amount || "",
+            category: (s.sector || "general").toLowerCase(),
+            officialWebsite: s.official_website || s.detail_url || "",
+            discovered: true,
+            level: s.level,
+            state: s.state,
+          })),
       ];
       setSchemes(merged);
     });
@@ -189,12 +210,22 @@ export default function SchemesPage({ language = "hi" }) {
                     <p className="text-sm text-gray-500 font-['Nunito'] mt-1 line-clamp-2">
                       {isHindi ? scheme.description_hi : scheme.description}
                     </p>
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex gap-2 mt-2 flex-wrap">
                       <Badge
                         className={`${colors.bg} ${colors.text} ${colors.border} border text-[10px] font-semibold px-2 py-0.5`}
                       >
                         {scheme.category}
                       </Badge>
+                      {scheme.discovered && (
+                        <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 border text-[10px] font-semibold px-2 py-0.5">
+                          {isHindi ? "खोजी गई" : "Discovered"}
+                        </Badge>
+                      )}
+                      {scheme.state && (
+                        <Badge className="bg-gray-50 text-gray-600 border-gray-200 border text-[10px] font-semibold px-2 py-0.5">
+                          {scheme.state.replace(/_/g, " ")}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <div className="text-gray-400 mt-1">
