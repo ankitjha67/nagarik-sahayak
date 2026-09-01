@@ -197,12 +197,55 @@ async def generate_real_filled_forms(req: dict = {}):
 
     t0 = _time.time()
     pdf_urls = []
+    refused = []
+    flagged_for_review = []
     for sname in scheme_names:
         ft = await prisma.formtemplate.find_first(where={"schemeName": sname})
         if not ft:
             continue
         fields = ft.extractedFields if isinstance(ft.extractedFields, list) else json.loads(ft.extractedFields) if isinstance(ft.extractedFields, str) else []
         sections = ft.sections if isinstance(ft.sections, list) else json.loads(ft.sections) if isinstance(ft.sections, str) else []
+
+        # Gate before issuing anything. A pre-filled government form is a real
+        # artefact a citizen may submit at a CSC counter, so generating one for
+        # an applicant who fails the scheme's own rules wastes their trip and
+        # pollutes the department's intake.
+        gate = None
+        try:
+            from data.gov_forms import get_by_name
+            from services import application_guard
+
+            catalog_entry = get_by_name(sname)
+            if catalog_entry:
+                scheme_for_gate = dict(catalog_entry)
+                scheme_for_gate["extractedFields"] = fields
+                gate = await application_guard.evaluate_application(
+                    profile=full_profile, scheme=scheme_for_gate,
+                    user_id=user_id, check_fraud=True,
+                )
+        except Exception as e:
+            # A fault in the guard must not deny a citizen their form; log it
+            # and fall through to the previous behaviour.
+            logger.warning(f"Application guard failed for {sname}: {e}")
+            gate = None
+
+        if gate is not None:
+            logger.info("Gate %s for %s: %s (risk=%s)", gate.outcome.value, sname,
+                        user_id, gate.risk.get("risk_score", 0))
+            if not gate.may_issue_form:
+                refused.append({
+                    "scheme_name": sname,
+                    "outcome": gate.outcome.value,
+                    "reasons_en": gate.reasons_en,
+                    "reasons_hi": gate.reasons_hi,
+                })
+                continue
+            if gate.risk.get("requires_human_review"):
+                flagged_for_review.append({
+                    "scheme_name": sname,
+                    "risk_score": gate.risk.get("risk_score", 0),
+                    "signals": [s["code"] for s in gate.risk.get("signals", [])],
+                })
 
         pid = str(uuid.uuid4())
         out_path = str(PDF_DIR / f"{pid}.pdf")
@@ -258,7 +301,16 @@ async def generate_real_filled_forms(req: dict = {}):
         except Exception:
             pass
 
-    return {"pdf_urls": pdf_urls, "count": len(pdf_urls), "profile_fields_used": len(full_profile)}
+    return {
+        "pdf_urls": pdf_urls,
+        "count": len(pdf_urls),
+        "profile_fields_used": len(full_profile),
+        # Schemes the applicant was refused, each with a translated reason so
+        # the UI can explain rather than silently omitting them.
+        "refused": refused,
+        # Issued, but held for verification before the benefit is released.
+        "flagged_for_review": flagged_for_review,
+    }
 
 
 @api_router.post("/v2/extract-form-fields")

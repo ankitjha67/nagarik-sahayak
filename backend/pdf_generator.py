@@ -88,6 +88,16 @@ def generate_eligibility_pdf(
     pdf.add_font("NS", "", str(FONTS_DIR / "NotoSans-Regular.ttf"))
     pdf.add_font("NS", "B", str(FONTS_DIR / "NotoSans-Bold.ttf"))
     pdf.add_font("NH", "", str(FONTS_DIR / "NotoSansDevanagari-Regular.ttf"))
+    # NotoSans (Latin) has no Devanagari glyphs, so Hindi drawn in a bold Latin
+    # style previously rendered as nothing at all — scheme names and section
+    # headings silently vanished from generated PDFs. Registering the Devanagari
+    # face as a glyph fallback fixes every Hindi path at once. It is registered
+    # for the bold slot as well, pointing at the same regular file, because
+    # fallback only applies when a face exists for the current style; we ship no
+    # Devanagari bold, so Hindi renders upright inside bold headings rather than
+    # disappearing.
+    pdf.add_font("NH", "B", str(FONTS_DIR / "NotoSansDevanagari-Regular.ttf"))
+    pdf.set_fallback_fonts(["NH"])
 
     pdf.add_page()
 
@@ -270,6 +280,16 @@ def generate_filled_form_pdf(
     pdf.add_font("NS", "", str(FONTS_DIR / "NotoSans-Regular.ttf"))
     pdf.add_font("NS", "B", str(FONTS_DIR / "NotoSans-Bold.ttf"))
     pdf.add_font("NH", "", str(FONTS_DIR / "NotoSansDevanagari-Regular.ttf"))
+    # NotoSans (Latin) has no Devanagari glyphs, so Hindi drawn in a bold Latin
+    # style previously rendered as nothing at all — scheme names and section
+    # headings silently vanished from generated PDFs. Registering the Devanagari
+    # face as a glyph fallback fixes every Hindi path at once. It is registered
+    # for the bold slot as well, pointing at the same regular file, because
+    # fallback only applies when a face exists for the current style; we ship no
+    # Devanagari bold, so Hindi renders upright inside bold headings rather than
+    # disappearing.
+    pdf.add_font("NH", "B", str(FONTS_DIR / "NotoSansDevanagari-Regular.ttf"))
+    pdf.set_fallback_fonts(["NH"])
 
     pdf.add_page()
 
@@ -490,6 +510,16 @@ def generate_real_filled_form_pdf(
     pdf.add_font("NS", "", str(FONTS_DIR / "NotoSans-Regular.ttf"))
     pdf.add_font("NS", "B", str(FONTS_DIR / "NotoSans-Bold.ttf"))
     pdf.add_font("NH", "", str(FONTS_DIR / "NotoSansDevanagari-Regular.ttf"))
+    # NotoSans (Latin) has no Devanagari glyphs, so Hindi drawn in a bold Latin
+    # style previously rendered as nothing at all — scheme names and section
+    # headings silently vanished from generated PDFs. Registering the Devanagari
+    # face as a glyph fallback fixes every Hindi path at once. It is registered
+    # for the bold slot as well, pointing at the same regular file, because
+    # fallback only applies when a face exists for the current style; we ship no
+    # Devanagari bold, so Hindi renders upright inside bold headings rather than
+    # disappearing.
+    pdf.add_font("NH", "B", str(FONTS_DIR / "NotoSansDevanagari-Regular.ttf"))
+    pdf.set_fallback_fonts(["NH"])
 
     now = datetime.now(timezone.utc)
     date_str = now.strftime("%d/%m/%Y")
