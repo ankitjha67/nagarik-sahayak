@@ -44,8 +44,9 @@ async def cmd_verify(args) -> int:
             # Curated-only scheme: intentional, not a broken link.
             icon, detail = "CURATED", "no published PDF — using curated fields"
         elif r["ok"]:
-            icon = "OK"
-            detail = f"HTTP {r['http_status']}, valid PDF"
+            icon = "OK" if r.get("kind") == "form" else "REF"
+            kind_note = "form" if r.get("kind") == "form" else "reference doc"
+            detail = f"HTTP {r['http_status']}, valid PDF ({kind_note})"
         else:
             icon = "BROKEN"
             detail = (f"HTTP {r['http_status']}, pdf={r.get('is_pdf')}"
@@ -54,7 +55,8 @@ async def cmd_verify(args) -> int:
 
     broken = report["with_url"] - report["healthy"]
     print(
-        f"\n{report['healthy']}/{report['with_url']} live PDF links healthy, "
+        f"\n{report['forms_healthy']}/{report['forms']} extractable form PDFs healthy, "
+        f"{report['healthy']}/{report['with_url']} links live overall, "
         f"{report['total'] - report['with_url']} curated-only "
         f"({report['total']} catalog entries)"
     )

@@ -202,10 +202,16 @@ async def verify_catalog_urls() -> dict:
     ) as client:
         for entry in get_catalog():
             url = entry.get("official_pdf_url")
+            kind = "form"
+            if not url:
+                # Fall back to scheme literature so a broken reference link is
+                # still surfaced, flagged as a reference rather than a form.
+                url = entry.get("reference_pdf_url")
+                kind = "reference"
             if not url:
                 results.append({
                     "scheme": entry["schemeName"], "url": None,
-                    "status": "no_url", "ok": False,
+                    "kind": "none", "status": "no_url", "ok": False,
                 })
                 continue
             try:
@@ -213,7 +219,7 @@ async def verify_catalog_urls() -> dict:
                 resp = await client.get(url, headers={**headers, "Range": "bytes=0-1023"})
                 is_pdf = resp.content[:4].startswith(PDF_MAGIC)
                 results.append({
-                    "scheme": entry["schemeName"], "url": url,
+                    "scheme": entry["schemeName"], "url": url, "kind": kind,
                     "http_status": resp.status_code,
                     "is_pdf": is_pdf,
                     "ok": resp.status_code < 400 and is_pdf,
@@ -221,14 +227,15 @@ async def verify_catalog_urls() -> dict:
                 })
             except Exception as e:
                 results.append({
-                    "scheme": entry["schemeName"], "url": url,
+                    "scheme": entry["schemeName"], "url": url, "kind": kind,
                     "status": "unreachable", "ok": False, "error": str(e),
                 })
 
-    healthy = sum(1 for r in results if r["ok"])
     return {
         "results": results,
-        "healthy": healthy,
+        "healthy": sum(1 for r in results if r["ok"]),
         "total": len(results),
         "with_url": sum(1 for r in results if r.get("url")),
+        "forms": sum(1 for r in results if r.get("kind") == "form"),
+        "forms_healthy": sum(1 for r in results if r.get("kind") == "form" and r["ok"]),
     }

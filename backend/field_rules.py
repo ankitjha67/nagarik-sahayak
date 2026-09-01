@@ -172,6 +172,24 @@ SECTION_HEADER = re.compile(
 
 YES_NO = re.compile(r"\byes\b.{0,15}\bno\b|\bno\b.{0,15}\byes\b|हाँ.{0,10}नहीं", re.IGNORECASE)
 
+# Sentence fragments, not labels. Declaration and nomination forms are dense
+# legal prose interleaved with dotted signature lines, so the fill-marker signal
+# alone would turn clauses like "I hereby nominate the person mentioned below"
+# into fields. A real label is a short noun phrase.
+PROSE_STARTER = re.compile(
+    r"^(i|we|he|she|they|it|that|this|these|those|which|who|whom|whose|there"
+    r"|here|having|being|hereby|whereas|provided|subject|in\s+case|if\s|and\s"
+    r"|or\s|but\s|as\s|for\s|to\s|of\s|the\s+above|my\s|our\s|is\s|are\s|was\s"
+    r"|were\s|shall|will|may\s|must|should|certified|declared"
+    # Verb-led clauses from award/achievement forms, e.g.
+    # "obtained the First/Second/Third position in the event held from..."
+    r"|obtained|held|awarded|received|passed|enclose|attach|attested)\b",
+    re.IGNORECASE,
+)
+
+# A generic (non-canonical) label longer than this is prose, not a field name.
+MAX_GENERIC_LABEL_WORDS = 6
+
 
 def _slug(text: str, fallback: str = "field") -> str:
     """snake_case identifier from a label."""
@@ -334,8 +352,15 @@ def extract_fields_from_text(text: str, max_fields: int = 60) -> list[dict]:
             continue
 
         if spec is None:
-            # Unrecognised but structurally a field — keep it generically.
+            # Unrecognised but structurally a field — keep it generically, but
+            # only if it reads like a label rather than a clause. Without this,
+            # declaration/nomination forms yield keys like
+            # "i_hereby_nominate_the_person_persons_mentioned".
             if not has_marker:
+                continue
+            if len(label.split()) > MAX_GENERIC_LABEL_WORDS:
+                continue
+            if PROSE_STARTER.match(label):
                 continue
             key = _slug(label)
             if not key or key in seen_keys:
@@ -422,33 +447,59 @@ def infer_scheme_metadata(text: str) -> dict:
     """Best-effort scheme name and category from form text."""
     head = "\n".join(text.splitlines()[:40])
 
-    name = ""
-    # Titles are usually the longest ALL-CAPS or title-case line near the top
-    # containing a form/scheme keyword.
-    for line in head.splitlines():
-        s = line.strip(" .:_-")
-        if not (10 < len(s) < 120):
+    # Score candidate title lines rather than taking the longest match: the
+    # longest line containing "scheme" is often a sentence in the body text.
+    # Real titles sit near the top, are set in capitals, and name the form.
+    best_score, name = 0.0, ""
+    for idx, line in enumerate(head.splitlines()):
+        s = re.sub(r"\s{2,}", " ", line.strip(" .:_-"))
+        if not (10 < len(s) < 120) or NOISE_PATTERNS.match(s):
             continue
-        if NOISE_PATTERNS.match(s):
+        if PAGE_MARKER.match(s) or PROSE_STARTER.match(s):
             continue
-        if re.search(r"(application form|form for|yojana|scheme|योजना|आवेदन)", s, re.IGNORECASE):
-            if len(s) > len(name):
-                name = s
-    name = re.sub(r"\s{2,}", " ", name).strip()
+        if not re.search(
+            r"(application\s+(form|for)|form\s+for|yojana|scheme|योजना|आवेदन)",
+            s, re.IGNORECASE,
+        ):
+            continue
 
+        score = 1.0
+        letters = [c for c in s if c.isalpha()]
+        if letters and sum(c.isupper() for c in letters) / len(letters) > 0.7:
+            score += 2.0                      # ALL CAPS reads as a heading
+        if re.search(r"application\s+(form|for)|आवेदन\s*पत्र", s, re.IGNORECASE):
+            score += 1.5                      # names the document explicitly
+        score += max(0.0, 1.5 - idx * 0.05)   # earlier lines are likelier titles
+        if s.endswith((".", ";", ",")):
+            score -= 1.0                      # sentences end in punctuation
+
+        if score > best_score:
+            best_score, name = score, s
+
+    name = name.strip()
+
+    # Score every category by how many distinct keywords it matches rather than
+    # taking the first hit: a widow *pension* form that happens to mention a
+    # school would otherwise be filed under education.
     low = text.lower()
-    category = "general"
-    for cat, pattern in [
-        ("agriculture", r"krishi|farmer|kisan|crop|agricultur|कृषि|किसान"),
-        ("education", r"scholarship|student|school|college|educat|छात्रवृत्ति|शिक्षा"),
-        ("health", r"health|hospital|medical|ayushman|स्वास्थ्य|चिकित्सा"),
-        ("housing", r"awas|housing|house|dwelling|आवास|मकान"),
-        ("startup", r"startup|entrepreneur|msme|udyam|स्टार्टअप|उद्यम"),
-        ("finance", r"loan|credit|savings|deposit|pension|bank|ऋण|बचत|पेंशन"),
-    ]:
-        if re.search(pattern, low):
-            category = cat
-            break
+    patterns = {
+        "agriculture": r"krishi|farmer|kisan|crop|agricultur|कृषि|किसान",
+        "education": r"scholarship|student|school|college|educat|tuition"
+                     r"|छात्रवृत्ति|शिक्षा|विद्यालय",
+        "health": r"health|hospital|medical|ayushman|treatment|स्वास्थ्य|चिकित्सा",
+        "housing": r"awas|housing|dwelling|pucca|kutcha|आवास|मकान",
+        "startup": r"startup|entrepreneur|msme|udyam|स्टार्टअप|उद्यम",
+        "finance": r"loan|credit|savings|deposit|bank\s+account|ऋण|बचत",
+        # Social-welfare entitlements: pensions, widow/old-age/disability aid.
+        "general": r"pension|widow|destitute|old\s+age|divyang|disabilit"
+                   r"|handicap|bpl|antyodaya|पेंशन|विधवा|वृद्धावस्था|दिव्यांग",
+    }
+    scores = {
+        cat: len(set(re.findall(pat, low, re.IGNORECASE)))
+        for cat, pat in patterns.items()
+    }
+    best = max(scores, key=lambda c: scores[c])
+    category = best if scores[best] else "general"
 
     return {"schemeName": name[:150], "category": category}
 

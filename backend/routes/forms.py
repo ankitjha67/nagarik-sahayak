@@ -44,6 +44,9 @@ async def form_catalog():
             "descriptionHindi": e.get("descriptionHindi", ""),
             "officialWebsite": e.get("officialWebsite", ""),
             "officialPdfUrl": e.get("official_pdf_url", ""),
+            # Scheme literature (booklet/guidelines) where no fillable form is
+            # published — useful to link, but never used for field extraction.
+            "referencePdfUrl": e.get("reference_pdf_url", ""),
             "hasLivePdf": bool(e.get("official_pdf_url")),
             "isScanned": e.get("is_scanned", False),
             "sourceVerified": e.get("source_verified", ""),
