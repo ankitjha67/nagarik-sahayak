@@ -145,6 +145,22 @@ export const getDiscoveredSchemes = (params = {}) =>
 export const resetPortalHealth = (portalName) =>
   api.post(`/discovery/portal-health/${encodeURIComponent(portalName)}/reset`);
 
+// ── Real Government Forms ──
+
+export const getFormCatalog = () => api.get("/forms/catalog");
+export const getFormCatalogDetail = (schemeName) =>
+  api.get(`/forms/catalog/${encodeURIComponent(schemeName)}`);
+export const getFormLinkHealth = () => api.get("/forms/link-health", { timeout: 120000 });
+export const seedFormCatalog = (overwrite = false) =>
+  api.post("/forms/seed", { overwrite });
+// Live extraction downloads + OCRs a government PDF, so it needs a long timeout.
+export const extractLiveForm = (pdfUrl, schemeHint = "", saveToDb = false) =>
+  api.post(
+    "/forms/extract-live",
+    { pdf_url: pdfUrl, scheme_hint: schemeHint, save_to_db: saveToDb },
+    { timeout: 180000 }
+  );
+
 // ── Notification Preferences & Exam Subscriptions ──
 
 export const getNotificationPreferences = (userId) =>

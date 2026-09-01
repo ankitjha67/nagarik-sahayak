@@ -88,8 +88,10 @@ android-sdk/
 *.key
 *.pub
 
-# V3 crawler SQLite databases and output
-backend/data/
-data/
+# V3 crawler SQLite databases and crawl output.
+# Scoped to generated artifacts only — backend/data/ holds source code
+# (the government form catalog), so it must NOT be ignored wholesale.
+/data/
 output/
 *.db
+*.sqlite3

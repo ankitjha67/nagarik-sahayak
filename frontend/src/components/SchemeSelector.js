@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { getV2Schemes, uploadAndExtract } from "../lib/api";
-import { Home, GraduationCap, Rocket, Wheat, ChevronRight, Check, Upload, FileText, Loader2 } from "lucide-react";
+import { getV2Schemes, uploadAndExtract, extractLiveForm } from "../lib/api";
+import { Home, GraduationCap, Rocket, Wheat, ChevronRight, Check, Upload, FileText, Loader2, Link2, Heart, Landmark, IndianRupee } from "lucide-react";
 import { toast } from "sonner";
 
 const CATEGORY_CONFIG = {
@@ -8,6 +8,9 @@ const CATEGORY_CONFIG = {
   education: { icon: GraduationCap, color: "#2563EB", bg: "#EFF6FF" },
   startup: { icon: Rocket, color: "#7C3AED", bg: "#F5F3FF" },
   agriculture: { icon: Wheat, color: "#16A34A", bg: "#F0FDF4" },
+  health: { icon: Heart, color: "#DC2626", bg: "#FEF2F2" },
+  finance: { icon: IndianRupee, color: "#CA8A04", bg: "#FEFCE8" },
+  general: { icon: Landmark, color: "#4B5563", bg: "#F9FAFB" },
 };
 
 export const SchemeSelector = ({ onSchemesSelected, userId }) => {
@@ -16,6 +19,8 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
+  const [formUrl, setFormUrl] = useState("");
+  const [fetchingUrl, setFetchingUrl] = useState(false);
   const fileInputRef = useRef(null);
 
   const refreshSchemes = () => {
@@ -72,6 +77,41 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleFetchFromUrl = async () => {
+    const url = formUrl.trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) {
+      toast.error("Enter a full http(s) link to a government form PDF");
+      return;
+    }
+    setFetchingUrl(true);
+    setUploadResult(null);
+    try {
+      const res = await extractLiveForm(url, "", true);
+      const data = res.data;
+      const scheme = data.schemeName;
+      setUploadResult({
+        success: true,
+        scheme,
+        totalFields: data.totalFields,
+        method: data._extraction_method,
+        engine: data._extraction_engine,
+      });
+      toast.success(`${data.totalFields} fields read from "${scheme}"`);
+      refreshSchemes();
+      if (scheme) {
+        setSelected((prev) => (prev.includes(scheme) ? prev : [...prev, scheme]));
+      }
+      setFormUrl("");
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || "Could not read that form";
+      setUploadResult({ success: false, error: msg });
+      toast.error(msg);
+    } finally {
+      setFetchingUrl(false);
     }
   };
 
@@ -190,6 +230,42 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
             </>
           )}
         </button>
+
+        {/* Fetch a form straight from a government website */}
+        <div className="flex items-center gap-2 my-2">
+          <div className="flex-1 h-px bg-gray-100" />
+          <span className="text-[10px] text-gray-400 font-['Nunito']">या / or</span>
+          <div className="flex-1 h-px bg-gray-100" />
+        </div>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Link2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="url"
+              value={formUrl}
+              onChange={(e) => setFormUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !fetchingUrl && handleFetchFromUrl()}
+              placeholder="Paste a gov.in form PDF link"
+              disabled={fetchingUrl}
+              data-testid="scheme-url-input"
+              className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-gray-200 text-xs font-['Nunito'] focus:border-[#FF9933] focus:ring-1 focus:ring-[#FF9933] outline-none disabled:opacity-50"
+            />
+          </div>
+          <button
+            data-testid="scheme-url-fetch-btn"
+            onClick={handleFetchFromUrl}
+            disabled={fetchingUrl || !formUrl.trim()}
+            className="px-4 py-2.5 bg-[#000080] text-white rounded-xl text-xs font-semibold hover:bg-[#000060] transition-colors disabled:opacity-40 flex items-center gap-1.5"
+          >
+            {fetchingUrl ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+            {fetchingUrl ? "Reading..." : "Fetch"}
+          </button>
+        </div>
+        {fetchingUrl && (
+          <p className="text-[10px] text-gray-400 font-['Nunito'] text-center mt-1.5">
+            Scanned forms are read with OCR — this can take up to a minute.
+          </p>
+        )}
         {uploadResult && (
           <div
             className={`mt-2 p-2 rounded-lg text-xs font-['Nunito'] ${
@@ -199,11 +275,15 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
             }`}
           >
             {uploadResult.success ? (
-              <div className="flex items-center gap-1.5">
-                <FileText size={14} />
+              <div className="flex items-start gap-1.5">
+                <FileText size={14} className="mt-0.5 flex-shrink-0" />
                 <span>
                   <strong>{uploadResult.scheme}</strong> — {uploadResult.totalFields} fields extracted
-                  ({uploadResult.method})
+                  {uploadResult.method === "ocr" && (
+                    <span className="block text-[10px] opacity-75">
+                      Read from a scanned form using OCR
+                    </span>
+                  )}
                 </span>
               </div>
             ) : (
