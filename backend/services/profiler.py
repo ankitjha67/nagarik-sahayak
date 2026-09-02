@@ -82,6 +82,12 @@ async def generate_filled_form(user_id: str, scheme_id: str) -> dict:
         scheme_criteria=scheme.eligibilityCriteriaText,
         output_path=pdf_path,
     )
+
+    # Encrypt at rest, and bind the document to the citizen who owns it.
+    from dpdp import file_vault, ownership
+    file_vault.encrypt_in_place(pdf_path)
+    await ownership.record_owner(pdf_id, user_id, ownership.ArtefactKind.PDF)
+
     pdf_url = f"/api/pdf/{pdf_id}"
 
     try:

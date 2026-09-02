@@ -31,7 +31,9 @@ BACKEND_MODULES = [
     "routes.discovery", "routes.exams", "routes.reports", "routes.notifications",
     "routes.forms", "routes.verification", "routes.review", "routes.dpdp",
     "dpdp.classifier", "dpdp.registry", "dpdp.engine", "dpdp.consent",
-    "dpdp.retention", "dpdp.ownership",
+    "dpdp.retention", "dpdp.ownership", "dpdp.crypto", "dpdp.profile_store",
+    "dpdp.file_vault", "dpdp.terms", "dpdp.statutes", "dpdp.grievance",
+    "dpdp.incident", "dpdp.aadhaar_policy",
 ]
 
 
@@ -93,6 +95,7 @@ class TestApplicationAssembly:
             "/api/reports/schemes-excel", "/api/notifications/preferences/{user_id}",
             "/api/forms/catalog", "/api/verify/application", "/api/review/queue",
             "/api/dpdp/notice", "/api/dpdp/my-data/{user_id}",
+            "/api/dpdp/terms", "/api/dpdp/accessibility",
         ]:
             assert expected in paths, f"{expected} is not registered"
 
@@ -137,6 +140,13 @@ class TestRoutingWorks:
     def test_citizen_case_status_is_not_gated(self, client):
         """People are entitled to know their own application is being checked."""
         assert client.get("/api/review/my-cases/anyone").status_code == 200
+
+    def test_terms_of_service_is_public(self, client):
+        """IT Rules 3(1)(a): the user agreement must be published."""
+        r = client.get("/api/dpdp/terms")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["critical_disclosures"] and body["your_obligations"]
 
     def test_privacy_notice_is_public(self, client):
         """s5: a person must be able to read the notice before handing over data."""

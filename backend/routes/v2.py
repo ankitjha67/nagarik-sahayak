@@ -292,6 +292,12 @@ async def generate_real_filled_forms(req: dict = {}):
                 output_path=out_path, is_draft=is_draft,
             )
 
+        # Encrypt the freshly written document before it is linked. The
+        # ownership check gates who may fetch it; this protects it if the disk
+        # itself is obtained.
+        from dpdp import file_vault
+        file_vault.encrypt_in_place(out_path)
+
         pdf_urls.append({
             "pdf_url": f"/api/pdf/{pid}", "scheme_name": sname,
             "scheme_name_hindi": ft.schemeNameHindi or "",

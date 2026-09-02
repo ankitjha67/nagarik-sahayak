@@ -67,6 +67,8 @@ def demo_stage_response(user_id: str = "demo") -> dict:
             scheme_criteria=scheme_criteria,
             output_path=str(PDF_DIR / f"{pid}.pdf"),
         )
+        from dpdp import file_vault
+        file_vault.encrypt_in_place(PDF_DIR / f"{pid}.pdf")
         pdf_urls.append({"pdf_url": f"/api/pdf/{pid}", "scheme_name": scheme_name})
 
     if AGNOST_WRITE_KEY:

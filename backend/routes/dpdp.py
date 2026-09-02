@@ -15,7 +15,7 @@ from fastapi import HTTPException, Request
 from routes import api_router
 from config import ADMIN_SECRET
 from dpdp import consent as consent_service
-from dpdp import engine, grievance, incident, registry, retention, statutes
+from dpdp import engine, grievance, incident, registry, retention, statutes, terms as terms_service
 from dpdp.registry import Purpose
 
 logger = logging.getLogger(__name__)
@@ -454,3 +454,18 @@ async def statutory_register(request: Request):
     from dpdp import profile_store
     out["data_at_rest"] = profile_store.status()
     return out
+
+
+# ── Terms of service (IT Rules 3(1)(a)) ──────────────────────────────────
+
+@api_router.get("/dpdp/terms")
+async def terms_of_service():
+    """The user agreement. Public, like the privacy notice.
+
+    Leads with the four disclosures that protect the citizen: this is not the
+    government, nothing is guaranteed, no fee is ever payable, and downloading
+    a form is not an application. Those exist because the failure mode this app
+    invites is someone believing they have applied when they have not, or
+    paying a middleman who claims otherwise.
+    """
+    return terms_service.terms()

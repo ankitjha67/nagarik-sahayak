@@ -110,10 +110,10 @@ OBLIGATIONS: tuple[Obligation, ...] = (
         "negligence causing wrongful loss attracts compensation.",
         S.PARTIAL, E.PENALTY,
         evidence="Ownership checks, hashed identifiers, redaction, leak "
-                 "scanning, and AES-256-GCM encryption at rest for stored "
-                 "profiles (dpdp/crypto.py).",
-        remediation="Generated PDFs on disk are not yet encrypted, and no "
-                    "ISO 27001 or equivalent control set is documented.",
+                 "scanning, and AES-256-GCM encryption at rest for both stored "
+                 "profiles and generated documents (dpdp/crypto.py, "
+                 "dpdp/file_vault.py).",
+        remediation="No ISO 27001 or equivalent control set is documented.",
     ),
     Obligation(
         "CERT-In Directions 2022", "direction (i)",
@@ -147,9 +147,9 @@ OBLIGATIONS: tuple[Obligation, ...] = (
     Obligation(
         "IT (Intermediary Guidelines) Rules 2021", "rule 3(1)(a)",
         "Publish rules, privacy policy and user agreement.",
-        S.PARTIAL, E.DIRECTION,
-        evidence="Privacy notice is published.",
-        remediation="Terms of service / user agreement is still missing.",
+        S.COMPLIANT, E.DIRECTION,
+        evidence="Privacy notice at GET /api/dpdp/notice and the user "
+                 "agreement at GET /api/dpdp/terms, both public and bilingual.",
     ),
     Obligation(
         "IT (Intermediary Guidelines) Rules 2021", "rule 3(2)",
@@ -206,9 +206,10 @@ OBLIGATIONS: tuple[Obligation, ...] = (
         S.PARTIAL, E.PENALTY,
         evidence="Artefact ownership checks, hashed identifiers, redaction "
                  "before logging and third-party calls, automated leak "
-                 "scanning, and authenticated encryption at rest for profiles.",
-        remediation="Generated documents on disk remain unencrypted; they are "
-                    "access-controlled but not encrypted.",
+                 "scanning, and authenticated encryption at rest for profiles "
+                 "and for generated documents.",
+        remediation="Key management is operator-supplied; DATA_ENCRYPTION_KEY "
+                    "must be set and backed up in a secret manager.",
     ),
     Obligation(
         "DPDP Act 2023", "s8(5)",
