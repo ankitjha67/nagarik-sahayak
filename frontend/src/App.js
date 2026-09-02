@@ -10,6 +10,7 @@ import ExamsPage from "@/pages/ExamsPage";
 import DiscoveryPage from "@/pages/DiscoveryPage";
 import ProfilePage from "@/pages/ProfilePage";
 import ReviewPage from "@/pages/ReviewPage";
+import PrivacyPage from "@/pages/PrivacyPage";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -114,6 +115,12 @@ function App() {
               departmental staff who authenticate with their own credentials,
               and may never have a citizen account at all. */}
           <Route path="/review" element={<ReviewPage />} />
+          <Route
+            path="/privacy"
+            element={
+              isLoggedIn ? <PrivacyPage userId={userId} /> : <Navigate to="/" replace />
+            }
+          />
           <Route
             path="/profile"
             element={

@@ -10,9 +10,10 @@ import {
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import {
   UserCircle2, Phone, Globe, LogOut, Save, Loader2, Bell, Mail,
-  ShieldCheck, Clock, CheckCircle2, XCircle,
+  ShieldCheck, Clock, CheckCircle2, XCircle, Lock, ChevronRight,
 } from "lucide-react";
 
 function PrefToggle({ label, labelHi, checked, onChange }) {
@@ -40,6 +41,7 @@ function PrefToggle({ label, labelHi, checked, onChange }) {
 }
 
 export default function ProfilePage({ userId, onLogout }) {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [name, setName] = useState("");
   const [language, setLanguage] = useState("hi");
@@ -309,6 +311,27 @@ export default function ProfilePage({ userId, onLogout }) {
             )}
           </Button>
         </div>
+
+        {/* Privacy & data rights. A statutory right nobody can find is not a
+            right, so this sits in the main profile flow rather than a submenu. */}
+        <button
+          onClick={() => navigate("/privacy")}
+          data-testid="privacy-link"
+          className="w-full mt-5 bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3 text-left animate-fade-in-up"
+        >
+          <div className="w-9 h-9 rounded-xl bg-[#E8EAF6] flex items-center justify-center flex-shrink-0">
+            <Lock size={17} className="text-[#000080]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-[#000080] font-['Mukta']">
+              गोपनीयता और आपके अधिकार
+            </p>
+            <p className="text-[11px] text-gray-500 font-['Nunito']">
+              Privacy, consent, and your data rights
+            </p>
+          </div>
+          <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+        </button>
 
         {/* Logout */}
         <button

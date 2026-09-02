@@ -170,6 +170,23 @@ export const extractLiveForm = (pdfUrl, schemeHint = "", saveToDb = false) =>
     { timeout: 180000 }
   );
 
+// ── DPDP Act: notice, consent, and data principal rights ──
+
+export const getPrivacyNotice = () => api.get("/dpdp/notice");
+export const getConsent = (userId) => api.get(`/dpdp/consent/${userId}`);
+export const grantConsent = (userId, purposes, opts = {}) =>
+  api.post(`/dpdp/consent/${userId}`, {
+    purposes,
+    language: opts.language || "hi",
+    parental_consent: !!opts.parentalConsent,
+  });
+export const withdrawConsent = (userId, purposes) =>
+  api.post(`/dpdp/consent/${userId}/withdraw`, purposes ? { purposes } : {});
+export const getMyData = (userId) => api.get(`/dpdp/my-data/${userId}`);
+export const eraseMyData = (userId, body) => api.post(`/dpdp/erase/${userId}`, body);
+export const lodgeRightsRequest = (userId, requestType, details) =>
+  api.post(`/dpdp/request/${userId}`, { request_type: requestType, details });
+
 // ── Reviewer queue ──
 // Reviewer credentials are passed per-call rather than stored on the shared
 // axios instance, so an ordinary citizen session can never accidentally carry
