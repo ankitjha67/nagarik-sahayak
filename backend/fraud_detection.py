@@ -334,10 +334,50 @@ def check_cross_applicant(history: ApplicantHistory) -> list[Signal]:
     return signals
 
 
+def check_identity_assurance(outcomes) -> list[Signal]:
+    """Fold KYC evidence into the risk score.
+
+    Runs in both directions, and the negative direction is the important one.
+    A citizen who verified against a UIDAI-signed document has produced better
+    evidence than this engine could ever infer from their form, and should meet
+    *less* friction, not the same amount. Without that, verifying is all cost
+    and no benefit and nobody bothers.
+
+    The positive direction is narrow on purpose: only a contradiction that
+    cannot be a spelling or transliteration difference adds weight. Name
+    mismatches never reach here as suspicion — they arrive as review flags,
+    because a married woman's maiden name on a bank account is not fraud.
+    """
+    signals: list[Signal] = []
+    for outcome in outcomes or []:
+        weight = getattr(outcome, "fraud_signal", 0)
+        if not weight:
+            continue
+        method = getattr(outcome, "method", "kyc")
+        if weight > 0:
+            signals.append(Signal(
+                code="identity_document_contradicted", weight=weight,
+                threat="T1",
+                detail_en=(f"The identity document supplied through {method} "
+                           "disagrees with the application on a point that cannot "
+                           "be a transcription difference."),
+                detail_hi=("आवेदन और प्रस्तुत पहचान दस्तावेज़ में ऐसा अंतर है जो "
+                           "लेखन-भिन्नता नहीं हो सकता।")))
+        else:
+            signals.append(Signal(
+                code="identity_verified", weight=weight, threat="T1",
+                detail_en=(f"Identity established through {method}, which lowers "
+                           "the risk this application needs to be scrutinised for."),
+                detail_hi=(f"{method} के माध्यम से पहचान स्थापित, जिससे इस आवेदन की "
+                           "जाँच की आवश्यकता कम होती है।")))
+    return signals
+
+
 def assess(
     profile: dict,
     scheme: dict | None = None,
     history: ApplicantHistory | None = None,
+    kyc_outcomes=None,
 ) -> RiskAssessment:
     """Score an application and route it. Never refuses on its own."""
     signals: list[Signal] = []
@@ -345,8 +385,12 @@ def assess(
     signals += check_scheme_specific(profile or {}, scheme)
     if history is not None:
         signals += check_cross_applicant(history)
+    signals += check_identity_assurance(kyc_outcomes)
 
-    score = min(100, sum(s.weight for s in signals))
+    # Floored at zero: verification can cancel out suspicion but must never
+    # produce a negative score, which would let someone bank credit by
+    # verifying and then spend it on genuinely suspicious behaviour.
+    score = max(0, min(100, sum(s.weight for s in signals)))
     if score >= ESCALATE_THRESHOLD:
         decision = Decision.ESCALATE
     elif score >= REVIEW_THRESHOLD:

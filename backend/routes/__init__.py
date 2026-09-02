@@ -8,6 +8,6 @@ def register_all_routes():
     """Import and include all route sub-modules."""
     from routes import auth, chat, profile, schemes, pdf, demo, v2
     from routes import discovery, exams, reports, notifications, forms, verification, review
-    from routes import dpdp
+    from routes import dpdp, kyc
     # Routes are registered via decorators on api_router at import time
     return api_router

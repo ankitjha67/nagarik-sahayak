@@ -30,6 +30,8 @@ BACKEND_MODULES = [
     "routes.pdf", "routes.demo", "routes.v2",
     "routes.discovery", "routes.exams", "routes.reports", "routes.notifications",
     "routes.forms", "routes.verification", "routes.review", "routes.dpdp",
+    "routes.kyc",
+    "kyc.methods", "kyc.matching", "kyc.aadhaar_offline", "kyc.service",
     "dpdp.classifier", "dpdp.registry", "dpdp.engine", "dpdp.consent",
     "dpdp.retention", "dpdp.ownership", "dpdp.crypto", "dpdp.profile_store",
     "dpdp.file_vault", "dpdp.terms", "dpdp.statutes", "dpdp.grievance",
@@ -97,6 +99,8 @@ class TestApplicationAssembly:
             "/api/dpdp/notice", "/api/dpdp/my-data/{user_id}",
             "/api/dpdp/terms", "/api/dpdp/accessibility",
             "/api/dpdp/nominee/{user_id}",
+            "/api/kyc/methods", "/api/kyc/aadhaar/offline-xml",
+            "/api/forms/catalog-states",
         ]:
             assert expected in paths, f"{expected} is not registered"
 
@@ -166,3 +170,54 @@ class TestRoutingWorks:
     def test_rights_routes_reject_cross_user_access(self, client):
         r = client.get("/api/dpdp/my-data/victim", headers={"X-User-Id": "attacker"})
         assert r.status_code == 403
+
+
+class TestKycRouting:
+    """The KYC surface must be reachable, honest, and never a gate."""
+
+    def test_method_list_is_public_and_marks_what_is_unavailable(self, client):
+        r = client.get("/api/kyc/methods")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["count"] >= 10
+        assert body["kycIsOptional"] is True
+        # A method needing a UIDAI licence is listed and marked, not hidden.
+        licensed = [m for m in body["methods"] if m["key"] == "aadhaar_otp_ekyc"]
+        assert licensed and licensed[0]["usable"] is False
+
+    def test_verification_endpoints_require_a_signed_in_caller(self, client):
+        """These carry identity documents; an anonymous caller must not reach them."""
+        assert client.post("/api/kyc/aadhaar/secure-qr", json={}).status_code == 401
+        assert client.post("/api/kyc/self-declaration", json={}).status_code == 401
+
+    def test_a_malformed_qr_gets_a_bilingual_400_not_a_500(self, client):
+        r = client.post("/api/kyc/aadhaar/secure-qr",
+                        json={"qr": "http://example.com", "profile": {}},
+                        headers={"X-User-Id": "u1"})
+        assert r.status_code == 400
+        detail = r.json()["detail"]
+        assert detail["errorHindi"]
+
+    def test_an_unlisted_method_is_404_not_a_silent_success(self, client):
+        assert client.get("/api/kyc/methods/magic-wand").status_code == 404
+
+    def test_scheme_gap_never_reports_a_block(self, client):
+        r = client.post("/api/kyc/scheme-gap",
+                        json={"outcomes": [], "schemeName": "Ayushman Bharat PM-JAY"},
+                        headers={"X-User-Id": "u1"})
+        assert r.status_code == 200 and r.json()["canStillApply"] is True
+
+    def test_catalog_can_be_filtered_by_state(self, client):
+        r = client.get("/api/forms/catalog?state=Bihar")
+        assert r.status_code == 200
+        levels = {f["level"] for f in r.json()["forms"]}
+        assert "Central" in levels, "a State view must still show Central schemes"
+        states = {f["state"] for f in r.json()["forms"] if f["level"] == "State"}
+        assert states == {"Bihar"}
+
+    def test_catalog_states_are_listed_for_a_picker(self, client):
+        r = client.get("/api/forms/catalog-states")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["count"] >= 10 and body["centralSchemes"] >= 10
+        assert all(s["totalAvailable"] > s["stateSchemes"] for s in body["states"])
