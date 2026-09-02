@@ -107,3 +107,26 @@ model CrawlRun {
   startedAt       DateTime @default(now())
   completedAt     DateTime?
 }
+
+/// A flagged benefit application awaiting human review.
+///
+/// Deliberately stores the *decision context* — risk signals, scheme, outcome —
+/// and not the applicant's personal data. Reviewers open the citizen's profile
+/// through the normal authorised path; the queue must not become a second,
+/// less-protected copy of everyone's Aadhaar and bank details.
+model ReviewCase {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @db.ObjectId
+  schemeName   String
+  outcome      String    // gate outcome recorded when the case was raised
+  riskScore    Int       @default(0)
+  signals      Json      @default("[]") // full signal detail shown to the reviewer
+  status       String    @default("pending") // pending | approved | rejected
+  reviewerId   String    @default("")
+  reviewerNote String    @default("")
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
+  @@index([status])
+}

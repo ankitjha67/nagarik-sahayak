@@ -241,10 +241,16 @@ async def generate_real_filled_forms(req: dict = {}):
                 })
                 continue
             if gate.risk.get("requires_human_review"):
+                # Raise a case so a person actually sees this. enqueue() returns
+                # None rather than raising if the queue is down — the citizen
+                # still gets their form; only the review record is lost.
+                from services import review_queue
+                case_id = await review_queue.enqueue(user_id, gate)
                 flagged_for_review.append({
                     "scheme_name": sname,
                     "risk_score": gate.risk.get("risk_score", 0),
                     "signals": [s["code"] for s in gate.risk.get("signals", [])],
+                    "review_case_id": case_id,
                 })
 
         pid = str(uuid.uuid4())
