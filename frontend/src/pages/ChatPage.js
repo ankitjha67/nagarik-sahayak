@@ -309,14 +309,34 @@ export default function ChatPage({ userId, language = "hi" }) {
                 onMessage={(msg) => setMessages((prev) => [...prev, { ...msg, id: `p-${Date.now()}-${Math.random()}` }])}
                 onComplete={(data) => {
                   setV2Mode("complete");
+                  const refused = data.refused || [];
+                  const flagged = data.flagged_for_review || [];
+                  // Report what actually happened. Announcing "N forms ready"
+                  // while quietly dropping refused schemes leaves someone
+                  // wondering what became of a scheme they chose — and reads
+                  // absurdly ("0 forms ready!") when everything was refused.
+                  let content;
+                  if (data.count === 0) {
+                    content = "कोई फॉर्म तैयार नहीं हो सका। कारण नीचे देखें।";
+                  } else {
+                    content = `${data.count} आवेदन फॉर्म तैयार हो गए! ऊपर डाउनलोड बटन से डाउनलोड करें।`;
+                    if (refused.length) {
+                      content += `\n${refused.length} योजना के लिए फॉर्म नहीं बन सका — कारण नीचे देखें।`;
+                    }
+                    if (flagged.length) {
+                      content += `\n${flagged.length} आवेदन सत्यापन हेतु भेजा गया है।`;
+                    }
+                  }
                   setMessages((prev) => [
                     ...prev,
                     {
                       id: `done-${Date.now()}`,
                       role: "assistant",
-                      content: `${data.count} आवेदन फॉर्म सफलतापूर्वक तैयार हो गए! ऊपर डाउनलोड बटन से डाउनलोड करें।`,
+                      content,
                       created_at: new Date().toISOString(),
                       pdf_urls: data.pdf_urls,
+                      refused,
+                      flagged_for_review: flagged,
                       user_id: userId,
                     },
                   ]);

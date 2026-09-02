@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { CheckCheck, Check as CheckIcon, FileSearch, FileText, Check, X, Languages, Play, Pause, ShieldCheck, ShieldX, Download, FileDown, Loader2, Search, ClipboardCheck, FileOutput, Volume2, VolumeX, Share2 } from "lucide-react";
+import { CheckCheck, Check as CheckIcon, FileSearch, FileText, Check, X, Languages, Play, Pause, ShieldCheck, ShieldX, Download, FileDown, Loader2, Search, ClipboardCheck, FileOutput, Volume2, VolumeX, Share2, XCircle } from "lucide-react";
 import api from "../lib/api";
 
 function escapeHtml(str) {
@@ -282,6 +282,58 @@ const WhatsAppShareBtn = ({ pdfUrl, schemeName }) => {
   );
 };
 
+/* Schemes the gate refused, with the citizen-facing reason for each. Rendering
+   these is what keeps a refusal a decision the applicant can understand and act
+   on, rather than a form that simply never appeared. */
+const RefusedBlock = ({ refused }) => {
+  if (!refused || refused.length === 0) return null;
+  return (
+    <div className="mt-2.5 rounded-xl border border-red-200 bg-red-50 p-3 space-y-2">
+      <div className="flex items-center gap-1.5">
+        <XCircle size={13} className="text-red-600 flex-shrink-0" />
+        <span className="text-[11px] font-bold text-red-800 font-['Mukta']">
+          ये फॉर्म नहीं बन सके / Could not be generated
+        </span>
+      </div>
+      {refused.map((r, i) => (
+        <div key={i} className="pl-4">
+          <p className="text-[11px] font-semibold text-red-900 font-['Mukta']">
+            {r.scheme_name}
+          </p>
+          {(r.reasons_hi?.length ? r.reasons_hi : r.reasons_en || []).map((reason, j) => (
+            <p key={j} className="text-[10px] text-red-700 font-['Nunito'] leading-snug">
+              • {reason}
+            </p>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/* Applications issued but held for checking. The citizen keeps the form; only
+   the release of the benefit waits. */
+const FlaggedBlock = ({ flagged }) => {
+  if (!flagged || flagged.length === 0) return null;
+  return (
+    <div className="mt-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3">
+      <div className="flex items-center gap-1.5 mb-1">
+        <ShieldCheck size={13} className="text-amber-600 flex-shrink-0" />
+        <span className="text-[11px] font-bold text-amber-800 font-['Mukta']">
+          सत्यापन हेतु भेजा गया / Sent for verification
+        </span>
+      </div>
+      <p className="text-[10px] text-amber-700 font-['Nunito'] leading-relaxed pl-4">
+        {flagged.map((f) => f.scheme_name).join(", ")} — लाभ जारी होने से पहले जाँच की जाएगी।
+        आपका फॉर्म तैयार है।
+        <span className="block opacity-80">
+          These will be checked before the benefit is released. Your form is ready.
+        </span>
+      </p>
+    </div>
+  );
+};
+
 const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
@@ -452,6 +504,11 @@ export const ChatBubble = ({ message }) => {
         ) : (
           <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line font-['Nunito']">{escapeHtml(message.content)}</p>
         )}
+
+        {/* Outcomes for schemes that produced no form, shown alongside the
+            downloads so nothing the citizen selected goes unaccounted for. */}
+        <FlaggedBlock flagged={message.flagged_for_review} />
+        <RefusedBlock refused={message.refused} />
 
         {/* PDF Download — ALL eligible forms at once */}
         {message.pdf_urls && message.pdf_urls.length > 0 ? (
