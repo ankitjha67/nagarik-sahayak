@@ -408,12 +408,32 @@ def validate_profile(profile: dict, fields: list[dict] | None = None) -> Validat
 
     checked: set[str] = set()
 
+    # Aadhaar Act s7 proviso: a person without Aadhaar must be offered an
+    # alternative means of identification. So a missing Aadhaar is only an error
+    # when no other accepted document was supplied — and the message then names
+    # the alternatives rather than demanding Aadhaar specifically.
+    from dpdp import identity_documents
+
+    has_identity = identity_documents.has_any(profile)
+
     for f in fields or []:
         key = f.get("profileKey") or f.get("fieldName")
         if not key or key in checked:
             continue
         checked.add(key)
         value = profile.get(key)
+
+        if key in identity_documents.DOCUMENT_KEYS and f.get("required"):
+            if has_identity:
+                # Some accepted document is present; this particular one is not
+                # required. Validate it only if it was actually supplied.
+                if value in (None, ""):
+                    continue
+            else:
+                ok, en, hi = identity_documents.validate_profile_identity(profile)
+                if not ok:
+                    result.add(Severity.ERROR, "identity_document_missing", key, en, hi)
+                    continue
 
         if f.get("required") and (value is None or str(value).strip() == ""):
             label = f.get("labelEnglish") or key

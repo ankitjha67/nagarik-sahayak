@@ -104,6 +104,17 @@ REGISTRY: tuple[FieldRecord, ...] = (
                 retention_days=_APPLICATION_CYCLE),
     FieldRecord("pan_number", C.PAN, (P.FORM_COMPLETION,),
                 retention_days=_APPLICATION_CYCLE),
+    # Aadhaar Act s7 proviso: alternatives a citizen may give instead of
+    # Aadhaar, so nobody is denied a benefit for want of one.
+    FieldRecord("voter_id_number", C.VOTER_ID, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE,
+                note="Accepted in place of Aadhaar under the s7 proviso."),
+    FieldRecord("driving_licence_number", C.NAME, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE,
+                note="Accepted in place of Aadhaar under the s7 proviso."),
+    FieldRecord("passport_number", C.PASSPORT, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE,
+                note="Accepted in place of Aadhaar under the s7 proviso."),
     FieldRecord("date_of_birth", C.DATE_OF_BIRTH,
                 (P.SCHEME_ELIGIBILITY, P.FORM_COMPLETION),
                 retention_days=_APPLICATION_CYCLE, decisional=True),

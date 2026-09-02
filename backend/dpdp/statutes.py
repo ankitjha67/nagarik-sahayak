@@ -89,11 +89,14 @@ OBLIGATIONS: tuple[Obligation, ...] = (
         "Aadhaar may be required for receipt of a subsidy or benefit funded "
         "from the Consolidated Fund. An alternative route must exist for a "
         "person without Aadhaar.",
-        S.PARTIAL, E.DIRECTION,
-        evidence="Aadhaar is treated as required by the catalog's field "
-                 "definitions.",
-        remediation="Mark Aadhaar optional where the scheme permits an "
-                    "alternative identity document, and collect that instead.",
+        S.COMPLIANT, E.DIRECTION,
+        evidence="Every scheme accepts any one of seven identity documents "
+                 "(dpdp/identity_documents.py). A missing Aadhaar blocks an "
+                 "application only when no alternative was supplied, and the "
+                 "message then names the alternatives rather than demanding "
+                 "Aadhaar. Formats with no reliable national standard are "
+                 "accepted on presence, since rejecting a genuine ration card "
+                 "would recreate the exclusion the proviso exists to prevent.",
     ),
 
     # ══ IT Act 2000 and rules ════════════════════════════════════════════

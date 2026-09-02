@@ -15,7 +15,7 @@ from fastapi import HTTPException, Request
 from routes import api_router
 from config import ADMIN_SECRET
 from dpdp import consent as consent_service
-from dpdp import engine, grievance, incident, nomination, registry, retention, statutes, terms as terms_service
+from dpdp import engine, grievance, identity_documents, incident, nomination, registry, retention, statutes, terms as terms_service
 from dpdp.registry import Purpose
 
 logger = logging.getLogger(__name__)
@@ -562,3 +562,20 @@ async def activate_nominee(user_id: str, request: Request, req: dict):
     except Exception as e:
         logger.error(f"Nomination activation failed: {e}")
         raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.get("/dpdp/identity-documents")
+async def accepted_identity_documents():
+    """Identity documents accepted in place of Aadhaar (s7 proviso).
+
+    Public: someone deciding whether this service is usable for them should be
+    able to find out what they can bring without first handing over anything.
+    """
+    return {
+        "documents": identity_documents.options(),
+        "rule_en": "Any one of these is enough. You do not need Aadhaar to "
+                   "apply.",
+        "rule_hi": "इनमें से कोई एक पर्याप्त है। आवेदन के लिए आधार आवश्यक नहीं है।",
+        "basis": "Aadhaar Act 2016, proviso to s7 — a person without Aadhaar "
+                 "must be offered an alternative means of identification.",
+    }
