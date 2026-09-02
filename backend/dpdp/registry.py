@@ -265,6 +265,97 @@ REGISTRY: tuple[FieldRecord, ...] = (
     FieldRecord("pm_kisan_account_number", C.BANK_ACCOUNT, (P.FORM_COMPLETION,),
                 retention_days=_APPLICATION_CYCLE),
 
+    # ── Health and disability ────────────────────────────────────────────
+    # Classified HEALTH, not FINANCIAL, even though these fields are only ever
+    # used to decide a pension. A disability certificate number and a maternity
+    # card reveal a medical condition; leaking one harms the person in a way a
+    # bank balance does not, so they inherit the strictest sensitivity the
+    # classifier assigns and are redacted wherever it applies.
+    FieldRecord("disability_type", C.HEALTH, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True,
+                note="Sensitive. Collected only for disability-linked schemes."),
+    FieldRecord("disability_percentage", C.HEALTH, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True,
+                note="Sensitive. The statutory threshold for most schemes is 40%."),
+    FieldRecord("udid_number", C.HEALTH, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE,
+                note="Unique Disability ID. Sensitive by inference."),
+    FieldRecord("lmp_date", C.HEALTH, (P.SCHEME_ELIGIBILITY, P.FORM_COMPLETION),
+                retention_days=_APPLICATION_CYCLE, decisional=True,
+                note="Last menstrual period, required by PMMVY. Sensitive."),
+    FieldRecord("mcp_card_number", C.HEALTH, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE,
+                note="Mother and Child Protection card. Sensitive."),
+
+    # ── Bereavement ──────────────────────────────────────────────────────
+    # Data about a deceased person, collected for family benefit and widow
+    # pension claims. The deceased is not a Data Principal under the Act, but
+    # the record identifies the surviving claimant's household, so it is held
+    # to the same retention and access rules as the claimant's own data.
+    FieldRecord("deceased_name", C.NAME, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("deceased_age", C.DATE_OF_BIRTH, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("death_date", C.DATE_OF_BIRTH, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("death_certificate_number", C.NAME, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("marriage_date", C.DATE_OF_BIRTH, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+
+    # ── State scheme identifiers and means tests ─────────────────────────
+    FieldRecord("state_family_id", C.RATION_CARD, (P.SCHEME_ELIGIBILITY,
+                                                   P.FORM_COMPLETION),
+                retention_days=_APPLICATION_CYCLE, decisional=True,
+                note="Samagra ID, Jan Aadhaar, PPP, Swasthya Sathi and the like. "
+                     "Resolves to a whole household, so treated as an identifier."),
+    FieldRecord("ration_card_type", C.RATION_CARD, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("caste_certificate_number", C.CASTE_CATEGORY,
+                (P.SCHEME_ELIGIBILITY, P.FORM_COMPLETION),
+                retention_days=_APPLICATION_CYCLE, decisional=True,
+                note="Sensitive. Collected only for reservation-linked schemes."),
+    FieldRecord("residency_years", C.ADDRESS, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("number_of_daughters", C.CHILD_DATA, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True,
+                child_data=True),
+    FieldRecord("child_order", C.CHILD_DATA, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True,
+                child_data=True),
+    FieldRecord("current_class", C.CHILD_DATA, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE, child_data=True),
+    FieldRecord("four_wheeler_owned", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("pension_category", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("existing_benefit_amount", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True,
+                note="Several schemes exclude applicants already drawing another "
+                     "benefit above a threshold."),
+    FieldRecord("existing_lpg_connection", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("pension_amount_chosen", C.FINANCIAL, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE),
+    FieldRecord("nominee_name_aps", C.NAME, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE,
+                note="Nominee named on an Atal Pension Yojana form. Distinct from "
+                     "the s14 nominee for data-principal rights."),
+
+    # ── Livelihood and enterprise ────────────────────────────────────────
+    FieldRecord("business_name", C.NAME, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE),
+    FieldRecord("business_activity", C.FINANCIAL, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE),
+    FieldRecord("loan_category", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("udyam_registration_number", C.FINANCIAL, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE),
+    FieldRecord("trade_name", C.NAME, (P.SCHEME_ELIGIBILITY, P.FORM_COMPLETION),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("years_in_trade", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+
     # ── Operational, non-scheme ──────────────────────────────────────────
     FieldRecord("language", C.NAME, (P.ACCOUNT_MANAGEMENT,),
                 basis=B.LEGITIMATE_USE_VOLUNTARY, retention_days=_APPEAL_WINDOW),

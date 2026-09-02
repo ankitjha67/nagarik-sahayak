@@ -100,6 +100,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "schemeName": "PM-KISAN Samman Nidhi",
         "schemeNameHindi": "पीएम-किसान सम्मान निधि",
         "category": "agriculture",
+        "level": "Central", "state": None,
         "description": "Income support of ₹6,000 per year in three equal instalments to all landholding farmer families.",
         "descriptionHindi": "सभी भूमिधारक किसान परिवारों को तीन समान किस्तों में प्रति वर्ष ₹6,000 की आय सहायता।",
         "officialWebsite": "https://pmkisan.gov.in/",
@@ -155,6 +156,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "schemeName": "Kisan Credit Card (KCC)",
         "schemeNameHindi": "किसान क्रेडिट कार्ड",
         "category": "agriculture",
+        "level": "Central", "state": None,
         "description": "Short-term crop loan facility for PM-KISAN beneficiaries at subsidised interest, including allied activities like dairy, poultry and fisheries.",
         "descriptionHindi": "पीएम-किसान लाभार्थियों के लिए रियायती ब्याज पर अल्पकालिक फसल ऋण सुविधा।",
         "officialWebsite": "https://pmkisan.gov.in/",
@@ -221,6 +223,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "schemeName": "Pradhan Mantri Awas Yojana - Gramin",
         "schemeNameHindi": "प्रधानमंत्री आवास योजना - ग्रामीण",
         "category": "housing",
+        "level": "Central", "state": None,
         "description": "Financial assistance of ₹1.20–1.30 lakh for construction of a pucca house for rural households that are houseless or living in kutcha houses.",
         "descriptionHindi": "बेघर या कच्चे मकान में रहने वाले ग्रामीण परिवारों को पक्का मकान बनाने हेतु ₹1.20–1.30 लाख की सहायता।",
         "officialWebsite": "https://pmayg.nic.in/",
@@ -268,6 +271,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "schemeName": "Ayushman Bharat PM-JAY",
         "schemeNameHindi": "आयुष्मान भारत पीएम-जेएवाई",
         "category": "health",
+        "level": "Central", "state": None,
         "description": "Health cover of ₹5 lakh per family per year for secondary and tertiary care hospitalisation, cashless at empanelled hospitals.",
         "descriptionHindi": "प्रति परिवार प्रति वर्ष ₹5 लाख का स्वास्थ्य कवर, सूचीबद्ध अस्पतालों में कैशलेस।",
         "officialWebsite": "https://pmjay.gov.in/",
@@ -302,6 +306,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "schemeName": "National Scholarship - Post Matric",
         "schemeNameHindi": "राष्ट्रीय छात्रवृत्ति - पोस्ट मैट्रिक",
         "category": "education",
+        "level": "Central", "state": None,
         "description": "Scholarship for SC/ST/OBC/Minority students studying at post-matriculation level, covering maintenance allowance and fee reimbursement.",
         "descriptionHindi": "पोस्ट-मैट्रिक स्तर पर पढ़ने वाले एससी/एसटी/ओबीसी/अल्पसंख्यक छात्रों के लिए छात्रवृत्ति।",
         "officialWebsite": "https://scholarships.gov.in/",
@@ -349,6 +354,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "schemeName": "Sukanya Samriddhi Yojana",
         "schemeNameHindi": "सुकन्या समृद्धि योजना",
         "category": "finance",
+        "level": "Central", "state": None,
         "description": "Small savings scheme for a girl child under 10 years, offering a high fixed interest rate with tax benefits under Section 80C.",
         "descriptionHindi": "10 वर्ष से कम आयु की बालिका के लिए उच्च ब्याज दर वाली लघु बचत योजना।",
         "officialWebsite": "https://www.indiapost.gov.in/Financial/Pages/Content/Post-Office-Saving-Schemes.aspx",
@@ -397,6 +403,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "schemeName": "Indira Gandhi National Old Age Pension",
         "schemeNameHindi": "इंदिरा गांधी राष्ट्रीय वृद्धावस्था पेंशन",
         "category": "general",
+        "level": "Central", "state": None,
         "description": "Monthly pension for BPL citizens aged 60 years and above under the National Social Assistance Programme.",
         "descriptionHindi": "राष्ट्रीय सामाजिक सहायता कार्यक्रम के तहत 60 वर्ष से अधिक आयु के बीपीएल नागरिकों के लिए मासिक पेंशन।",
         "officialWebsite": "https://nsap.nic.in/",
@@ -437,6 +444,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "schemeName": "Kendriya Vidyalaya Admission",
         "schemeNameHindi": "केंद्रीय विद्यालय प्रवेश",
         "category": "education",
+        "level": "Central", "state": None,
         "description": "Admission to Kendriya Vidyalaya schools. Seats are allotted by priority category and, where applications exceed seats, by lottery.",
         "descriptionHindi": "केंद्रीय विद्यालय में प्रवेश। सीटें प्राथमिकता श्रेणी और लॉटरी द्वारा आवंटित की जाती हैं।",
         "officialWebsite": "https://kvsangathan.nic.in/",
@@ -458,7 +466,10 @@ GOV_FORM_CATALOG: list[dict] = [
             *identity_fields(section="Student Details"),
             *address_fields(),
             _f("class_sought", "Class Sought for Admission", "प्रवेश हेतु कक्षा",
-               section="Academic Details", profile_key="class_sought"),
+               "select", section="Academic Details", profile_key="class_sought",
+               options=["Balvatika", "Class 1", "Class 2", "Class 3", "Class 4",
+                        "Class 5", "Class 6", "Class 7", "Class 8", "Class 9",
+                        "Class 10", "Class 11", "Class 12"]),
             _f("institution_name", "Previous School Attended", "पिछला विद्यालय",
                section="Academic Details", profile_key="institution_name",
                required=False),
@@ -471,6 +482,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "schemeName": "Saraswati Vidya Yojana Scholarship",
         "schemeNameHindi": "सरस्वती विद्या योजना छात्रवृत्ति",
         "category": "education",
+        "level": "State", "state": "Goa",
         "description": "State scholarship for students in higher education, paid directly to the student's bank account on verification of enrolment and academic record.",
         "descriptionHindi": "उच्च शिक्षा के छात्रों हेतु राज्य छात्रवृत्ति, सत्यापन के बाद सीधे बैंक खाते में भुगतान।",
         "officialWebsite": "https://www.goa.gov.in/",
@@ -480,7 +492,9 @@ GOV_FORM_CATALOG: list[dict] = [
         "eligibilityCriteria": {
             "summary": "Student must be enrolled in a recognised institution and provide continuous schooling certificates for the preceding years, along with a domicile certificate.",
             "summaryHindi": "छात्र मान्यता प्राप्त संस्थान में नामांकित हो और पिछले वर्षों के निरंतर अध्ययन प्रमाण पत्र प्रस्तुत करे।",
-            "rules": [],
+            "rules": [
+                {"field": "state", "op": "==", "value": "Goa"},
+            ],
             "benefit": "Scholarship credited to the student's bank account",
         },
         "sections": [
@@ -515,6 +529,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "schemeName": "Widow and Destitute Women Pension (Haryana)",
         "schemeNameHindi": "विधवा एवं निराश्रित महिला पेंशन (हरियाणा)",
         "category": "general",
+        "level": "State", "state": "Haryana",
         "description": "Monthly pension for widowed or destitute women resident in Haryana, applied for through the Antyodaya-SARAL portal or a CSC centre.",
         "descriptionHindi": "हरियाणा में निवासरत विधवा या निराश्रित महिलाओं के लिए मासिक पेंशन।",
         "officialWebsite": "https://saralharyana.gov.in/",
@@ -525,6 +540,7 @@ GOV_FORM_CATALOG: list[dict] = [
             "summary": "Woman aged 18 years or above, widowed or destitute, and a domicile of Haryana residing in the state for at least one year at the time of application. A husband's death certificate is required in the case of a widow.",
             "summaryHindi": "18 वर्ष या अधिक आयु की विधवा या निराश्रित महिला, जो कम से कम एक वर्ष से हरियाणा में निवासरत हो।",
             "rules": [
+                {"field": "state", "op": "==", "value": "Haryana"},
                 {"field": "age", "op": ">=", "value": 18},
                 {"field": "gender", "op": "==", "value": "Female"},
             ],
@@ -563,6 +579,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "schemeName": "Sports Achievement Scholarship (Haryana)",
         "schemeNameHindi": "खेल उपलब्धि छात्रवृत्ति (हरियाणा)",
         "category": "education",
+        "level": "State", "state": "Haryana",
         "description": "Scholarship for students who won a position or participated in recognised sporting events, paid annually on verification by the head of the institution.",
         "descriptionHindi": "मान्यता प्राप्त खेल प्रतियोगिताओं में स्थान प्राप्त करने वाले छात्रों के लिए वार्षिक छात्रवृत्ति।",
         "officialWebsite": "https://haryanasports.gov.in/",
@@ -572,7 +589,9 @@ GOV_FORM_CATALOG: list[dict] = [
         "eligibilityCriteria": {
             "summary": "Student must hold a Haryana domicile certificate and have obtained a first, second, third or participation position in a recognised sporting event during the qualifying period. The claim must be attested by the head of the institution.",
             "summaryHindi": "छात्र के पास हरियाणा अधिवास प्रमाण पत्र हो और उसने मान्यता प्राप्त खेल प्रतियोगिता में स्थान प्राप्त किया हो।",
-            "rules": [],
+            "rules": [
+                {"field": "state", "op": "==", "value": "Haryana"},
+            ],
             "benefit": "Annual scholarship credited to the student's bank account",
         },
         "sections": [
@@ -611,14 +630,44 @@ GOV_FORM_CATALOG: list[dict] = [
 
 # ── Lookup helpers ───────────────────────────────────────────────────────
 
-def get_catalog() -> list[dict]:
-    """Return the full catalog with computed totalFields."""
+def _all_sources() -> list[dict]:
+    """Concatenate the three catalog files.
+
+    Imported lazily inside the function because central_schemes and
+    state_schemes import the field builders from this module — a top-level
+    import either way would be circular.
+    """
+    from data.central_schemes import CENTRAL_SCHEMES
+    from data.state_schemes import STATE_SCHEMES
+    return [*GOV_FORM_CATALOG, *CENTRAL_SCHEMES, *STATE_SCHEMES]
+
+
+def get_catalog(level: str | None = None, state: str | None = None) -> list[dict]:
+    """Return the catalog with computed totalFields.
+
+    `level` filters to "Central" or "State"; `state` filters to schemes a
+    resident of that State can claim — which means Central schemes *plus* that
+    State's own, because a citizen of Bihar is entitled to both. Filtering a
+    State's residents down to only State schemes would hide most of the money
+    available to them.
+    """
     out = []
-    for entry in GOV_FORM_CATALOG:
+    for entry in _all_sources():
         item = dict(entry)
+        item.setdefault("level", "Central")
+        item.setdefault("state", None)
         item["totalFields"] = len(item.get("extractedFields", []))
+        if level and item["level"] != level:
+            continue
+        if state and item["level"] == "State" and item["state"] != state:
+            continue
         out.append(item)
     return out
+
+
+def catalog_states() -> list[str]:
+    """States that have at least one scheme in the catalog, sorted."""
+    return sorted({e["state"] for e in get_catalog() if e.get("state")})
 
 
 def get_by_name(scheme_name: str) -> dict | None:

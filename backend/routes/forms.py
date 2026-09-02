@@ -29,17 +29,27 @@ def _require_admin(request: Request) -> None:
 
 
 @api_router.get("/forms/catalog")
-async def form_catalog():
+async def form_catalog(level: str | None = None, state: str | None = None):
     """List the curated real-government-form catalog.
 
     Serves from bundled data, so it works with no database, network, or LLM key.
+
+    `level=Central|State` and `state=<State>` narrow the list. Passing a state
+    returns that State's schemes *and* every Central scheme, because a resident
+    of Bihar can claim both — returning only the State's own would hide most of
+    what they are entitled to.
     """
+    if level and level not in ("Central", "State"):
+        raise HTTPException(status_code=400,
+                            detail="level must be 'Central' or 'State'")
     entries = []
-    for e in get_catalog():
+    for e in get_catalog(level=level, state=state):
         entries.append({
             "schemeName": e["schemeName"],
             "schemeNameHindi": e.get("schemeNameHindi", ""),
             "category": e.get("category", "general"),
+            "level": e.get("level", "Central"),
+            "state": e.get("state"),
             "description": e.get("description", ""),
             "descriptionHindi": e.get("descriptionHindi", ""),
             "officialWebsite": e.get("officialWebsite", ""),
@@ -55,6 +65,27 @@ async def form_catalog():
             "eligibility": e.get("eligibilityCriteria", {}),
         })
     return {"forms": entries, "count": len(entries)}
+
+
+@api_router.get("/forms/catalog-states")
+async def form_catalog_states():
+    """States represented in the catalog, with how many schemes each has.
+
+    Lets the UI offer a real State picker instead of a list of 36 entries most
+    of which would return nothing.
+    """
+    from data.gov_forms import catalog_states
+    all_entries = get_catalog()
+    central = sum(1 for e in all_entries if e.get("level") == "Central")
+    states = [
+        {
+            "state": s,
+            "stateSchemes": sum(1 for e in all_entries if e.get("state") == s),
+            "totalAvailable": sum(1 for e in all_entries if e.get("state") == s) + central,
+        }
+        for s in catalog_states()
+    ]
+    return {"states": states, "centralSchemes": central, "count": len(states)}
 
 
 @api_router.get("/forms/catalog/{scheme_name}")
