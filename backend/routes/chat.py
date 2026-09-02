@@ -47,7 +47,11 @@ def get_bot_response_with_mcp(content: str, language: str = "hi") -> dict:
         if AGNOST_WRITE_KEY:
             try:
                 import agnost
-                agnost.track(user_id="chat", agent_name="nagarik_tool", input=content,
+                from dpdp.classifier import redact_text
+                # DPDP s6/s16: citizens type Aadhaar and account numbers into
+                # chat. Redact before the message leaves the process.
+                agnost.track(user_id="chat", agent_name="nagarik_tool",
+                             input=redact_text(content),
                              output=str(tool_result.get("match_found", False)),
                              properties={"tool": "search_schemes", "language": language},
                              success=tool_result.get("match_found", False), latency=latency)

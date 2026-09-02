@@ -5,7 +5,7 @@ import uuid
 import json
 import logging
 import time as _time
-from fastapi import UploadFile, File, Form, HTTPException
+from fastapi import UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import FileResponse
 from database import prisma
 from config import PDF_DIR, AGNOST_WRITE_KEY, validate_path_within, validate_pdf_content, AUDIO_DIR
@@ -43,11 +43,21 @@ async def generate_pdf_endpoint(req: GeneratePDFRequest):
         raise HTTPException(status_code=400, detail="No eligibility results")
     pdf_id = str(uuid.uuid4())
     generate_eligibility_pdf(profile=profile, eligibility_results=results, output_path=str(PDF_DIR / f"{pdf_id}.pdf"))
+    # DPDP s8(4): bind the document to its owner before returning a
+    # link to it, so it is never downloadable by an unrelated caller.
+    from dpdp import ownership
+    await ownership.record_owner(pdf_id, req.user_id or "", ownership.ArtefactKind.PDF)
     pdf_url = f"/api/pdf/{pdf_id}"
     if AGNOST_WRITE_KEY:
         try:
             import agnost
-            agnost.track(user_id=req.user_id or "api", agent_name="nagarik_tool", input=str(profile),
+            from dpdp.classifier import redact_object
+            # DPDP s6/s16: the profile holds Aadhaar, bank and income details.
+            # Sending it to an external analytics service is a disclosure to
+            # another party, and a cross-border transfer if that party is
+            # offshore. Only the shape of the request is useful for analytics.
+            agnost.track(user_id=req.user_id or "api", agent_name="nagarik_tool",
+                         input=str(redact_object(profile)),
                          output=pdf_url, properties={"tool": "generate_pdf", "pdf_id": pdf_id},
                          success=True, latency=int((_time.time() - t0) * 1000))
         except Exception:
@@ -58,11 +68,22 @@ async def generate_pdf_endpoint(req: GeneratePDFRequest):
 
 
 @api_router.get("/pdf/{pdf_id}")
-async def serve_pdf(pdf_id: str):
+async def serve_pdf(pdf_id: str, request: Request):
+    """Serve a generated PDF to the citizen it belongs to.
+
+    These documents carry Aadhaar, bank account and income details. Access is
+    checked against recorded ownership (DPDP s8(4)); a UUID is not a substitute
+    for authorisation.
+    """
     safe_id = re.sub(r'[^a-zA-Z0-9\-]', '', pdf_id)
     pdf_path = PDF_DIR / f"{safe_id}.pdf"
     if not validate_path_within(pdf_path, PDF_DIR):
         raise HTTPException(status_code=400, detail="Invalid PDF ID")
+
+    from dpdp import ownership
+    await ownership.assert_access(
+        safe_id, request.headers.get("X-User-Id", "").strip(), ownership.ArtefactKind.PDF)
+
     if not pdf_path.exists():
         raise HTTPException(status_code=404, detail="PDF not found")
     return FileResponse(path=str(pdf_path), media_type="application/pdf",
@@ -70,11 +91,16 @@ async def serve_pdf(pdf_id: str):
 
 
 @api_router.get("/audio/{msg_id}")
-async def serve_audio(msg_id: str):
+async def serve_audio(msg_id: str, request: Request):
+    """Serve a voice note to the citizen who recorded it."""
     safe_id = re.sub(r'[^a-zA-Z0-9\-]', '', msg_id)
     audio_path = AUDIO_DIR / f"{safe_id}.webm"
     if not validate_path_within(audio_path, AUDIO_DIR):
         raise HTTPException(status_code=400, detail="Invalid audio ID")
+
+    from dpdp import ownership
+    await ownership.assert_access(
+        safe_id, request.headers.get("X-User-Id", "").strip(), ownership.ArtefactKind.AUDIO)
     if not audio_path.exists():
         raise HTTPException(status_code=404, detail="Audio not found")
     return FileResponse(path=str(audio_path), media_type="audio/webm")
@@ -96,12 +122,22 @@ async def download_all_pdfs(user_id: str = "", count: int = 0):
 
 
 @api_router.get("/download-all-zip")
-async def download_all_zip(pdf_ids: str = "", user_id: str = ""):
+async def download_all_zip(request: Request, pdf_ids: str = "", user_id: str = ""):
     """Generate a zip bundle of PDFs."""
     import zipfile as zf
     if not pdf_ids:
         raise HTTPException(status_code=400, detail="No pdf_ids provided")
     ids = [x.strip() for x in pdf_ids.split(",") if x.strip()]
+
+    # This endpoint takes a caller-supplied list of identifiers, so without an
+    # ownership check it is a bulk-retrieval primitive over every citizen's
+    # filled forms — strictly worse than the single-document endpoint. Each id
+    # is checked individually against recorded ownership (DPDP s8(4)).
+    from dpdp import ownership
+    requester = request.headers.get("X-User-Id", "").strip() or user_id
+    for pid in ids:
+        safe = re.sub(r'[^a-zA-Z0-9\-]', '', pid)
+        await ownership.assert_access(safe, requester, ownership.ArtefactKind.PDF)
     zip_id = str(uuid.uuid4())
     zip_path = PDF_DIR / f"{zip_id}.zip"
     count = 0

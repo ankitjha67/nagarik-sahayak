@@ -29,7 +29,9 @@ BACKEND_MODULES = [
     "routes.auth", "routes.chat", "routes.profile", "routes.schemes",
     "routes.pdf", "routes.demo", "routes.v2",
     "routes.discovery", "routes.exams", "routes.reports", "routes.notifications",
-    "routes.forms", "routes.verification", "routes.review",
+    "routes.forms", "routes.verification", "routes.review", "routes.dpdp",
+    "dpdp.classifier", "dpdp.registry", "dpdp.engine", "dpdp.consent",
+    "dpdp.retention", "dpdp.ownership",
 ]
 
 
@@ -90,6 +92,7 @@ class TestApplicationAssembly:
             "/api/v2/schemes", "/api/discovery/status", "/api/exams",
             "/api/reports/schemes-excel", "/api/notifications/preferences/{user_id}",
             "/api/forms/catalog", "/api/verify/application", "/api/review/queue",
+            "/api/dpdp/notice", "/api/dpdp/my-data/{user_id}",
         ]:
             assert expected in paths, f"{expected} is not registered"
 
@@ -134,3 +137,21 @@ class TestRoutingWorks:
     def test_citizen_case_status_is_not_gated(self, client):
         """People are entitled to know their own application is being checked."""
         assert client.get("/api/review/my-cases/anyone").status_code == 200
+
+    def test_privacy_notice_is_public(self, client):
+        """s5: a person must be able to read the notice before handing over data."""
+        r = client.get("/api/dpdp/notice")
+        assert r.status_code == 200
+        assert r.json()["purposes"] and r.json()["your_rights"]
+
+    def test_dpdp_compliance_routes_are_gated(self, client):
+        assert client.get("/api/dpdp/compliance/registry").status_code == 403
+        assert client.get("/api/dpdp/compliance/audit").status_code == 403
+
+    def test_rights_routes_reject_anonymous_callers(self, client):
+        """Without this, changing the id in the path reads another person's data."""
+        assert client.get("/api/dpdp/my-data/someone").status_code == 401
+
+    def test_rights_routes_reject_cross_user_access(self, client):
+        r = client.get("/api/dpdp/my-data/victim", headers={"X-User-Id": "attacker"})
+        assert r.status_code == 403

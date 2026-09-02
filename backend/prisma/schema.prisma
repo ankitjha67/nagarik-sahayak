@@ -147,3 +147,69 @@ model ReviewCase {
   @@index([userId])
   @@index([status])
 }
+
+
+// ── DPDP Act 2023 ──────────────────────────────────────────────────────
+
+// Who may download a generated artefact. Kept separate from Application
+// because eligibility reports, uploaded PDFs and voice notes are produced
+// outside the application flow and need the same guarantee.
+model ArtefactOwner {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  artefactId String
+  userId     String   @db.ObjectId
+  kind       String   @default("pdf")
+  createdAt  DateTime @default(now())
+
+  @@index([artefactId])
+  @@index([userId])
+}
+
+// Section 6 consent, recorded per purpose. Withdrawal is not a delete: the
+// record of having consented, and then withdrawn, is itself evidence the
+// Fiduciary must be able to produce.
+model ConsentRecord {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  purpose       String
+  granted       Boolean   @default(true)
+  noticeVersion String    @default("1.0")
+  language      String    @default("hi")
+  grantedAt     DateTime  @default(now())
+  withdrawnAt   DateTime?
+  // Section 9: consent given by a parent or guardian for a child's data.
+  parentalConsent Boolean @default(false)
+
+  @@index([userId])
+  @@index([userId, purpose])
+}
+
+// Sections 11-14 requests: access, correction, erasure, grievance, nomination.
+model DataPrincipalRequest {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  requestType String
+  status      String    @default("received")
+  details     Json?
+  response    Json?
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+
+  @@index([userId])
+  @@index([status])
+}
+
+// Section 8(5) breach register.
+model BreachRecord {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  detectedAt    DateTime  @default(now())
+  severity      String
+  category      String
+  description   String
+  affectedCount Int       @default(0)
+  boardNotified Boolean   @default(false)
+  principalsNotified Boolean @default(false)
+  resolvedAt    DateTime?
+
+  @@index([detectedAt])
+}

@@ -259,6 +259,10 @@ async def generate_real_filled_forms(req: dict = {}):
 
         pid = str(uuid.uuid4())
         out_path = str(PDF_DIR / f"{pid}.pdf")
+        # Record who this document belongs to before it exists on disk, so it
+        # is never briefly downloadable by anyone holding the identifier.
+        from dpdp import ownership
+        await ownership.record_owner(pid, user_id, ownership.ArtefactKind.PDF)
         fill_method = "generated"
 
         original_pdf_url = ft.officialPdfUrl or ""
