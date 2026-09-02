@@ -94,7 +94,7 @@ function App() {
           <Route
             path="/schemes"
             element={
-              isLoggedIn ? <SchemesPage language={language} /> : <Navigate to="/" replace />
+              isLoggedIn ? <SchemesPage userId={userId} language={language} /> : <Navigate to="/" replace />
             }
           />
           <Route

@@ -161,6 +161,19 @@ export const extractLiveForm = (pdfUrl, schemeHint = "", saveToDb = false) =>
     { timeout: 180000 }
   );
 
+// ── Verification: field validity, eligibility, abuse screening ──
+
+export const verifyFields = (profile, schemeName) =>
+  api.post("/verify/fields", { profile, scheme_name: schemeName });
+export const verifyEligibility = (profile, schemeName) =>
+  api.post("/verify/eligibility", { profile, scheme_name: schemeName });
+export const verifyApplication = (profile, schemeName, userId) =>
+  api.post("/verify/application", {
+    profile, scheme_name: schemeName, user_id: userId,
+  });
+export const screenAllSchemes = (profile, userId) =>
+  api.post("/verify/screen-all", { profile, user_id: userId }, { timeout: 60000 });
+
 // ── Notification Preferences & Exam Subscriptions ──
 
 export const getNotificationPreferences = (userId) =>

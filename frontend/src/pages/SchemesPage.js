@@ -2,13 +2,40 @@ import { useState, useEffect } from "react";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
-import { getSchemes, getV2Schemes, getDiscoveredSchemes, downloadSchemesExcel } from "../lib/api";
+import {
+  getSchemes, getV2Schemes, getDiscoveredSchemes, downloadSchemesExcel,
+  getUserFullProfile, screenAllSchemes,
+} from "../lib/api";
 import { Badge } from "../components/ui/badge";
 import {
   Sprout, HeartPulse, Baby, ExternalLink, ChevronDown, ChevronUp,
   Users, IndianRupee, Home, GraduationCap, Rocket, Briefcase,
-  Search, Download, Building2,
+  Search, Download, Building2, CheckCircle2, XCircle, HelpCircle, Loader2,
 } from "lucide-react";
+
+// How an eligibility outcome is presented on a scheme card.
+const ELIGIBILITY_BADGE = {
+  approved: {
+    icon: CheckCircle2, label: "आप पात्र हैं", labelEn: "You qualify",
+    cls: "bg-green-50 text-green-700 border-green-200",
+  },
+  approved_with_review: {
+    icon: CheckCircle2, label: "आप पात्र हैं", labelEn: "You qualify",
+    cls: "bg-green-50 text-green-700 border-green-200",
+  },
+  blocked_not_eligible: {
+    icon: XCircle, label: "पात्र नहीं", labelEn: "Not eligible",
+    cls: "bg-red-50 text-red-700 border-red-200",
+  },
+  blocked_invalid_data: {
+    icon: XCircle, label: "विवरण जाँचें", labelEn: "Check your details",
+    cls: "bg-red-50 text-red-700 border-red-200",
+  },
+  incomplete: {
+    icon: HelpCircle, label: "जानकारी अधूरी", labelEn: "More info needed",
+    cls: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+};
 
 const ICON_MAP = {
   sprout: Sprout,
@@ -34,12 +61,42 @@ const CATEGORY_COLORS = {
   general: { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" },
 };
 
-export default function SchemesPage({ language = "hi" }) {
+export default function SchemesPage({ userId, language = "hi" }) {
   const [schemes, setSchemes] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  // scheme name -> {outcome, reasons_hi, reasons_en, benefit}
+  const [eligibility, setEligibility] = useState({});
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+  const [onlyEligible, setOnlyEligible] = useState(false);
+
+  // Screen the citizen's stored profile against every scheme so the list can
+  // answer the question people actually have — "what am I entitled to?" —
+  // instead of leaving them to read criteria and guess.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    setCheckingEligibility(true);
+    getUserFullProfile(userId)
+      .then((r) => {
+        const profile = r.data?.fullProfile || {};
+        if (!Object.keys(profile).length) return null;
+        return screenAllSchemes(profile, userId);
+      })
+      .then((res) => {
+        if (cancelled || !res) return;
+        const map = {};
+        for (const group of ["eligible", "not_eligible", "needs_more_info"]) {
+          for (const item of res.data[group] || []) map[item.scheme] = item;
+        }
+        setEligibility(map);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCheckingEligibility(false); });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   useEffect(() => {
     // Load curated (V1+V2) and crawler-discovered (V3) schemes, merge results
@@ -92,7 +149,15 @@ export default function SchemesPage({ language = "hi" }) {
   const isHindi = language === "hi";
 
   // Filter schemes
+  const eligibleOutcomes = new Set(["approved", "approved_with_review"]);
+  const eligibleCount = Object.values(eligibility)
+    .filter(e => eligibleOutcomes.has(e.outcome)).length;
+
   const filteredSchemes = schemes.filter(s => {
+    if (onlyEligible) {
+      const e = eligibility[s.title];
+      if (!e || !eligibleOutcomes.has(e.outcome)) return false;
+    }
     if (categoryFilter && s.category !== categoryFilter) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -172,14 +237,46 @@ export default function SchemesPage({ language = "hi" }) {
           </div>
         )}
 
-        {/* Info Banner */}
-        <div className="bg-[#FFF0E0] rounded-xl p-4 border border-orange-100 mb-5 animate-fade-in-up">
-          <p className="text-sm text-[#000080] font-['Mukta'] font-semibold">
-            {isHindi
-              ? `${filteredSchemes.length} योजनाओं की जानकारी देखें और अपनी पात्रता जांचें।`
-              : `Browse ${filteredSchemes.length} schemes below and check your eligibility.`}
-          </p>
-        </div>
+        {/* Eligibility summary — what this citizen actually qualifies for */}
+        {checkingEligibility ? (
+          <div className="bg-white rounded-xl p-4 border border-gray-100 mb-5 flex items-center gap-2">
+            <Loader2 size={14} className="animate-spin text-[#FF9933]" />
+            <span className="text-xs text-gray-500 font-['Nunito']">
+              {isHindi ? "आपकी पात्रता जाँची जा रही है…" : "Checking your eligibility…"}
+            </span>
+          </div>
+        ) : Object.keys(eligibility).length > 0 ? (
+          <button
+            onClick={() => setOnlyEligible(v => !v)}
+            className={`w-full text-left rounded-xl p-4 border mb-5 transition-all animate-fade-in-up ${
+              onlyEligible
+                ? "bg-green-50 border-green-300"
+                : "bg-[#E6F4EA] border-green-100 hover:border-green-300"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-[#138808] flex-shrink-0" />
+              <p className="text-sm text-[#000080] font-['Mukta'] font-semibold flex-1">
+                {isHindi
+                  ? `आप ${eligibleCount} योजनाओं के लिए पात्र हैं`
+                  : `You qualify for ${eligibleCount} scheme${eligibleCount === 1 ? "" : "s"}`}
+              </p>
+            </div>
+            <p className="text-[11px] text-gray-600 font-['Nunito'] mt-0.5 ml-6">
+              {onlyEligible
+                ? (isHindi ? "सभी योजनाएं देखने के लिए टैप करें" : "Tap to show all schemes")
+                : (isHindi ? "केवल पात्र योजनाएं देखने के लिए टैप करें" : "Tap to show only these")}
+            </p>
+          </button>
+        ) : (
+          <div className="bg-[#FFF0E0] rounded-xl p-4 border border-orange-100 mb-5 animate-fade-in-up">
+            <p className="text-sm text-[#000080] font-['Mukta'] font-semibold">
+              {isHindi
+                ? `${filteredSchemes.length} योजनाओं की जानकारी देखें और अपनी पात्रता जांचें।`
+                : `Browse ${filteredSchemes.length} schemes below and check your eligibility.`}
+            </p>
+          </div>
+        )}
 
         {/* Scheme Cards */}
         <div className="space-y-4 stagger-children">
@@ -216,6 +313,18 @@ export default function SchemesPage({ language = "hi" }) {
                       >
                         {scheme.category}
                       </Badge>
+                      {(() => {
+                        const e = eligibility[scheme.title];
+                        const badge = e && ELIGIBILITY_BADGE[e.outcome];
+                        if (!badge) return null;
+                        const BadgeIcon = badge.icon;
+                        return (
+                          <Badge className={`${badge.cls} border text-[10px] font-semibold px-2 py-0.5 flex items-center gap-1`}>
+                            <BadgeIcon size={10} />
+                            {isHindi ? badge.label : badge.labelEn}
+                          </Badge>
+                        );
+                      })()}
                       {scheme.discovered && (
                         <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 border text-[10px] font-semibold px-2 py-0.5">
                           {isHindi ? "खोजी गई" : "Discovered"}
@@ -236,6 +345,59 @@ export default function SchemesPage({ language = "hi" }) {
                 {/* Expanded Content */}
                 {isExpanded && (
                   <div className="px-5 pb-5 border-t border-gray-50 animate-fade-in-up">
+                    {/* Why this citizen does or does not qualify. A bare verdict
+                        is not actionable — the specific unmet condition is. */}
+                    {(() => {
+                      const e = eligibility[scheme.title];
+                      if (!e) return null;
+                      const reasons = (isHindi && e.reasons_hi?.length)
+                        ? e.reasons_hi : (e.reasons_en || []);
+                      const qualifies = ["approved", "approved_with_review"].includes(e.outcome);
+                      if (qualifies) {
+                        return (
+                          <div className="mt-4 rounded-lg bg-green-50 border border-green-200 p-3">
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle2 size={13} className="text-green-600" />
+                              <span className="text-[11px] font-bold text-green-800 font-['Mukta']">
+                                {isHindi ? "आप इस योजना के लिए पात्र हैं" : "You qualify for this scheme"}
+                              </span>
+                            </div>
+                            {e.benefit && (
+                              <p className="text-[11px] text-green-700 font-['Nunito'] mt-1 ml-5">
+                                {isHindi ? "लाभ: " : "Benefit: "}{e.benefit}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      }
+                      if (!reasons.length) return null;
+                      const isIncomplete = e.outcome === "incomplete";
+                      return (
+                        <div className={`mt-4 rounded-lg border p-3 ${
+                          isIncomplete
+                            ? "bg-amber-50 border-amber-200"
+                            : "bg-red-50 border-red-200"}`}>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            {isIncomplete
+                              ? <HelpCircle size={13} className="text-amber-600" />
+                              : <XCircle size={13} className="text-red-600" />}
+                            <span className={`text-[11px] font-bold font-['Mukta'] ${
+                              isIncomplete ? "text-amber-800" : "text-red-800"}`}>
+                              {isIncomplete
+                                ? (isHindi ? "और जानकारी चाहिए" : "More information needed")
+                                : (isHindi ? "आप अभी पात्र नहीं हैं" : "You do not currently qualify")}
+                            </span>
+                          </div>
+                          {reasons.map((r, i) => (
+                            <p key={i} className={`text-[10px] font-['Nunito'] leading-snug ml-5 ${
+                              isIncomplete ? "text-amber-700" : "text-red-700"}`}>
+                              • {r}
+                            </p>
+                          ))}
+                        </div>
+                      );
+                    })()}
+
                     {/* Eligibility */}
                     <div className="mt-4">
                       <div className="flex items-center gap-2 mb-2">
