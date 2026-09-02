@@ -37,16 +37,24 @@ class Language:
 
 
 LANGUAGES: tuple[Language, ...] = (
-    Language("en", "English", "English", "Latin", regions=(),
+    # English is not an Eighth Schedule language, but it *is* the declared
+    # official language of these States and Union Territories — in several of
+    # the North-East it is the only one, because the languages people actually
+    # speak there are outside the Schedule entirely. Listing the regions is
+    # therefore a fact about those States, not a fallback dressed up as one.
+    Language("en", "English", "English", "Latin",
+             regions=("Arunachal Pradesh", "Meghalaya", "Mizoram", "Nagaland",
+                      "Chandigarh", "Andaman and Nicobar Islands", "Ladakh"),
              eighth_schedule=False),
     Language("hi", "Hindi", "हिन्दी", "Devanagari",
              regions=("Uttar Pradesh", "Bihar", "Madhya Pradesh", "Rajasthan",
                       "Jharkhand", "Chhattisgarh", "Haryana", "Delhi",
-                      "Himachal Pradesh", "Uttarakhand")),
+                      "Himachal Pradesh", "Uttarakhand", "Chandigarh",
+                      "Andaman and Nicobar Islands")),
     Language("as", "Assamese", "অসমীয়া", "Bengali-Assamese",
              regions=("Assam",)),
     Language("bn", "Bengali", "বাংলা", "Bengali-Assamese",
-             regions=("West Bengal", "Tripura")),
+             regions=("West Bengal", "Tripura", "Andaman and Nicobar Islands")),
     Language("brx", "Bodo", "बर’", "Devanagari", regions=("Assam",)),
     Language("doi", "Dogri", "डोगरी", "Devanagari", regions=("Jammu and Kashmir",)),
     Language("gu", "Gujarati", "ગુજરાતી", "Gujarati",
@@ -62,13 +70,14 @@ LANGUAGES: tuple[Language, ...] = (
     Language("mr", "Marathi", "मराठी", "Devanagari", regions=("Maharashtra", "Goa")),
     Language("ne", "Nepali", "नेपाली", "Devanagari", regions=("Sikkim",)),
     Language("or", "Odia", "ଓଡ଼ିଆ", "Odia", regions=("Odisha",)),
-    Language("pa", "Punjabi", "ਪੰਜਾਬੀ", "Gurmukhi", regions=("Punjab", "Delhi")),
+    Language("pa", "Punjabi", "ਪੰਜਾਬੀ", "Gurmukhi",
+             regions=("Punjab", "Delhi", "Chandigarh")),
     Language("sa", "Sanskrit", "संस्कृतम्", "Devanagari", regions=()),
     Language("sat", "Santali", "ᱥᱟᱱᱛᱟᱲᱤ", "Ol Chiki",
              regions=("Jharkhand", "West Bengal", "Odisha")),
     Language("sd", "Sindhi", "سنڌي", "Perso-Arabic", rtl=True, regions=()),
     Language("ta", "Tamil", "தமிழ்", "Tamil",
-             regions=("Tamil Nadu", "Puducherry")),
+             regions=("Tamil Nadu", "Puducherry", "Andaman and Nicobar Islands")),
     Language("te", "Telugu", "తెలుగు", "Telugu",
              regions=("Andhra Pradesh", "Telangana")),
     Language("ur", "Urdu", "اردو", "Perso-Arabic", rtl=True,
@@ -160,6 +169,34 @@ def for_state(state: str) -> list[str]:
     local = [l.code for l in LANGUAGES
              if any(r.lower() == target for r in l.regions)]
     return local + [c for c in (DEFAULT,) if c not in local]
+
+
+# Languages that are official, or dominant, in a State and are *not* in the
+# Eighth Schedule. No s5(3) entitlement attaches to them, which is a fact about
+# the Schedule rather than about their speakers: a Mizo speaker in Aizawl has no
+# statutory claim to a notice in Mizo. Recorded so the gap is visible in the
+# coverage report instead of showing up as "this State is fully covered by
+# English" — which is true administratively and false for the reader.
+NON_SCHEDULED_REGIONAL: dict[str, tuple[str, ...]] = {
+    "Mizoram": ("Mizo (Lushai)",),
+    "Meghalaya": ("Khasi", "Garo"),
+    "Nagaland": ("Nagamese", "Ao", "Angami", "Konyak"),
+    "Arunachal Pradesh": ("Nyishi", "Adi", "Galo", "Apatani"),
+    "Sikkim": ("Bhutia", "Lepcha", "Limbu"),
+    "Tripura": ("Kokborok",),
+    "Ladakh": ("Ladakhi", "Purgi"),
+    "Andaman and Nicobar Islands": ("Nicobarese",),
+    "Lakshadweep": ("Jeseri (Dweep Bhasha)",),
+    "Assam": ("Karbi", "Mising", "Dimasa"),
+}
+
+
+def unscheduled_languages_for(state: str) -> tuple[str, ...]:
+    """Languages spoken in a State that the Eighth Schedule does not cover."""
+    for name, langs in NON_SCHEDULED_REGIONAL.items():
+        if name.lower() == (state or "").strip().lower():
+            return langs
+    return ()
 
 
 def rtl_codes() -> set[str]:

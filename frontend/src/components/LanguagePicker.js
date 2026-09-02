@@ -1,15 +1,17 @@
 import { useMemo, useState } from "react";
-import { Check, ChevronDown, Globe, Info } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Globe, Info } from "lucide-react";
 import { useLanguage } from "../lib/i18n";
 
 // Every language is listed in its own script. A picker that offers "Bengali" to
 // somebody who reads বাংলা is a picker they cannot use, which defeats the point
 // of having one.
 //
-// Languages with no translation are shown and marked rather than hidden. A
-// Santali speaker who finds their language listed as "not yet available" learns
-// something true and can ask for it; one who finds it absent concludes the app
-// does not know Santali exists.
+// Every language carries a badge saying how far it can be trusted. All 22
+// scheduled languages now have text, but "Draft" and "Unchecked" mean different
+// things and the badge is the only place a reader learns which one they are
+// getting. A language with no entries at all would still be listed and marked
+// "Not yet available" rather than hidden — a Santali speaker who finds their
+// language absent concludes the app does not know Santali exists.
 
 function QualityBadge({ quality, percent }) {
   if (quality === "source") {
@@ -30,6 +32,13 @@ function QualityBadge({ quality, percent }) {
     return (
       <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
         Draft · {percent}%
+      </span>
+    );
+  }
+  if (quality === "low_confidence") {
+    return (
+      <span className="text-[11px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-900">
+        Unchecked
       </span>
     );
   }
@@ -162,21 +171,51 @@ export function LanguagePicker({ compact = false }) {
  * silently asserts that English is this person's language.
  */
 export function FallbackBanner() {
-  const { hasFallbacks, fallbackNotice, meta } = useLanguage();
-  if (!hasFallbacks) return null;
-  return (
-    <div
-      role="status"
-      className="flex items-start gap-2 px-4 py-2.5 bg-amber-50 border-b border-amber-200 text-[13px] text-amber-900"
-    >
-      <Info className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
-      <span>
-        {fallbackNotice ||
-          "This is not yet available in your language, so it is being shown in English."}
-        {meta?.endonym ? ` (${meta.endonym})` : ""}
-      </span>
-    </div>
-  );
+  const {
+    hasFallbacks, fallbackNotice, lowConfidence, qualityWarning,
+    qualityWarningHindi, meta,
+  } = useLanguage();
+
+  // Two different messages, never merged. A fallback says "this is not your
+  // language". A quality warning says "this is your language, but nobody who
+  // speaks it has checked it." Collapsing them would lose the distinction that
+  // tells the reader what to do next.
+  if (hasFallbacks) {
+    return (
+      <div
+        role="status"
+        className="flex items-start gap-2 px-4 py-2.5 bg-amber-50 border-b border-amber-200 text-[13px] text-amber-900"
+      >
+        <Info className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+        <span>
+          {fallbackNotice ||
+            "This is not yet available in your language, so it is being shown in English."}
+          {meta?.endonym ? ` (${meta.endonym})` : ""}
+        </span>
+      </div>
+    );
+  }
+
+  if (lowConfidence) {
+    return (
+      <div
+        role="status"
+        className="flex items-start gap-2 px-4 py-2.5 bg-orange-50 border-b border-orange-200 text-[13px] text-orange-900"
+      >
+        <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+        <span>
+          <span className="block">{qualityWarning}</span>
+          {qualityWarningHindi && (
+            <span className="block mt-0.5 opacity-90" lang="hi">
+              {qualityWarningHindi}
+            </span>
+          )}
+        </span>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 export default LanguagePicker;

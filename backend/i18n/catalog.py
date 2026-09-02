@@ -13,14 +13,22 @@ nobody on the team reads would harm exactly the people it is meant to serve.
 ``/api/i18n/coverage`` reports the marking so it reaches an operator rather
 than dying in a comment.
 
-**On the eight languages that are absent.** Bodo, Dogri, Kashmiri, Konkani,
-Maithili, Manipuri, Santali and Sindhi are Eighth Schedule languages with no
-entries here. That is deliberate. Producing text in a language whose
-orthography and register I cannot check would not be partial coverage — it
-would be plausible-looking nonsense that a citizen has no way to identify as
-nonsense, which is strictly worse than an honest English fallback plus a
-banner saying so. :data:`UNTRANSLATED_REASON` is served to the UI so the gap
-is visible and can be commissioned.
+**On the two grades of draft.** All 22 scheduled languages now have entries,
+but they are not all equally trustworthy and the catalogue says which is which.
+``DRAFT`` marks a language whose script and register are well attested — the
+text will read naturally to a speaker and needs review for register and idiom.
+``LOW_CONFIDENCE`` marks one where the orthography itself may be wrong: Bodo,
+Kashmiri, Manipuri and Santali are written in scripts and conventions with far
+less material behind them, and a sentence can come out looking well formed and
+still be incorrect in a way the reader cannot diagnose. Those languages carry a
+standing warning to the reader offering English or Hindi instead, and
+:func:`coverage` reports the grade so an operator can commission review where
+it is most needed rather than uniformly.
+
+This grading is the whole reason it is safe to ship the eight. Without it,
+adding them would mean asserting to a Santali speaker that the app speaks
+Santali — and if the text is wrong they have no way to know, because the only
+evidence available to them is the text.
 
 **On legal text.** The privacy notice, the terms of service and the statutory
 rights language are *not* in this catalogue and must not be machine-translated
@@ -39,14 +47,35 @@ class Quality(str, Enum):
     SOURCE = "source"          # the English original
     REVIEWED = "reviewed"      # checked by a native speaker; none yet
     DRAFT = "draft"            # generated here; usable, needs native review
+    # Generated in a script or register with materially less material behind
+    # it. May be wrong in ways the reader cannot diagnose, so it ships with a
+    # standing warning rather than silently.
+    LOW_CONFIDENCE = "low_confidence"
     MISSING = "missing"        # absent; the fallback is used and disclosed
 
+
+# Languages whose orthography I cannot check well enough to present as an
+# ordinary draft. Listed explicitly rather than inferred from script, so
+# promoting one after a native review is a one-line change.
+LOW_CONFIDENCE_LANGUAGES = frozenset({"brx", "ks", "mni", "sat"})
 
 UNTRANSLATED_REASON = (
     "No translation is offered in this language yet. Text generated without a "
     "native speaker to check it would look correct and could be wrong about "
     "an entitlement, which is worse for the reader than an honest fallback. "
     "A reviewed translation can be commissioned and dropped in as data."
+)
+
+LOW_CONFIDENCE_REASON = (
+    "This translation has not been checked by anyone who speaks the language. "
+    "It may be wrong, including in ways that look correct. If anything here "
+    "does not make sense, switch to English or Hindi — and please tell us, so "
+    "it can be fixed."
+)
+
+LOW_CONFIDENCE_REASON_HI = (
+    "इस अनुवाद को इस भाषा के किसी जानकार ने नहीं जाँचा है। यह गलत हो सकता है। "
+    "यदि कुछ समझ न आए तो अंग्रेज़ी या हिंदी चुनें, और कृपया हमें बताएँ।"
 )
 
 # Keys the interface uses. Declared separately from the translations so a key
@@ -760,13 +789,401 @@ MESSAGES: dict[str, dict[str, str]] = {
                           "शक्नोति।",
         "help.call_helpline": "साहाय्यदूरवाणीम् आह्वयतु",
     },
+
+    # ── Maithili (Bihar). Devanagari; closely related to Hindi, which is why
+    # this is an ordinary draft rather than low confidence.
+    "mai": {
+        "app.name": "नागरिक सहायक",
+        "app.tagline": "सरकारी योजना, सरल भाषा में",
+        "nav.home": "घर",
+        "nav.chat": "गप्प-सप्प",
+        "nav.schemes": "योजना",
+        "nav.exams": "परीक्षा",
+        "nav.profile": "हमर प्रोफाइल",
+        "nav.identity": "पहिचान",
+        "nav.documents": "कागत",
+        "nav.privacy": "गोपनीयता आ अधिकार",
+        "nav.help": "सहायता",
+        "action.continue": "आगू बढ़ू",
+        "action.back": "पाछू",
+        "action.submit": "जमा करू",
+        "action.save": "सहेजू",
+        "action.download": "डाउनलोड करू",
+        "action.upload": "अपलोड करू",
+        "action.verify_identity": "अपन पहिचान प्रमाणित करू",
+        "action.skip": "आब छोड़ू",
+        "status.eligible": "अहाँ पात्र भ\u2019 सकैत छी",
+        "status.not_eligible": "अहाँ एहि योजनाक शर्त पूरा नहि करैत छी",
+        "status.incomplete": "आओर जानकारी चाही",
+        "status.under_review": "अधिकारी एकर जाँच क\u2019 रहल छथि",
+        "status.verified": "प्रमाणित",
+        "status.not_verified": "प्रमाणित नहि",
+        "label.name": "पूरा नाम",
+        "label.date_of_birth": "जन्म तिथि",
+        "label.mobile": "मोबाइल नंबर",
+        "label.district": "जिला",
+        "label.state": "राज्य",
+        "label.annual_income": "वार्षिक पारिवारिक आय",
+        "msg.no_fee": "ई सेवा नि:शुल्क अछि। एकर उपयोग लेल केओ केँ पाइ नहि दिअ।",
+        "msg.not_government": "ई ऐप सरकार द्वारा नहि चलाओल जाइत अछि। ई अहाँक आवेदन "
+                              "तैयार करबा में सहायता करैत अछि; आवेदन अहाँ स्वयं जमा "
+                              "करब।",
+        "msg.aadhaar_optional": "आधार अनेक विकल्प में सँ एक अछि। मतदाता पहिचान पत्र, "
+                                "राशन कार्ड वा जॉब कार्ड सेहो चलत।",
+        "msg.language_unavailable": "ई आब धरि अहाँक भाषा में उपलब्ध नहि अछि, तेँ "
+                                    "अंग्रेजी में देखाओल जा रहल अछि।",
+        "msg.error_generic": "किछु गड़बड़ भेल। अहाँक जानकारी सुरक्षित अछि। कृपया फेर "
+                             "प्रयास करू।",
+        "rights.summary": "अहाँ अपन जानकारी कहियो देखि, सुधारि वा मेटा सकैत छी।",
+        "help.call_helpline": "हेल्पलाइन पर कॉल करू",
+    },
+
+    # ── Dogri (Jammu). Devanagari.
+    "doi": {
+        "app.name": "नागरिक सहायक",
+        "app.tagline": "सरकारी योजनां, सुखाल्ली भाशा च",
+        "nav.home": "घर",
+        "nav.chat": "गल्लबात",
+        "nav.schemes": "योजनां",
+        "nav.exams": "प्रीखिआं",
+        "nav.profile": "मेरी प्रोफाइल",
+        "nav.identity": "पंछान",
+        "nav.documents": "कागज",
+        "nav.privacy": "निजता ते हक",
+        "nav.help": "मदद",
+        "action.continue": "अग्गें बधो",
+        "action.back": "पिच्छें",
+        "action.submit": "जमा करो",
+        "action.save": "संभालो",
+        "action.download": "डाउनलोड करो",
+        "action.upload": "अपलोड करो",
+        "action.verify_identity": "अपनी पंछान दी तस्दीक करो",
+        "action.skip": "हुनै छड्डो",
+        "status.eligible": "तुस योग्य होई सकदे ओ",
+        "status.not_eligible": "तुस इस योजना दियां शर्तां पूरियां नेईं करदे",
+        "status.incomplete": "होर जानकारी चाहिदी ऐ",
+        "status.under_review": "इक अफसर इसदी जांच करा दा ऐ",
+        "status.verified": "तस्दीक होई गेई",
+        "status.not_verified": "तस्दीक नेईं होई",
+        "label.name": "पूरा नां",
+        "label.date_of_birth": "जन्म तरीक",
+        "label.mobile": "मोबाइल नंबर",
+        "label.district": "जिला",
+        "label.state": "राज",
+        "label.annual_income": "सालाना परिवारक आमदन",
+        "msg.no_fee": "एह् सेवा मुफ्त ऐ। इसदे इस्तेमाल आस्तै कुसै गी पैसे नेईं देओ।",
+        "msg.not_government": "एह् ऐप सरकार नेईं चलांदी। एह् तुंदी अर्जी तैयार करने च "
+                              "मदद करदी ऐ; अर्जी तुसें आप जमा करनी ऐ।",
+        "msg.aadhaar_optional": "आधार मते बदलें चा इक ऐ। वोटर कार्ड, राशन कार्ड जां "
+                                "जॉब कार्ड बी चलग।",
+        "msg.language_unavailable": "एह् हाल्ली तुंदी भाशा च नेईं ऐ, इस आस्तै अंग्रेजी "
+                                    "च दस्सेआ जा दा ऐ।",
+        "msg.error_generic": "किश गलत होई गेआ। तुंदी जानकारी सुरक्षत ऐ। किरपा करियै "
+                             "फ्री कोशश करो।",
+        "rights.summary": "तुस अपनी जानकारी कदें बी दिक्खी, ठीक करी जां मटाई सकदे ओ।",
+        "help.call_helpline": "हेल्पलाइन पर कॉल करो",
+    },
+
+    # ── Konkani (Goa). Devanagari, which is the script the Goa Official
+    # Language Act names.
+    "gom": {
+        "app.name": "नागरिक सहायक",
+        "app.tagline": "सरकारी येवजण्यो, सोप्या भाशेन",
+        "nav.home": "घर",
+        "nav.chat": "उलोवप",
+        "nav.schemes": "येवजण्यो",
+        "nav.exams": "परीक्षा",
+        "nav.profile": "म्हजें प्रोफायल",
+        "nav.identity": "वळख",
+        "nav.documents": "कागदपत्रां",
+        "nav.privacy": "गुपितपण आनी हक्क",
+        "nav.help": "आदार",
+        "action.continue": "फुडें वच",
+        "action.back": "फाटीं",
+        "action.submit": "सादर कर",
+        "action.save": "सांबाळ",
+        "action.download": "डावनलोड कर",
+        "action.upload": "अपलोड कर",
+        "action.verify_identity": "तुजी वळख तपास",
+        "action.skip": "आतां सोड",
+        "status.eligible": "तूं पात्र आसूंक शकता",
+        "status.not_eligible": "तूं ह्या येवजणेच्यो अटी पुराय करिना",
+        "status.incomplete": "चड म्हायती जाय",
+        "status.under_review": "एक अधिकारी हाची तपासणी करता",
+        "status.verified": "तपासलां",
+        "status.not_verified": "तपासूंक ना",
+        "label.name": "पुराय नांव",
+        "label.date_of_birth": "जल्म तारीख",
+        "label.mobile": "मोबायल क्रमांक",
+        "label.district": "जिल्लो",
+        "label.state": "राज्य",
+        "label.annual_income": "वर्सुकी कुटुंब उत्पन्न",
+        "msg.no_fee": "ही सेवा फुकट आसा. हाचो वापर करपाक कोणाकूय पयशे दिवचे न्हय.",
+        "msg.not_government": "हो ॲप सरकार चलयना. तो तुजो अर्ज तयार करपाक आदार करता; "
+                              "अर्ज तुवें स्वता सादर करचो पडटलो.",
+        "msg.aadhaar_optional": "आधार सबार पर्यायांतलो एक. मतदार वळख पत्र, रेशन कार्ड "
+                                "वा जॉब कार्डूय चलतलें.",
+        "msg.language_unavailable": "हें अजून तुज्या भाशेन उपलब्ध ना, देखून इंग्लीशांत "
+                                    "दाखयतात.",
+        "msg.error_generic": "कितें तरी चुकलें. तुजी म्हायती सुरक्षित आसा. उपकार करून "
+                             "परतून यत्न कर.",
+        "rights.summary": "तूं तुजी म्हायती केन्नाय पळोवंक, सुदारूंक वा काडूंक शकता.",
+        "help.call_helpline": "हेल्पलायनाक फोन कर",
+    },
+
+    # ── Sindhi. Perso-Arabic, right to left.
+    "sd": {
+        "app.name": "ناگرڪ سهايڪ",
+        "app.tagline": "سرڪاري اسڪيمون، آسان ٻوليءَ ۾",
+        "nav.home": "گهر",
+        "nav.chat": "ڳالھ ٻولھ",
+        "nav.schemes": "اسڪيمون",
+        "nav.exams": "امتحان",
+        "nav.profile": "منهنجو پروفائل",
+        "nav.identity": "سڃاڻپ",
+        "nav.documents": "دستاويز",
+        "nav.privacy": "رازداري ۽ حق",
+        "nav.help": "مدد",
+        "action.continue": "اڳتي وڌو",
+        "action.back": "پوئتي",
+        "action.submit": "جمع ڪريو",
+        "action.save": "محفوظ ڪريو",
+        "action.download": "ڊائون لوڊ ڪريو",
+        "action.upload": "اپ لوڊ ڪريو",
+        "action.verify_identity": "پنهنجي سڃاڻپ جي تصديق ڪريو",
+        "action.skip": "هينئر ڇڏي ڏيو",
+        "status.eligible": "توهان اهل ٿي سگهو ٿا",
+        "status.not_eligible": "توهان هن اسڪيم جون شرطون پوريون نٿا ڪريو",
+        "status.incomplete": "وڌيڪ معلومات گهرجي",
+        "status.under_review": "هڪ آفيسر هن جي جانچ ڪري رهيو آهي",
+        "status.verified": "تصديق ٿيل",
+        "status.not_verified": "تصديق نه ٿي",
+        "label.name": "پورو نالو",
+        "label.date_of_birth": "ڄمڻ جي تاريخ",
+        "label.mobile": "موبائل نمبر",
+        "label.district": "ضلعو",
+        "label.state": "رياست",
+        "label.annual_income": "سالياني خانداني آمدني",
+        "msg.no_fee": "هي خدمت مفت آهي. ان جي استعمال لاءِ ڪنهن کي پئسا نه ڏيو.",
+        "msg.not_government": "هي ائپ حڪومت نٿي هلائي. هي توهان جي درخواست تيار ڪرڻ ۾ "
+                              "مدد ڪري ٿي؛ درخواست توهان کي پاڻ جمع ڪرڻي پوندي.",
+        "msg.aadhaar_optional": "آڌار ڪيترن ئي اختيارن مان هڪ آهي. ووٽر ڪارڊ، راشن "
+                                "ڪارڊ يا جاب ڪارڊ به هلندو.",
+        "msg.language_unavailable": "هي اڃا توهان جي ٻوليءَ ۾ دستياب ناهي، ان ڪري "
+                                    "انگريزيءَ ۾ ڏيکاريو پيو وڃي.",
+        "msg.error_generic": "ڪجهه غلط ٿيو. توهان جي معلومات محفوظ آهي. مهرباني ڪري "
+                             "ٻيهر ڪوشش ڪريو.",
+        "rights.summary": "توهان پنهنجي معلومات ڪنهن به وقت ڏسي، درست ڪري يا ڊاهي "
+                          "سگهو ٿا.",
+        "help.call_helpline": "هيلپ لائن تي ڪال ڪريو",
+    },
+
+    # ── Bodo (Assam). Devanagari. LOW CONFIDENCE: the orthography here is not
+    # something this system can verify, and a Bodo reader should be told so.
+    "brx": {
+        "app.name": "नागरिक सहायक",
+        "app.tagline": "सरकारि थाखोमोनफोर, गोरलैया रावजों",
+        "nav.home": "नो",
+        "nav.chat": "रायज्लायनाय",
+        "nav.schemes": "थाखोमोनफोर",
+        "nav.exams": "परिक्खा",
+        "nav.profile": "आंनि प्रफाइल",
+        "nav.identity": "सिनायथि",
+        "nav.documents": "फोरमान बिलाइ",
+        "nav.privacy": "गुबुननाय आरो मोनथाय",
+        "nav.help": "मदत",
+        "action.continue": "गिदिंआव थाङ",
+        "action.back": "उनथिं",
+        "action.submit": "जमा खालाम",
+        "action.save": "दोन",
+        "action.download": "डाउनलड खालाम",
+        "action.upload": "आपलड खालाम",
+        "action.verify_identity": "नोंथांनि सिनायथिखौ आयदा खालाम",
+        "action.skip": "दानो नागार",
+        "status.eligible": "नोंथाङ मोनथाय मोननो हागौ",
+        "status.not_eligible": "नोंथाङ बे थाखोमोननि गोनांथिफोरखौ फुरा खालामा",
+        "status.incomplete": "गोबां खौरां नांगौ",
+        "status.under_review": "मोनसे बिफान बेखौ आयदा खालामगासिनो दं",
+        "status.verified": "आयदा खालामबाय",
+        "status.not_verified": "आयदा खालामाखै",
+        "label.name": "गासै मुं",
+        "label.date_of_birth": "जोनोम खालार",
+        "label.mobile": "मबाइल नामबार",
+        "label.district": "जिल्ला",
+        "label.state": "राइजो",
+        "label.annual_income": "बोसोरारि नखरनि आय",
+        "msg.no_fee": "बे सिबिथाइया मोजां। बेखौ बाहायनो जायखिजाया मोनसेखौबो रां "
+                      "होनो नाङा।",
+        "msg.not_government": "बे एपआ सरकारजों सालायनाय नङा। बेयो नोंथांनि आबेदनखौ "
+                              "बानायनो मदत खालामो; आबेदनखौ नोंथाङनो होनांगोन।",
+        "msg.aadhaar_optional": "आधारा गोबां पंथिफोरनि गेजेराव मोनसे। भटार कार्ड, रेसन "
+                                "कार्ड एबा जब कार्डबो जाफुंगोन।",
+        "msg.language_unavailable": "बेयो दासिम नोंथांनि रावाव गैया, बेखायनो इंराजि "
+                                    "रावाव दिन्थिनाय जायो।",
+        "msg.error_generic": "मानिसे गोरोन्थि जाबाय। नोंथांनि खौरांआ रैखाथियै दं। "
+                             "अननानै फिन नाजा।",
+        "rights.summary": "नोंथाङ नोंथांनि खौरांखौ जेबाबो नायनो, सुद्रायनो एबा "
+                          "खोमोरनो हागौ।",
+        "help.call_helpline": "हेल्पलाइनआव फन खालाम",
+    },
+
+    # ── Kashmiri. Perso-Arabic, right to left. LOW CONFIDENCE: Kashmiri
+    # orthography carries diacritics this system cannot reliably place.
+    "ks": {
+        "app.name": "ناگرِک سہایَک",
+        "app.tagline": "سرکٲری اسکیمہ، آسان زبانہ منٛز",
+        "nav.home": "گَر",
+        "nav.chat": "کَتھ",
+        "nav.schemes": "اسکیمہ",
+        "nav.exams": "امتحان",
+        "nav.profile": "میٚون پروفائل",
+        "nav.identity": "شَناخت",
+        "nav.documents": "دستاویز",
+        "nav.privacy": "پردٕداری تہٕ حق",
+        "nav.help": "مدد",
+        "action.continue": "برونٛہہ گژھِو",
+        "action.back": "پَتھ",
+        "action.submit": "جمہٕ کریو",
+        "action.save": "محفوظ کریو",
+        "action.download": "ڈاؤن لوڈ کریو",
+        "action.upload": "اپ لوڈ کریو",
+        "action.verify_identity": "پنٕنؠ شَناخت تصدیٖق کریو",
+        "action.skip": "وُنؠ چھوڑیو",
+        "status.eligible": "توہہِ ہیٚکِو اہل آسِتھ",
+        "status.not_eligible": "توہہِ چھِ نہٕ ییٚمہِ اسکیمُک شرط پورٕ کران",
+        "status.incomplete": "زیادٕ معلومات چھِ ضرورت",
+        "status.under_review": "اکھ افسر چھُ یِہ چیک کران",
+        "status.verified": "تصدیٖق شُدٕ",
+        "status.not_verified": "تصدیٖق نہٕ آو",
+        "label.name": "پورٕ ناو",
+        "label.date_of_birth": "زَچھہٕ تاریٖخ",
+        "label.mobile": "موبائل نمبر",
+        "label.district": "ضلع",
+        "label.state": "ریاست",
+        "label.annual_income": "سالانہٕ خٲندٲنؠ آمدنی",
+        "msg.no_fee": "یہ خدمت چھِ مُفت۔ یہ استعمال کرنہٕ خٲطرٕ کُنہِ کُنہِ روپیہ مہ "
+                      "دِیِو۔",
+        "msg.not_government": "یہ ایپ چھُ نہٕ سرکار چلاوان۔ یہ چھُ توہنٛدِ درخواست تیار "
+                              "کرنس منٛز مدد کران؛ درخواست پزِ توہہِ پانہٕ جمہٕ کرٕنؠ۔",
+        "msg.aadhaar_optional": "آدھار چھُ وارِیاہن اختیارن منٛز اکھ۔ ووٹر کارڈ، راشن "
+                                "کارڈ یا جاب کارڈ تہِ چھِ چلان۔",
+        "msg.language_unavailable": "یہ چھُ نہٕ وُنؠ تام توہنٛزِ زبانہٕ منٛز دستیاب، "
+                                    "تِمہِ کِنؠ چھُ انگریٖزی منٛز ہاوان یِوان۔",
+        "msg.error_generic": "کینٛہہ غلط سپُد۔ توہنٛز معلومات چھِ محفوظ۔ مہربٲنی کٔرِتھ "
+                             "دوبارٕ کوشش کریو۔",
+        "rights.summary": "توہہِ ہیٚکِو پنٕنؠ معلومات کُنہِ تہِ وقتہٕ وُچھِتھ، دُرُست "
+                          "کٔرِتھ یا مِٹاوِتھ۔",
+        "help.call_helpline": "ہیلپ لائن پؠٹھ کال کریو",
+    },
+
+    # ── Manipuri (Meitei). Meitei Mayek, the script the State made official.
+    # LOW CONFIDENCE.
+    "mni": {
+        "app.name": "ꯅꯥꯒꯔꯤꯛ ꯁꯍꯥꯌꯛ",
+        "app.tagline": "ꯁꯔꯀꯥꯔꯒꯤ ꯊꯧꯔꯥꯡꯁꯤꯡ, ꯂꯥꯏꯕ ꯂꯣꯟꯗ",
+        "nav.home": "ꯌꯨꯝ",
+        "nav.chat": "ꯋꯥꯔꯤ",
+        "nav.schemes": "ꯊꯧꯔꯥꯡꯁꯤꯡ",
+        "nav.exams": "ꯄꯔꯤꯛꯁꯥ",
+        "nav.profile": "ꯑꯩꯒꯤ ꯄ꯭ꯔꯣꯐꯥꯏꯜ",
+        "nav.identity": "ꯃꯁꯛ",
+        "nav.documents": "ꯂꯥꯏꯔꯤꯛꯁꯤꯡ",
+        "nav.privacy": "ꯑꯆꯨꯝꯕ ꯑꯃꯁꯨꯡ ꯍꯛ",
+        "nav.help": "ꯃꯇꯦꯡ",
+        "action.continue": "ꯃꯈꯥ ꯆꯠꯊꯧ",
+        "action.back": "ꯃꯇꯨꯡ",
+        "action.submit": "ꯁꯕꯃꯤꯠ ꯇꯧ",
+        "action.save": "ꯁꯦꯚ ꯇꯧ",
+        "action.download": "ꯗꯥꯎꯅꯂꯣꯗ ꯇꯧ",
+        "action.upload": "ꯑꯄꯂꯣꯗ ꯇꯧ",
+        "action.verify_identity": "ꯅꯍꯥꯛꯀꯤ ꯃꯁꯛ ꯆꯦꯛ ꯇꯧ",
+        "action.skip": "ꯍꯧꯖꯤꯛ ꯊꯥꯗꯣꯛꯎ",
+        "status.eligible": "ꯅꯍꯥꯛ ꯃꯇꯤꯛ ꯆꯥꯕ ꯌꯥꯏ",
+        "status.not_eligible": "ꯅꯍꯥꯛꯅ ꯊꯧꯔꯥꯡ ꯑꯁꯤꯒꯤ ꯋꯥꯐꯝ ꯃꯄꯨꯡ ꯐꯥꯗꯦ",
+        "status.incomplete": "ꯍꯦꯟꯅ ꯄꯥꯎ ꯃꯊꯧ ꯇꯥꯏ",
+        "status.under_review": "ꯑꯐꯤꯁꯔ ꯑꯃꯅ ꯃꯁꯤ ꯌꯦꯡꯁꯤꯅꯔꯤ",
+        "status.verified": "ꯆꯦꯛ ꯇꯧꯔꯦ",
+        "status.not_verified": "ꯆꯦꯛ ꯇꯧꯗ꯭ꯔꯤ",
+        "label.name": "ꯃꯄꯨꯡ ꯐꯥꯕ ꯃꯃꯤꯡ",
+        "label.date_of_birth": "ꯄꯣꯛꯄ ꯇꯥꯡ",
+        "label.mobile": "ꯃꯣꯕꯥꯏꯜ ꯅꯝꯕꯔ",
+        "label.district": "ꯗꯤꯁ꯭ꯠꯔꯤꯛ",
+        "label.state": "ꯁ꯭ꯇꯦꯠ",
+        "label.annual_income": "ꯆꯍꯤ ꯑꯃꯒꯤ ꯏꯃꯨꯡꯒꯤ ꯁꯦꯜ",
+        "msg.no_fee": "ꯁꯔꯚꯤꯁ ꯑꯁꯤ ꯐ꯭ꯔꯤꯅꯤ꯫ ꯃꯁꯤ ꯁꯤꯖꯤꯟꯅꯅꯕ ꯀꯅꯥꯗꯁꯨ ꯁꯦꯜ ꯄꯤꯒꯅꯨ꯫",
+        "msg.not_government": "ꯑꯦꯞ ꯑꯁꯤ ꯁꯔꯀꯥꯔꯅ ꯆꯂꯥꯏꯕ ꯅꯠꯇꯦ꯫ ꯃꯁꯤꯅ ꯅꯍꯥꯛꯀꯤ "
+                              "ꯑꯦꯞꯂꯤꯀꯦꯁꯟ ꯁꯦꯝꯕꯗ ꯃꯇꯦꯡ ꯄꯥꯡꯏ; ꯑꯦꯞꯂꯤꯀꯦꯁꯟ ꯅꯍꯥꯛꯅ ꯃꯁꯥꯅ "
+                              "ꯄꯤꯒꯗꯕꯅꯤ꯫",
+        "msg.aadhaar_optional": "ꯑꯥꯙꯥꯔ ꯑꯁꯤ ꯈꯨꯗꯣꯡꯆꯥꯕ ꯀꯌꯥꯒꯤ ꯃꯅꯨꯡꯗ ꯑꯃꯅꯤ꯫ ꯚꯣꯇꯔ ꯑꯥꯏꯗꯤ, "
+                                "ꯔꯦꯁꯟ ꯀꯥꯔꯗ ꯅꯠꯔꯒ ꯖꯕ ꯀꯥꯔꯗꯁꯨ ꯌꯥꯏ꯫",
+        "msg.language_unavailable": "ꯃꯁꯤ ꯍꯧꯖꯤꯛ ꯐꯥꯑꯣꯕ ꯅꯍꯥꯛꯀꯤ ꯂꯣꯟꯗ ꯂꯩꯇꯦ, ꯃꯔꯝ ꯑꯗꯨꯅ "
+                                    "ꯏꯪꯂꯤꯁꯇ ꯎꯠꯂꯤ꯫",
+        "msg.error_generic": "ꯀꯔꯤꯒꯨꯝꯕ ꯑꯔꯥꯅꯕ ꯑꯃ ꯊꯣꯀꯈ꯭ꯔꯦ꯫ ꯅꯍꯥꯛꯀꯤ ꯄꯥꯎ ꯉꯥꯛꯊꯣꯛꯂꯦ꯫ "
+                             "ꯆꯥꯅꯕꯤꯗꯨꯅ ꯑꯃꯨꯛ ꯍꯟꯅ ꯍꯧꯗꯣꯀꯎ꯫",
+        "rights.summary": "ꯅꯍꯥꯛꯅ ꯅꯍꯥꯛꯀꯤ ꯄꯥꯎ ꯃꯇꯝ ꯈꯨꯗꯤꯡꯗ ꯌꯦꯡꯕ, ꯁꯦꯝꯗꯣꯛꯄ ꯅꯠꯔꯒ "
+                          "ꯃꯨꯠꯊꯠꯄ ꯌꯥꯏ꯫",
+        "help.call_helpline": "ꯍꯦꯜꯄꯂꯥꯏꯅꯗ ꯀꯣꯜ ꯇꯧꯔꯨ",
+    },
+
+    # ── Santali. Ol Chiki, the script the Constitution’s Eighth Schedule
+    # entry is written in. LOW CONFIDENCE.
+    "sat": {
+        "app.name": "ᱱᱟᱜᱟᱨᱤᱠ ᱥᱚᱦᱟᱭᱚᱠ",
+        "app.tagline": "ᱥᱚᱨᱠᱟᱨᱤ ᱡᱚᱡᱚᱱᱟ ᱠᱚ, ᱨᱟᱦᱟ ᱯᱟᱹᱨᱥᱤ ᱛᱮ",
+        "nav.home": "ᱚᱲᱟᱜ",
+        "nav.chat": "ᱨᱳᱲ",
+        "nav.schemes": "ᱡᱚᱡᱚᱱᱟ ᱠᱚ",
+        "nav.exams": "ᱯᱚᱨᱤᱠᱷᱟ",
+        "nav.profile": "ᱤᱧᱟᱜ ᱯᱨᱚᱯᱷᱟᱭᱤᱞ",
+        "nav.identity": "ᱪᱤᱱᱦᱟᱹ",
+        "nav.documents": "ᱠᱟᱜᱚᱡ ᱠᱚ",
+        "nav.privacy": "ᱩᱠᱩ ᱟᱨ ᱦᱚᱠ",
+        "nav.help": "ᱜᱚᱲᱳ",
+        "action.continue": "ᱞᱟᱦᱟ ᱪᱟᱞᱟᱜ ᱢᱮ",
+        "action.back": "ᱛᱟᱭᱚᱢ",
+        "action.submit": "ᱡᱚᱢᱟ ᱢᱮ",
+        "action.save": "ᱥᱟᱸᱪᱟᱣ ᱢᱮ",
+        "action.download": "ᱰᱟᱣᱩᱱᱞᱚᱰ ᱢᱮ",
+        "action.upload": "ᱟᱯᱞᱚᱰ ᱢᱮ",
+        "action.verify_identity": "ᱟᱢᱟᱜ ᱪᱤᱱᱦᱟᱹ ᱡᱟᱸᱪ ᱢᱮ",
+        "action.skip": "ᱱᱤᱛᱚᱜ ᱵᱟᱸᱜᱮ",
+        "status.eligible": "ᱟᱢ ᱡᱚᱜᱚ ᱢᱮᱱᱟᱢᱟ ᱠᱟᱹᱢᱤ",
+        "status.not_eligible": "ᱟᱢ ᱱᱚᱶᱟ ᱡᱚᱡᱚᱱᱟ ᱨᱮᱭᱟᱜ ᱥᱟᱨᱛ ᱵᱟᱝ ᱯᱩᱨᱟᱹᱣ ᱠᱟᱜ ᱢᱮᱭᱟ",
+        "status.incomplete": "ᱟᱨ ᱠᱷᱚᱵᱚᱨ ᱞᱟᱹᱠᱛᱤ",
+        "status.under_review": "ᱢᱤᱫ ᱚᱯᱷᱤᱥᱟᱨ ᱱᱚᱶᱟ ᱡᱟᱸᱪ ᱮᱫᱟᱭ",
+        "status.verified": "ᱡᱟᱸᱪ ᱦᱩᱭᱮᱱᱟ",
+        "status.not_verified": "ᱡᱟᱸᱪ ᱵᱟᱝ ᱦᱩᱭᱮᱱᱟ",
+        "label.name": "ᱯᱩᱨᱟᱹ ᱧᱩᱛᱩᱢ",
+        "label.date_of_birth": "ᱡᱟᱱᱟᱢ ᱢᱟᱦᱟᱸ",
+        "label.mobile": "ᱢᱳᱵᱟᱭᱤᱞ ᱱᱚᱢᱵᱚᱨ",
+        "label.district": "ᱡᱤᱞᱟ",
+        "label.state": "ᱨᱟᱡ",
+        "label.annual_income": "ᱥᱮᱨᱢᱟ ᱚᱲᱟᱜ ᱨᱮᱱᱟᱜ ᱟᱭᱽ",
+        "msg.no_fee": "ᱱᱚᱶᱟ ᱥᱮᱵᱟ ᱵᱮᱜᱟᱨ ᱠᱟᱹᱣᱰᱤ ᱠᱟᱱᱟ᱾ ᱱᱚᱶᱟ ᱵᱮᱵᱷᱟᱨ ᱞᱟᱹᱜᱤᱫ ᱡᱟᱦᱟᱸᱭ ᱛᱮ ᱟᱞᱚᱢ "
+                      "ᱠᱟᱹᱣᱰᱤ ᱮᱢᱟ᱾",
+        "msg.not_government": "ᱱᱚᱶᱟ ᱮᱯ ᱥᱚᱨᱠᱟᱨ ᱵᱟᱝ ᱪᱟᱞᱟᱣ ᱮᱫᱟᱭ᱾ ᱱᱚᱶᱟ ᱟᱢᱟᱜ ᱟᱨᱡᱤ ᱛᱮᱭᱟᱨ "
+                              "ᱨᱮ ᱜᱚᱲᱳ ᱮᱫᱟᱭ; ᱟᱨᱡᱤ ᱟᱢ ᱜᱮ ᱡᱚᱢᱟ ᱢᱮ᱾",
+        "msg.aadhaar_optional": "ᱟᱫᱷᱟᱨ ᱫᱚ ᱟᱭᱢᱟ ᱵᱟᱪᱷᱟᱣ ᱠᱚ ᱠᱷᱚᱱ ᱢᱤᱫᱴᱟᱝ ᱠᱟᱱᱟ᱾ ᱵᱷᱚᱴᱟᱨ ᱠᱟᱨᱰ, "
+                                "ᱨᱟᱥᱚᱱ ᱠᱟᱨᱰ ᱟᱨᱵᱟᱝ ᱡᱚᱵ ᱠᱟᱨᱰ ᱦᱚᱸ ᱪᱟᱞᱟᱜᱼᱟ᱾",
+        "msg.language_unavailable": "ᱱᱚᱶᱟ ᱱᱤᱛ ᱦᱟᱹᱵᱤᱡ ᱟᱢᱟᱜ ᱯᱟᱹᱨᱥᱤ ᱛᱮ ᱵᱟᱹᱱᱩᱜᱼᱟ, ᱚᱱᱟᱛᱮ "
+                                    "ᱤᱝᱨᱟᱡᱤ ᱛᱮ ᱩᱫᱩᱜ ᱠᱟᱱᱟ᱾",
+        "msg.error_generic": "ᱚᱠᱟ ᱦᱚᱸ ᱵᱷᱩᱞ ᱦᱩᱭᱮᱱᱟ᱾ ᱟᱢᱟᱜ ᱠᱷᱚᱵᱚᱨ ᱡᱚᱛᱚᱱ ᱢᱮᱱᱟᱜᱼᱟ᱾ ᱫᱟᱭᱟ ᱠᱟᱛᱮ "
+                             "ᱫᱚᱦᱲᱟ ᱠᱩᱨᱩᱢᱩᱴᱩ ᱢᱮ᱾",
+        "rights.summary": "ᱟᱢ ᱟᱢᱟᱜ ᱠᱷᱚᱵᱚᱨ ᱡᱟᱦᱟᱸ ᱚᱠᱛᱚ ᱦᱚᱸ ᱧᱮᱞ, ᱵᱚᱸᱫᱚᱵᱚᱥᱛ ᱟᱨᱵᱟᱝ ᱢᱮᱴᱟᱣ "
+                          "ᱫᱟᱲᱮᱭᱟᱜᱼᱟᱢ᱾",
+        "help.call_helpline": "ᱦᱮᱞᱯᱞᱟᱭᱤᱱ ᱛᱮ ᱠᱚᱞ ᱢᱮ",
+    },
 }
 
 
 def quality_of(code: str) -> Quality:
     if code == "en":
         return Quality.SOURCE
-    return Quality.DRAFT if MESSAGES.get(code) else Quality.MISSING
+    if not MESSAGES.get(code):
+        return Quality.MISSING
+    if code in LOW_CONFIDENCE_LANGUAGES:
+        return Quality.LOW_CONFIDENCE
+    return Quality.DRAFT
 
 
 def coverage(code: str) -> dict:
@@ -774,11 +1191,23 @@ def coverage(code: str) -> dict:
     strings = MESSAGES.get(code) or {}
     present = sum(1 for k in KEYS if strings.get(k))
     quality = quality_of(code)
+    reason = ""
+    if quality is Quality.MISSING:
+        reason = UNTRANSLATED_REASON
+    elif quality is Quality.LOW_CONFIDENCE:
+        reason = LOW_CONFIDENCE_REASON
     return {
         "quality": quality.value,
         "translatedKeys": present,
         "totalKeys": len(KEYS),
         "percent": round(100 * present / len(KEYS)) if KEYS else 0,
-        "needsNativeReview": quality is Quality.DRAFT,
-        "reason": UNTRANSLATED_REASON if quality is Quality.MISSING else "",
+        "needsNativeReview": quality in (Quality.DRAFT, Quality.LOW_CONFIDENCE),
+        # Distinct from needsNativeReview: this one says the text should carry a
+        # visible warning to the *reader*, not just a note to the operator.
+        "warnReader": quality is Quality.LOW_CONFIDENCE,
+        "readerWarning": LOW_CONFIDENCE_REASON
+                         if quality is Quality.LOW_CONFIDENCE else "",
+        "readerWarningHindi": LOW_CONFIDENCE_REASON_HI
+                              if quality is Quality.LOW_CONFIDENCE else "",
+        "reason": reason,
     }

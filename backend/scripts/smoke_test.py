@@ -14,6 +14,12 @@ Stages
   5. Screen for fraud and abuse
   6. Generate the filled PDF
   7. Re-run stages 3-5 against adversarial inputs and confirm each is caught
+  8. The combined gate the API actually returns
+  9. Central/State catalog coverage and domicile gating
+ 10. Demo applicants in four States, end to end
+ 11. KYC: offline Aadhaar, tolerant matching, and what it decides
+ 12. Language coverage across the Eighth Schedule
+ 13. DPDP: notice scope and the processing register
 
 Needs no database and no LLM key. Exit code is non-zero if any stage fails, so
 it doubles as a CI check.
@@ -369,6 +375,366 @@ async def stage_gate_integration() -> None:
           f"fields: {', '.join(rec['failed_rule_fields'])}")
 
 
+def stage_catalog_coverage() -> None:
+    banner("STAGE 9  Catalog — Central and State coverage")
+
+    from data.gov_forms import catalog_states, get_catalog
+
+    catalog = get_catalog()
+    central = [e for e in catalog if e["level"] == "Central"]
+    state = [e for e in catalog if e["level"] == "State"]
+    check("Catalog spans both levels", bool(central) and bool(state),
+          f"{len(central)} Central, {len(state)} State, {len(catalog)} total")
+    check("Coverage reaches most of the country", len(catalog_states()) >= 25,
+          f"{len(catalog_states())} States and UTs")
+
+    # Every State scheme must be gated on residence, or it is offered to people
+    # who will be turned away at the counter.
+    ungated = [
+        e["schemeName"] for e in state
+        if not [r for r in e["eligibilityCriteria"]["rules"]
+                if r["field"] == "state" and r["value"] == e["state"]]
+    ]
+    check("Every State scheme is gated on residence", not ungated,
+          ", ".join(ungated) or "all 23+ gated")
+
+    # And the opposite error: a State view that hides Central schemes.
+    bihar = get_catalog(state="Bihar")
+    bihar_central = [e for e in bihar if e["level"] == "Central"]
+    check("A State view still shows every Central scheme",
+          len(bihar_central) == len(central),
+          f"Bihar resident sees {len(bihar)} schemes "
+          f"({len(bihar_central)} Central + {len(bihar) - len(bihar_central)} State)")
+
+    foreign = [e["schemeName"] for e in bihar
+               if e["level"] == "State" and e["state"] != "Bihar"]
+    check("A State view hides other States' schemes", not foreign,
+          ", ".join(foreign[:3]) or "no cross-State leakage")
+
+
+def stage_state_applicants() -> None:
+    banner("STAGE 10  Demo applicants across four States")
+
+    from eligibility_engine import Verdict, evaluate_scheme
+    from data.gov_forms import get_by_name, get_catalog
+    from validation import validate_profile
+
+    # Four demo citizens, each resident in a different State. Names and numbers
+    # are synthetic; the Aadhaar values carry correct checksums but belong to
+    # nobody.
+    demos = [
+        {
+            "label": "Sunita Devi, 34, Madhya Pradesh",
+            "scheme": "Mukhyamantri Ladli Behna Yojana (Madhya Pradesh)",
+            "profile": {
+                "name": "Sunita Devi", "father_husband_name": "Mahesh Kumar",
+                "aadhaar_number": make_valid_aadhaar("39182746501"),
+                "date_of_birth": "1992-03-15", "age": 34, "gender": "Female",
+                "category": "OBC", "mobile_number": "9812345670",
+                "marital_status": "Married", "state_family_id": "MP1234567890",
+                "address_line": "12 Nehru Ward", "district": "Rewa",
+                "state": "Madhya Pradesh", "pincode": "486001",
+                "annual_income": 120000, "is_income_tax_payer": "No",
+                "is_govt_employee": "No", "land_holding_acres": 1.5,
+                "ration_card_type": "Priority Household (PHH)",
+                "bank_account_number": "20100234567891", "ifsc_code": "SBIN0004321",
+                "bank_name": "State Bank of India",
+            },
+        },
+        {
+            "label": "Meena Murugan, 41, Tamil Nadu",
+            "scheme": "Kalaignar Magalir Urimai Thogai (Tamil Nadu)",
+            "profile": {
+                "name": "Meena Murugan", "father_husband_name": "Murugan S",
+                "aadhaar_number": make_valid_aadhaar("51726394820"),
+                "date_of_birth": "1985-07-22", "age": 41, "gender": "Female",
+                "category": "General", "mobile_number": "9445566778",
+                "marital_status": "Widowed",
+                "address_line": "3/45 Anna Nagar", "district": "Madurai",
+                "state": "Tamil Nadu", "pincode": "625020",
+                "annual_income": 96000, "is_income_tax_payer": "No",
+                "is_govt_employee": "No",
+                "ration_card_type": "Priority Household (PHH)",
+                "bank_account_number": "30987654321012", "ifsc_code": "IOBA0001234",
+                "bank_name": "Indian Overseas Bank",
+            },
+        },
+        {
+            "label": "Anjali Basumatary, 52, Assam",
+            "scheme": "Orunodoi (Assam)",
+            "profile": {
+                "name": "Anjali Basumatary", "father_husband_name": "Bipul Basumatary",
+                "aadhaar_number": make_valid_aadhaar("62817394056"),
+                "date_of_birth": "1974-11-02", "age": 52, "gender": "Female",
+                "category": "ST", "mobile_number": "9678123456",
+                "marital_status": "Married",
+                "address_line": "Village Bhairabkunda", "district": "Udalguri",
+                "state": "Assam", "pincode": "784509",
+                "family_members": 5, "annual_income": 84000,
+                "is_govt_employee": "No", "is_income_tax_payer": "No",
+                "disability_type": "None",
+                "ration_card_type": "Priority Household (PHH)",
+                "bank_account_number": "40192837465012", "ifsc_code": "UCBA0002468",
+                "bank_name": "UCO Bank",
+            },
+        },
+        {
+            "label": "Tenzing Bhutia, 29, Sikkim",
+            "scheme": "Aama Yojana (Sikkim)",
+            "profile": {
+                "name": "Pema Bhutia", "father_husband_name": "Tenzing Bhutia",
+                "aadhaar_number": make_valid_aadhaar("70918263540"),
+                "date_of_birth": "1997-01-19", "age": 29, "gender": "Female",
+                "category": "ST", "mobile_number": "9832145670",
+                "marital_status": "Married", "number_of_daughters": 2,
+                "address_line": "Upper Tadong", "district": "Gangtok",
+                "state": "Sikkim", "pincode": "737102",
+                "is_govt_employee": "No", "annual_income": 60000,
+                "bank_account_number": "50223344556677", "ifsc_code": "SBIN0009876",
+                "bank_name": "State Bank of India",
+            },
+        },
+    ]
+
+    for demo in demos:
+        scheme = get_by_name(demo["scheme"])
+        profile = demo["profile"]
+        v = validate_profile(profile, scheme["extractedFields"])
+        e = evaluate_scheme(profile, scheme)
+        check(f"{demo['label']} — {scheme['schemeName'][:38]}",
+              not v.is_blocking and e.verdict is Verdict.ELIGIBLE,
+              f"{len(v.errors)} errors, verdict {e.verdict.value}")
+
+    # The same citizen against the whole catalog: what a State resident is
+    # actually shown, Central and State together.
+    sunita = demos[0]["profile"]
+    eligible = []
+    for entry in get_catalog(state="Madhya Pradesh"):
+        if evaluate_scheme(sunita, entry).is_eligible:
+            eligible.append(entry)
+    central_hits = sum(1 for e in eligible if e["level"] == "Central")
+    check("A State resident is matched against Central schemes too",
+          central_hits > 0,
+          f"{len(eligible)} eligible: {central_hits} Central, "
+          f"{len(eligible) - central_hits} State")
+    for entry in eligible[:6]:
+        print(f"        · [{entry['level']:7}] {entry['schemeName']}")
+
+    # Cross-State refusal, in the engine the API actually calls.
+    mp_scheme = get_by_name("Mukhyamantri Ladli Behna Yojana (Madhya Pradesh)")
+    outsider = dict(sunita, state="Bihar")
+    r = evaluate_scheme(outsider, mp_scheme)
+    check("Same applicant, wrong State, is refused",
+          not r.is_eligible and "state" in {x.field for x in r.failed},
+          "domicile rule caught it before she travelled to an office")
+
+
+def stage_kyc() -> None:
+    banner("STAGE 11  KYC — offline Aadhaar, matching, and what it decides")
+
+    from kyc import aadhaar_offline as ao
+    from kyc import matching, service
+    from kyc.methods import Assurance, METHODS, available_methods
+
+    usable = available_methods()
+    licensed = [m for m in METHODS if m.availability.value == "needs_licence"]
+    check("Every KYC method is catalogued", len(METHODS) >= 14,
+          f"{len(METHODS)} methods, {len(usable)} usable here, "
+          f"{len(licensed)} need a UIDAI licence")
+    check("A route exists that needs no smartphone",
+          any(m.channel.value in ("self_offline", "assisted", "in_person")
+              for m in usable))
+    check("A licensed method is never reported as usable",
+          all(not m.effective_availability.is_usable for m in licensed),
+          ", ".join(m.key for m in licensed))
+
+    # A synthetic UIDAI Secure QR. Reference ID starts with the last four
+    # Aadhaar digits, which is the only part of the number UIDAI puts in it.
+    qr = ao.build_test_qr({
+        "email_mobile_present": "3", "reference_id": "0124202601011200000",
+        "name": "Kamla Devi", "dob": "12-04-1958", "gender": "F",
+        "careof": "W/O Ram Prasad", "district": "Sitapur",
+        "landmark": "Near Temple", "house": "42", "location": "Kachhwa",
+        "pincode": "261001", "postoffice": "Kachhwa", "state": "Uttar Pradesh",
+        "street": "Main Road", "subdistrict": "Misrikh", "vtc": "Kachhwa",
+    }, photo=b"\x00" * 40, signature=b"S" * 256)
+
+    record = ao.parse_secure_qr(qr)
+    check("Secure QR parsed", record.demographics.get("name") == "Kamla Devi",
+          f"last4 {record.aadhaar_last4}, "
+          f"{len(record.demographics)} fields recovered")
+
+    from dpdp.aadhaar_policy import contains_full_aadhaar
+    check("No full Aadhaar anywhere in the parsed record",
+          not contains_full_aadhaar(record.as_dict()),
+          "s29(4): publishing an Aadhaar number is a criminal offence")
+
+    check("Unverified signature is NOT reported as verified",
+          record.assurance is Assurance.DOCUMENTED,
+          f"{record.assurance.label_en} — no UIDAI certificate configured")
+
+    # A citizen whose typed name differs from the document by transliteration.
+    claimed = {"name": "Kamala Devi", "date_of_birth": "1958-04-12",
+               "gender": "Female", "pincode": "261001"}
+    outcome = service.verify_secure_qr(claimed, qr)
+    check("Transliteration difference does not block", outcome.succeeded,
+          f"score {outcome.score:.2f}, review={outcome.needs_review}")
+
+    # A date of birth twenty years out cannot be a transcription slip.
+    lying = dict(claimed, date_of_birth="1978-04-12")
+    bad = service.verify_secure_qr(lying, qr)
+    check("Contradicted date of birth is escalated, not refused",
+          bad.contradicted and bad.fraud_signal > 0 and bad.succeeded,
+          f"signal +{bad.fraud_signal}, message says: "
+          f"{'not been refused' in bad.message_en}")
+
+    # The exclusion cases: each must survive.
+    survivors = [
+        ("Married woman, maiden name on her bank account",
+         matching.compare_names("Sunita Sharma", "Sunita Verma")),
+        ("UIDAI holds only a year of birth",
+         matching.compare_dates_of_birth("1958-04-12", "1958")),
+        ("Transgender applicant, document not yet corrected",
+         matching.compare_genders("Transgender", "M")),
+        ("Migrant worker living in another PIN code",
+         matching.compare_pincodes("261001", "110001")),
+    ]
+    for label, result in survivors:
+        check(f"Not refused: {label}", not result.decisive,
+              f"score {result.score:.2f} — routed to a reviewer")
+
+    # Verification must buy an honest applicant something, or nobody bothers.
+    # Measured on a profile that actually carries risk: a citizen reapplying to
+    # the same scheme after two rejected attempts looks suspicious on volume
+    # alone, and a UIDAI-signed document is better evidence than that inference.
+    import fraud_detection as fd
+    repeat = fd.ApplicantHistory(prior_applications_same_scheme=3)
+    base = fd.assess(claimed, history=repeat)
+    with_kyc = fd.assess(claimed, history=repeat, kyc_outcomes=[outcome])
+    # The credit is graduated: this document's UIDAI signature could not be
+    # checked, so it earns less than a fully verified one would. That is the
+    # design working, not a weak result.
+    check("Verifying lowers the risk score for an honest applicant",
+          with_kyc.score < base.score,
+          f"risk {base.score} ({base.decision.value}) -> "
+          f"{with_kyc.score} ({with_kyc.decision.value}); "
+          f"credit {outcome.fraud_signal} at {outcome.assurance.label_en}")
+
+    full = service.VerificationOutcome(
+        method="aadhaar_offline_xml", succeeded=True,
+        assurance=Assurance.VERIFIED, fraud_signal=-15)
+    verified = fd.assess(claimed, history=repeat, kyc_outcomes=[full])
+    check("A checked signature earns more credit than an unchecked one",
+          verified.score < with_kyc.score,
+          f"{with_kyc.score} ({with_kyc.decision.value}) vs "
+          f"{verified.score} ({verified.decision.value}) with UIDAI's "
+          "signature actually verified")
+
+    hard = fd.assess({}, history=fd.ApplicantHistory(users_sharing_bank_account=12),
+                     kyc_outcomes=[outcome])
+    check("Verification cannot clear a genuinely bad case",
+          hard.decision.value != "allow",
+          f"still {hard.decision.value} at risk {hard.score}")
+
+    summary = service.assurance_summary([outcome])
+    check("Status message never says refused",
+          "refus" not in summary["nextStep"].lower(),
+          summary["nextStep"][:58])
+
+
+def stage_languages() -> None:
+    banner("STAGE 12  Languages — coverage, honesty, and right-to-left")
+
+    from i18n import languages, resolve
+    from i18n.catalog import KEYS, Quality, coverage, quality_of
+
+    s = resolve.summary()
+    check("Every Eighth Schedule language has text",
+          s["withTranslations"] == 22 and not s["missing"],
+          f"22 of 22 scheduled languages, {s['interfaceKeys']} keys each")
+    check("None claims a review that did not happen",
+          s["nativelyReviewed"] == 0,
+          f"{len(s['lowConfidence'])} marked low-confidence: "
+          f"{', '.join(s['lowConfidence'])}")
+
+    for code in ("hi", "ta", "ur", "sat", "mni"):
+        lang = languages.get(code)
+        b = resolve.bundle(code)
+        grade = coverage(code)["quality"]
+        warn = " ⚠ warns the reader" if b["lowConfidence"] else ""
+        print(f"        · {lang.name_en:<10} {lang.endonym:<12} "
+              f"{lang.script:<16} {b['language']['direction']}  "
+              f"{grade}{warn}")
+        print(f"          {KEYS[2]} = {b['strings'][KEYS[2]]}")
+
+    check("Right-to-left languages are marked",
+          languages.rtl_codes() == {"ur", "ks", "sd"},
+          "Urdu, Kashmiri, Sindhi")
+
+    low = resolve.bundle("sat")
+    check("An unchecked translation ships with a standing warning",
+          low["lowConfidence"] and bool(low["qualityWarning"]),
+          low["qualityWarning"][:56])
+    solid = resolve.bundle("bn")
+    check("A solid draft does not cry wolf",
+          not solid["lowConfidence"], "no banner on Bengali")
+
+    check("No Indian language falls back to another",
+          all(not [c for c in languages.fallback_chain(l.code)
+                   if c not in (l.code, languages.DEFAULT)]
+              for l in languages.LANGUAGES),
+          "sharing a script is not sharing a language")
+
+    tn = resolve.suggest(state="Tamil Nadu", accept_language="hi-IN")
+    check("A State's own language outranks the browser",
+          tn["recommended"] == "ta", "Tamil Nadu resident is offered Tamil")
+
+    mz = resolve.suggest(state="Mizoram")
+    check("A gap in the Schedule itself is reported, not hidden",
+          mz["recommended"] == "en" and mz["unscheduledLocalLanguages"],
+          f"Mizoram: {', '.join(mz['unscheduledLocalLanguages'])} "
+          "are not in the Eighth Schedule")
+
+    # The two strings that protect a citizen from being defrauded must exist in
+    # every language, not only the ones an English speaker can check.
+    from i18n.catalog import MESSAGES
+    untranslated_safety = [
+        c for c in MESSAGES if c != "en"
+        and MESSAGES[c]["msg.no_fee"] == MESSAGES["en"]["msg.no_fee"]
+    ]
+    check("The anti-fraud warnings are translated everywhere",
+          not untranslated_safety,
+          "\"never pay anyone\" reaches every language")
+
+
+def stage_dpdp_and_notice() -> None:
+    banner("STAGE 13  DPDP — the notice is narrower than the interface")
+
+    from routes import dpdp as dpdp_routes
+    from i18n import resolve
+
+    notice = dpdp_routes.NOTICE_LANGUAGES
+    interface = resolve.summary()["withTranslations"]
+    check("Consent notice is served only where it can be relied on",
+          notice == {"en", "hi"},
+          f"notice: {len(notice)} languages, interface: {interface}")
+    check("The two numbers are reported separately",
+          interface > len(notice),
+          "a mistranslated consent notice is a defective consent")
+
+    from dpdp import registry
+    from data.gov_forms import all_profile_keys
+    undeclared = sorted(set(all_profile_keys()) - set(registry.BY_FIELD))
+    check("Every field the catalog collects is in the processing register",
+          not undeclared, ", ".join(undeclared) or
+          f"{len(all_profile_keys())} fields declared")
+
+    health = [f for f in registry.REGISTRY if f.category.value == "health"]
+    check("Disability and maternity data classified as health, not financial",
+          len(health) >= 5,
+          ", ".join(sorted(f.field for f in health)[:4]) + " …")
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -386,6 +752,11 @@ async def main() -> int:
     await stage_generate_pdf(profile)
     stage_adversarial()
     await stage_gate_integration()
+    stage_catalog_coverage()
+    stage_state_applicants()
+    stage_kyc()
+    stage_languages()
+    stage_dpdp_and_notice()
 
     passed = sum(1 for s, _, _ in _results if s == PASS)
     failed = sum(1 for s, _, _ in _results if s == FAIL)

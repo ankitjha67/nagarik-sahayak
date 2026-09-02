@@ -242,10 +242,19 @@ class TestLanguageRouting:
             assert r.status_code == 200, code
             assert r.json()["strings"]["nav.schemes"]
 
-    def test_an_untranslated_bundle_admits_the_fallback(self, client):
+    def test_an_unchecked_translation_warns_the_reader(self, client):
+        """Manipuri now has text, and the warning is what makes shipping it
+        honest — the reader is the only person who could spot an error, and
+        only if told to look."""
         body = client.get("/api/i18n/bundle/mni").json()
-        assert body["fullyTranslated"] is False
-        assert body["fallbackNotice"]
+        assert body["fullyTranslated"] is True
+        assert body["lowConfidence"] is True
+        assert body["qualityWarning"] and body["qualityWarningHindi"]
+
+    def test_a_solid_draft_carries_no_standing_warning(self, client):
+        body = client.get("/api/i18n/bundle/ta").json()
+        assert body["lowConfidence"] is False
+        assert not body["qualityWarning"]
 
     def test_suggestion_follows_the_accept_language_header(self, client):
         r = client.get("/api/i18n/suggest",
@@ -257,10 +266,16 @@ class TestLanguageRouting:
                        headers={"Accept-Language": "hi-IN"})
         assert r.json()["recommended"] == "ta"
 
-    def test_coverage_reports_draft_rather_than_a_bare_percentage(self, client):
+    def test_coverage_reports_grade_rather_than_a_bare_percentage(self, client):
+        """Full coverage must never read as full confidence."""
         body = client.get("/api/i18n/coverage").json()
-        assert body["summary"]["nativelyReviewed"] == 0
-        assert any(l["quality"] == "draft" for l in body["byLanguage"])
+        summary = body["summary"]
+        assert summary["withTranslations"] == 22
+        assert summary["nativelyReviewed"] == 0
+        assert summary["lowConfidence"], \
+            "22 of 22 with no caveat is the misleading number"
+        qualities = {l["quality"] for l in body["byLanguage"]}
+        assert {"draft", "low_confidence"} <= qualities
 
     def test_the_notice_does_not_claim_more_languages_than_it_has(self, client):
         """The interface reaches 14 languages; the consent notice reaches two.

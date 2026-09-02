@@ -13,7 +13,9 @@ they understood what they agreed to. Silence about either is the bug.
 import pytest
 
 from i18n import languages, resolve
-from i18n.catalog import KEYS, MESSAGES, Quality, coverage, quality_of
+from i18n.catalog import (
+    KEYS, LOW_CONFIDENCE_LANGUAGES, MESSAGES, Quality, coverage, quality_of,
+)
 
 
 TRANSLATED = [c for c in MESSAGES if c != "en"]
@@ -88,10 +90,24 @@ class TestFallback:
     def test_english_does_not_fall_back_to_itself_twice(self):
         assert languages.fallback_chain("en") == ["en"]
 
-    def test_a_fallback_is_always_reported(self):
-        res = resolve.resolve("nav.schemes", "sat")
+    def test_a_fallback_is_always_reported(self, monkeypatch):
+        """Every scheduled language now has full coverage, so nothing in the
+        catalogue exercises this path. The mechanism is still what stops a
+        future gap being served silently, so a gap is simulated rather than
+        letting the test quietly stop testing anything."""
+        thinned = dict(MESSAGES["ta"])
+        thinned.pop("nav.schemes")
+        monkeypatch.setitem(MESSAGES, "ta", thinned)
+
+        res = resolve.resolve("nav.schemes", "ta")
         assert res.fell_back
-        assert res.language == "en" and res.requested == "sat"
+        assert res.language == "en" and res.requested == "ta"
+
+        b = resolve.bundle("ta")
+        assert b["fallbacks"] == ["nav.schemes"]
+        assert not b["fullyTranslated"]
+        assert b["fallbackNotice"], \
+            "silently serving English is the misrepresentation, not the fallback"
 
     def test_a_real_translation_is_not_marked_as_a_fallback(self):
         res = resolve.resolve("nav.schemes", "ta")
@@ -140,17 +156,38 @@ class TestHonestQuality:
         assert quality_of("en") is Quality.SOURCE
 
     @pytest.mark.parametrize("code", TRANSLATED)
-    def test_generated_translations_are_marked_draft(self, code):
-        """None of these was written by a native speaker. Marking them reviewed
+    def test_no_translation_claims_a_native_review(self, code):
+        """None of these was written by a native speaker. Marking one reviewed
         would be a claim nobody has earned."""
-        assert quality_of(code) is Quality.DRAFT
+        assert quality_of(code) in (Quality.DRAFT, Quality.LOW_CONFIDENCE)
         assert coverage(code)["needsNativeReview"] is True
 
-    def test_absent_languages_are_marked_missing_with_a_reason(self):
+    @pytest.mark.parametrize("code", sorted(LOW_CONFIDENCE_LANGUAGES))
+    def test_unverifiable_orthography_warns_the_reader(self, code):
+        """Bodo, Kashmiri, Manipuri and Santali are written in scripts this
+        system cannot check. The text ships, because a citizen is entitled to
+        their language — but it ships saying so, since a wrong sentence here
+        looks exactly like a right one to the only person who could tell."""
+        cov = coverage(code)
+        assert cov["quality"] == Quality.LOW_CONFIDENCE.value
+        assert cov["warnReader"] is True
+        assert cov["readerWarning"] and cov["readerWarningHindi"]
+
+    @pytest.mark.parametrize(
+        "code", [c for c in TRANSLATED if c not in LOW_CONFIDENCE_LANGUAGES])
+    def test_ordinary_drafts_do_not_cry_wolf(self, code):
+        """A warning on every language is a warning on none."""
+        assert coverage(code)["warnReader"] is False
+
+    def test_the_reader_warning_is_not_only_in_the_suspect_language(self):
+        """If the translation is wrong, a warning written inside it is wrong
+        too. It is carried in English and Hindi for that reason."""
         cov = coverage("sat")
-        assert cov["quality"] == Quality.MISSING.value
-        assert cov["translatedKeys"] == 0
-        assert cov["reason"], "a gap with no explanation cannot be commissioned"
+        assert "English or Hindi" in cov["readerWarning"]
+
+    def test_every_scheduled_language_now_has_text(self):
+        assert resolve.summary()["missing"] == []
+        assert resolve.summary()["withTranslations"] == 22
 
     def test_the_summary_separates_translated_from_reviewed(self):
         s = resolve.summary()
@@ -159,9 +196,11 @@ class TestHonestQuality:
             "claiming a native review that did not happen is the failure mode " \
             "this whole module guards against"
 
-    def test_the_summary_names_which_languages_are_missing(self):
-        assert set(resolve.summary()["missing"]) == {
-            "brx", "doi", "ks", "gom", "mai", "mni", "sat", "sd"}
+    def test_full_coverage_is_not_reported_as_full_confidence(self):
+        """22 of 22 must never read as 22 languages the project stands behind."""
+        s = resolve.summary()
+        assert set(s["lowConfidence"]) == set(LOW_CONFIDENCE_LANGUAGES)
+        assert s["reviewPriority"], "no guidance on where review is worth buying"
 
     def test_legal_text_is_excluded_from_the_catalogue(self):
         """A mistranslated consent notice is a defective consent, so the notice
@@ -184,12 +223,21 @@ class TestBundles:
         assert b["fullyTranslated"] and not b["fallbacks"]
         assert not b["fallbackNotice"]
 
-    def test_an_untranslated_bundle_carries_a_visible_notice(self):
+    def test_a_low_confidence_bundle_is_complete_but_warns(self):
+        """The reader gets their own language *and* is told it is unchecked."""
         b = resolve.bundle("mni")
-        assert not b["fullyTranslated"]
-        assert len(b["fallbacks"]) == len(KEYS)
-        assert b["fallbackNotice"], \
-            "silently serving English is the misrepresentation, not the fallback"
+        assert b["fullyTranslated"] and not b["fallbacks"]
+        assert b["lowConfidence"] is True
+        assert b["qualityWarning"] and b["qualityWarningHindi"]
+
+    def test_a_solid_draft_bundle_carries_no_standing_warning(self):
+        b = resolve.bundle("bn")
+        assert b["lowConfidence"] is False
+        assert not b["qualityWarning"]
+
+    def test_an_unknown_language_falls_back_and_says_so(self):
+        b = resolve.bundle("klingon")
+        assert b["strings"]["nav.schemes"] == "Schemes"
 
     def test_the_bundle_names_the_script_and_direction(self):
         b = resolve.bundle("ur")
@@ -209,12 +257,14 @@ class TestSuggestion:
         assert resolve.suggest(state="Kerala")["recommended"] == "ml"
         assert resolve.suggest(state="West Bengal")["recommended"] == "bn"
 
-    def test_an_unavailable_state_language_is_named_not_hidden(self):
-        """Jharkhand has Santali speakers and no Santali strings. The gap must
-        be reported, not papered over with Hindi."""
+    def test_a_low_confidence_state_language_is_offered_but_flagged(self):
+        """Jharkhand has Santali speakers. Santali is offered — withholding it
+        would be deciding for them that Hindi is close enough — and the caller
+        is told to show the standing warning with it."""
         s = resolve.suggest(state="Jharkhand")
-        assert "sat" in s["unavailableFromRanked"]
-        assert s["recommended"] in s["availableFromRanked"]
+        assert "sat" in s["availableFromRanked"]
+        assert "sat" in s["lowConfidenceFromRanked"]
+        assert not s["unavailableFromRanked"]
 
     def test_the_browser_preference_is_used_when_no_state_is_known(self):
         s = resolve.suggest(accept_language="kn-IN,kn;q=0.9")
@@ -240,20 +290,43 @@ class TestSuggestion:
 
 
 class TestStateLanguageCoverage:
-    def test_the_states_the_catalog_serves_have_usable_languages(self):
-        """Not a hard requirement — English is a lawful fallback — but a State
-        scheme offered only in English reaches the wrong half of that State."""
+    def test_every_state_with_schemes_has_a_language_it_can_be_read_in(self):
+        """Not necessarily an Indian one. English is the declared official
+        language of Arunachal Pradesh, Meghalaya, Mizoram and Nagaland, so
+        serving them in English is correct rather than a shortfall — but the
+        State must resolve to *something*, or a citizen who reaches a scheme
+        there has no readable interface at all."""
         from data.gov_forms import catalog_states
-        uncovered = []
         for state in catalog_states():
-            local = [c for c in languages.for_state(state)
-                     if c != languages.DEFAULT
-                     and quality_of(c) is not Quality.MISSING]
-            if not local:
-                uncovered.append(state)
-        assert not uncovered, (
-            f"these States have schemes but no local-language interface: "
-            f"{uncovered}")
+            usable = [c for c in languages.for_state(state)
+                      if quality_of(c) is not Quality.MISSING]
+            assert usable, f"{state} resolves to no readable language"
+
+    def test_states_served_only_in_english_are_ones_where_that_is_official(self):
+        from data.gov_forms import catalog_states
+        english_only = [
+            s for s in catalog_states()
+            if [c for c in languages.for_state(s)
+                if quality_of(c) is not Quality.MISSING] == [languages.DEFAULT]
+        ]
+        assert set(english_only) <= {
+            "Arunachal Pradesh", "Meghalaya", "Mizoram", "Nagaland"}, (
+            "a State is being served only in English without English being its "
+            "official language")
+
+    def test_the_schedules_own_gaps_are_recorded_not_hidden(self):
+        """Mizo, Khasi, Kokborok and the rest are not in the Eighth Schedule,
+        so no statutory entitlement reaches them. That is a fact about the
+        Schedule, and pretending English coverage closes it would misdescribe
+        what a reader in Aizawl actually gets."""
+        assert languages.unscheduled_languages_for("Mizoram") == ("Mizo (Lushai)",)
+        assert "Khasi" in languages.unscheduled_languages_for("Meghalaya")
+        assert languages.unscheduled_languages_for("Kerala") == ()
+
+    def test_the_gap_reaches_the_suggestion_response(self):
+        s = resolve.suggest(state="Mizoram")
+        assert s["recommended"] == "en"
+        assert "Mizo (Lushai)" in s["unscheduledLocalLanguages"]
 
     def test_hindi_belt_states_map_to_hindi(self):
         for state in ("Uttar Pradesh", "Bihar", "Madhya Pradesh", "Rajasthan"):

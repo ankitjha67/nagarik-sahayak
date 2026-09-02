@@ -8,8 +8,12 @@ import { getLanguageBundle, getLanguages } from "./api";
 const FALLBACK = {
   "app.name": "Nagarik Sahayak",
   "app.tagline": "Government schemes, made simple",
+  "nav.home": "Home",
+  "nav.chat": "Chat",
   "nav.schemes": "Schemes",
+  "nav.exams": "Exams",
   "nav.profile": "My Profile",
+  "nav.identity": "Identity",
   "nav.documents": "Documents",
   "nav.privacy": "Privacy and Rights",
   "nav.help": "Help",
@@ -111,6 +115,14 @@ export function LanguageProvider({ children, initial }) {
       // the reader assume the app decided English is their language.
       hasFallbacks: (bundle.fallbacks || []).length > 0,
       fallbackNotice: bundle.fallbackNotice || "",
+      // Distinct from a fallback. Here the reader IS getting their language;
+      // the caution is that its orthography could not be checked, so a wrong
+      // sentence looks exactly like a right one to the only person who could
+      // tell. Carried in English and Hindi because a warning written inside a
+      // suspect translation is itself suspect.
+      lowConfidence: !!bundle.lowConfidence,
+      qualityWarning: bundle.qualityWarning || "",
+      qualityWarningHindi: bundle.qualityWarningHindi || "",
       t: (key) => strings[key] ?? FALLBACK[key] ?? key,
       isFallback: (key) => fallbacks.has(key),
     };
@@ -132,6 +144,9 @@ export function useLanguage() {
       meta: null,
       hasFallbacks: false,
       fallbackNotice: "",
+      lowConfidence: false,
+      qualityWarning: "",
+      qualityWarningHindi: "",
       t: (key) => FALLBACK[key] ?? key,
       isFallback: () => false,
     };

@@ -327,6 +327,15 @@ REGISTRY: tuple[FieldRecord, ...] = (
                 retention_days=_APPLICATION_CYCLE, child_data=True),
     FieldRecord("four_wheeler_owned", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
                 retention_days=_APPLICATION_CYCLE, decisional=True),
+    FieldRecord("residence_ownership", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
+                retention_days=_APPLICATION_CYCLE, decisional=True),
+    # A utility account number resolves to a dwelling, and past consumption is
+    # a fine-grained record of when a household is at home. Treated as an
+    # address-class identifier, not an inert reference.
+    FieldRecord("electricity_account_number", C.ADDRESS,
+                (P.SCHEME_ELIGIBILITY, P.FORM_COMPLETION),
+                retention_days=_APPLICATION_CYCLE, decisional=True,
+                note="Identifies a specific dwelling."),
     FieldRecord("pension_category", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
                 retention_days=_APPLICATION_CYCLE, decisional=True),
     FieldRecord("existing_benefit_amount", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),

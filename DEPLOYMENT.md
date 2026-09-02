@@ -107,10 +107,19 @@ behaviour, not a defect to work around.
 
 ## 6. Before going live in a State
 
-- **Language.** 14 of the 22 Eighth Schedule languages have interface
-  translations and every one is marked `draft` — generated without a native
-  speaker. `GET /api/i18n/coverage` reports this. Commission a review for the
-  languages of any State you launch in before relying on the text.
+- **Language.** All 22 Eighth Schedule languages have interface translations
+  and none has been checked by a native speaker. `GET /api/i18n/coverage`
+  reports two grades: `draft` (script and register well attested) and
+  `low_confidence` (Bodo, Kashmiri, Manipuri, Santali — the orthography itself
+  may be wrong, and those ship with a standing warning to the reader). Full
+  coverage is not full confidence; commission a review for the languages of
+  any State you launch in, starting with `summary.reviewPriority`.
+- **Languages outside the Schedule.** Mizo, Khasi, Garo, Kokborok, Nagamese,
+  Nyishi and others are not in the Eighth Schedule, so no s5(3) entitlement
+  reaches them and this application does not offer them. Arunachal Pradesh,
+  Meghalaya, Mizoram and Nagaland are therefore served in English, which is
+  their declared official language. `GET /api/i18n/suggest?state=…` reports the
+  unscheduled local languages so the gap stays visible.
 - **Legal notices** are served in English and Hindi only, deliberately. A
   mistranslated consent notice is a defective consent under s6 and the person
   giving it does not know. Commission real translations; do not machine-fill
@@ -135,6 +144,8 @@ oversights.
 | 180-day in-India log retention | Infrastructure |
 | RTI / Consumer Protection applicability | Whether this is run by or for the State |
 | Frontend test runner | No runner is installed; `frontend/` has no test suite |
+| Native review of all 22 languages | Translator time; `low_confidence` first |
+| Languages outside the Eighth Schedule | Mizo, Khasi, Kokborok and the rest carry no s5(3) entitlement |
 
 The backend suite has 91 pre-existing failures in
 `test_e2e_with_mocks`, `test_v2_api_endpoints`, `test_agnost_integration`,
@@ -144,3 +155,22 @@ The backend suite has 91 pre-existing failures in
 `MissingSchema` when `BACKEND_URL` is unset. They pass against a running
 deployment; they are not unit tests and should not be read as a regression
 signal.
+
+---
+
+## 8. Smoke test
+
+```bash
+cd backend
+python scripts/smoke_test.py            # full run, needs network for stages 1-2
+python scripts/smoke_test.py --offline  # everything else
+```
+
+Thirteen stages: live-form fetch, OCR extraction, validation, eligibility,
+fraud screening, PDF generation, adversarial cases, the combined gate,
+Central/State catalog coverage, demo applicants in four States, KYC, language
+coverage, and DPDP notice scope. Exit code is non-zero if any check fails, so
+it doubles as a CI gate. It needs no database and no LLM key.
+
+
+All 77 smoke-test checks pass on the current tree.
