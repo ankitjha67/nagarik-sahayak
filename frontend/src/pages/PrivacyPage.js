@@ -4,11 +4,13 @@ import { BottomNav } from "../components/BottomNav";
 import {
   getPrivacyNotice, getConsent, grantConsent, withdrawConsent,
   getMyData, eraseMyData, lodgeRightsRequest,
+  getTerms, getTermsStatus, acceptTerms, getNominee, setNominee, removeNominee,
 } from "../lib/api";
 import { toast } from "sonner";
 import {
-  AlertTriangle, ChevronDown, ChevronRight, Database, Eye, FileText,
-  Loader2, Lock, MessageSquareWarning, ShieldCheck, Trash2, Users, XCircle,
+  AlertTriangle, CheckCircle2, ChevronDown, Database, Eye,
+  FileText, Loader2, Lock, MessageSquareWarning, ScrollText, ShieldCheck,
+  Trash2, UserPlus, Users, XCircle,
 } from "lucide-react";
 
 // Plain-language purpose descriptions. The statutory purpose names are precise
@@ -84,15 +86,25 @@ export default function PrivacyPage({ userId }) {
   const [busy, setBusy] = useState("");
   const [grievance, setGrievance] = useState("");
   const [confirmErase, setConfirmErase] = useState(false);
+  const [terms, setTerms] = useState(null);
+  const [termsStatus, setTermsStatus] = useState(null);
+  const [nominee, setNomineeState] = useState(null);
+  const [nomineeForm, setNomineeForm] = useState({ name: "", relation: "", contact: "" });
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [n, c] = await Promise.all([
+    const [n, c, t, ts, nom] = await Promise.all([
       getPrivacyNotice().catch(() => null),
       userId ? getConsent(userId).catch(() => null) : Promise.resolve(null),
+      getTerms().catch(() => null),
+      userId ? getTermsStatus(userId).catch(() => null) : Promise.resolve(null),
+      userId ? getNominee(userId).catch(() => null) : Promise.resolve(null),
     ]);
     if (n) setNotice(n.data);
     if (c) setConsent(c.data);
+    if (t) setTerms(t.data);
+    if (ts) setTermsStatus(ts.data);
+    if (nom) setNomineeState(nom.data);
     setLoading(false);
   }, [userId]);
 
@@ -160,6 +172,47 @@ export default function PrivacyPage({ userId }) {
     }
   };
 
+  const doAcceptTerms = async () => {
+    setBusy("terms");
+    try {
+      await acceptTerms(userId, terms.version);
+      setTermsStatus((await getTermsStatus(userId)).data);
+      toast.success("शर्तें स्वीकार की गईं");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not record acceptance");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const saveNominee = async () => {
+    if (!nomineeForm.name.trim() || !nomineeForm.relation.trim()) return;
+    setBusy("nominee");
+    try {
+      await setNominee(userId, nomineeForm);
+      setNomineeState((await getNominee(userId)).data);
+      setNomineeForm({ name: "", relation: "", contact: "" });
+      toast.success("नामित व्यक्ति दर्ज किया गया");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not record nominee");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const clearNominee = async () => {
+    setBusy("nominee");
+    try {
+      await removeNominee(userId);
+      setNomineeState((await getNominee(userId)).data);
+      toast.success("नामांकन हटा दिया गया");
+    } catch (e) {
+      toast.error("Could not remove nominee");
+    } finally {
+      setBusy("");
+    }
+  };
+
   const sendGrievance = async () => {
     if (!grievance.trim()) return;
     setBusy("grievance");
@@ -189,6 +242,54 @@ export default function PrivacyPage({ userId }) {
       <AppHeader title="गोपनीयता / Privacy" />
 
       <div className="max-w-md mx-auto px-4 pt-4">
+        {/* Terms not yet accepted. Placed above consent because a person
+            should learn what the service is — and is not — before agreeing to
+            what it does with their data. */}
+        {termsStatus?.needs_acceptance && terms && (
+          <div
+            data-testid="terms-prompt"
+            className="bg-white rounded-2xl border-2 border-[#000080] p-5 mb-4 animate-fade-in-up"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <ScrollText size={18} className="text-[#000080]" />
+              <h2 className="text-sm font-bold text-[#000080] font-['Mukta']">
+                कृपया यह पढ़ें / Please read this
+              </h2>
+            </div>
+            <div className="space-y-2 mb-3">
+              {terms.critical_disclosures.map((d) => (
+                <div key={d.id} className="flex gap-2">
+                  <AlertTriangle size={13} className="text-[#FF9933] flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-800 font-['Mukta'] leading-snug">
+                      {d.hi}
+                    </p>
+                    <p className="text-[10px] text-gray-500 font-['Nunito'] leading-snug">
+                      {d.en}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={doAcceptTerms}
+              disabled={busy === "terms"}
+              data-testid="accept-terms-btn"
+              className="w-full py-2.5 rounded-xl bg-[#000080] text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {busy === "terms"
+                ? <Loader2 size={15} className="animate-spin" />
+                : <CheckCircle2 size={15} />}
+              मैंने पढ़ लिया और सहमत हूँ / I have read and agree
+            </button>
+            {termsStatus.reason && (
+              <p className="text-[10px] text-gray-500 font-['Nunito'] text-center mt-2">
+                {termsStatus.reason}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* First-run prompt. Shown only until consent exists, so it informs
             rather than nags. */}
         {!hasAnyConsent && (
@@ -379,6 +480,131 @@ export default function PrivacyPage({ userId }) {
           <p className="text-[10px] text-gray-500 font-['Nunito'] mt-2">
             {notice?.grievance?.escalation}
           </p>
+        </Section>
+
+        {/* The agreement in full, always readable, not only at first run. */}
+        <Section icon={ScrollText} titleHi="सेवा की शर्तें" title="Terms of service">
+          {terms && (
+            <div className="space-y-3">
+              {termsStatus?.accepted && (
+                <p className="text-[11px] text-green-700 font-['Nunito'] flex items-center gap-1">
+                  <CheckCircle2 size={12} />
+                  संस्करण {termsStatus.accepted_version} स्वीकृत
+                </p>
+              )}
+              <p className="text-xs text-gray-700 font-['Nunito'] leading-relaxed">
+                {terms.summary_hi}
+              </p>
+
+              <div>
+                <p className="text-[11px] font-bold text-[#000080] font-['Mukta'] mb-1">
+                  आपकी ज़िम्मेदारियाँ / Your obligations
+                </p>
+                {terms.your_obligations.map((o) => (
+                  <div key={o.id} className="py-1">
+                    <p className="text-[11px] text-gray-700 font-['Mukta']">• {o.hi}</p>
+                    <p className="text-[10px] text-gray-500 font-['Nunito'] pl-2">{o.en}</p>
+                    {o.basis && (
+                      <p className="text-[9px] text-gray-400 pl-2">{o.basis}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold text-[#138808] font-['Mukta'] mb-1">
+                  हमारे वचन / Our commitments
+                </p>
+                {terms.our_commitments.map((cm, i) => (
+                  <p key={i} className="text-[11px] text-gray-700 font-['Mukta'] py-0.5">
+                    • {cm.hi}
+                  </p>
+                ))}
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold text-amber-700 font-['Mukta'] mb-1">
+                  सीमाएँ / Limitations
+                </p>
+                {terms.limitations.map((l) => (
+                  <p key={l.id} className="text-[10px] text-gray-600 font-['Nunito'] py-0.5">
+                    • {l.en}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+        </Section>
+
+        {/* s14 — nomination */}
+        <Section icon={UserPlus} titleHi="नामित व्यक्ति"
+                 title="Nominate someone to act for you">
+          <p className="text-[11px] text-gray-600 font-['Nunito'] mb-3 leading-relaxed">
+            आप किसी को नामित कर सकते हैं जो आपकी मृत्यु या अक्षमता की स्थिति में
+            आपके अधिकारों का उपयोग कर सके।
+            <span className="block text-[10px] text-gray-500 mt-0.5">
+              They gain access only after death or incapacity is verified —
+              never on their own say-so.
+            </span>
+          </p>
+
+          {nominee?.has_nominee ? (
+            <div className="rounded-xl bg-gray-50 border border-gray-200 p-3">
+              <p className="text-xs font-bold text-gray-800 font-['Mukta']">
+                {nominee.nominee.name}
+              </p>
+              <p className="text-[11px] text-gray-600 font-['Nunito']">
+                {nominee.nominee.relation}
+                {nominee.nominee.contact ? ` · ${nominee.nominee.contact}` : ""}
+              </p>
+              <p className={`text-[10px] mt-1 ${nominee.active ? "text-amber-700" : "text-gray-500"}`}>
+                {nominee.active
+                  ? "सक्रिय — यह व्यक्ति अभी आपके अधिकारों का उपयोग कर सकता है"
+                  : nominee.note_hi}
+              </p>
+              <button
+                onClick={clearNominee}
+                disabled={busy === "nominee"}
+                className="mt-2 text-[11px] text-red-600 font-semibold underline disabled:opacity-50"
+              >
+                नामांकन हटाएं / Remove nominee
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={nomineeForm.name}
+                onChange={(e) => setNomineeForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="नाम / Name"
+                data-testid="nominee-name"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-['Nunito'] focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none"
+              />
+              <input
+                type="text"
+                value={nomineeForm.relation}
+                onChange={(e) => setNomineeForm((f) => ({ ...f, relation: e.target.value }))}
+                placeholder="आपसे संबंध / Relationship to you"
+                data-testid="nominee-relation"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-['Nunito'] focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none"
+              />
+              <input
+                type="text"
+                value={nomineeForm.contact}
+                onChange={(e) => setNomineeForm((f) => ({ ...f, contact: e.target.value }))}
+                placeholder="फोन या ईमेल (वैकल्पिक) / Phone or email (optional)"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-['Nunito'] focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none"
+              />
+              <button
+                onClick={saveNominee}
+                disabled={busy === "nominee" || !nomineeForm.name.trim() || !nomineeForm.relation.trim()}
+                data-testid="save-nominee-btn"
+                className="w-full py-2.5 rounded-xl bg-[#000080] text-white text-xs font-semibold disabled:opacity-40"
+              >
+                {busy === "nominee" ? "सहेजा जा रहा है…" : "नामित करें"}
+              </button>
+            </div>
+          )}
         </Section>
 
         {/* s12 — erasure. Destructive, so it is last and gated behind a

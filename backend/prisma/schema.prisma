@@ -30,6 +30,25 @@ model User {
   mobileFp           String?
   rationCardFp       String?
 
+  // Which version of the user agreement this person accepted, and when.
+  // Recorded per version so a material change can require fresh acceptance
+  // rather than silently binding people to terms they never saw.
+  termsVersion       String?
+  termsAcceptedAt    DateTime?
+
+  // DPDP s14: the person who may exercise this citizen's rights if they die
+  // or become incapable of exercising them. Stored on the User rather than in
+  // a side table because it is a property of the data principal, and must be
+  // erased with them.
+  nomineeName        String?
+  nomineeRelation    String?
+  nomineeContact     String?
+  nomineeRecordedAt  DateTime?
+  // Set only when death or incapacity has been established by a reviewer.
+  // Until then the nominee has no access at all.
+  nomineeActivatedAt DateTime?
+  nomineeActivatedBy String?
+
   chatLogs           ChatLog[]
   applications       Application[]
 

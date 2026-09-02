@@ -15,7 +15,7 @@ from fastapi import HTTPException, Request
 from routes import api_router
 from config import ADMIN_SECRET
 from dpdp import consent as consent_service
-from dpdp import engine, grievance, incident, registry, retention, statutes, terms as terms_service
+from dpdp import engine, grievance, incident, nomination, registry, retention, statutes, terms as terms_service
 from dpdp.registry import Purpose
 
 logger = logging.getLogger(__name__)
@@ -469,3 +469,96 @@ async def terms_of_service():
     paying a middleman who claims otherwise.
     """
     return terms_service.terms()
+
+
+# ── Terms acceptance ─────────────────────────────────────────────────────
+
+@api_router.get("/dpdp/terms/status/{user_id}")
+async def terms_acceptance_status(user_id: str, request: Request):
+    """Whether this citizen has accepted the current terms."""
+    _require_self(request, user_id)
+    return await nomination.terms_status(user_id)
+
+
+@api_router.post("/dpdp/terms/accept/{user_id}")
+async def accept_terms(user_id: str, request: Request, req: dict | None = None):
+    """Record acceptance of a specific version of the user agreement.
+
+    The version is required and must match the current one: accepting "the
+    terms" without saying which is not evidence of anything, and a stale
+    version would let a client acknowledge text the citizen never saw.
+    """
+    _require_self(request, user_id)
+    version = ((req or {}).get("version") or "").strip()
+    if version != terms_service.TERMS_VERSION:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Accept the current version ({terms_service.TERMS_VERSION}); "
+                   f"got {version or 'none'}.")
+    try:
+        return await nomination.accept_terms(user_id, version)
+    except Exception as e:
+        logger.error(f"Terms acceptance failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+# ── Section 14: nomination ───────────────────────────────────────────────
+
+@api_router.get("/dpdp/nominee/{user_id}")
+async def get_nominee(user_id: str, request: Request):
+    """The citizen's own nomination (s14)."""
+    _require_self(request, user_id)
+    return await nomination.status(user_id)
+
+
+@api_router.post("/dpdp/nominee/{user_id}")
+async def set_nominee(user_id: str, request: Request, req: dict):
+    """Nominate someone to exercise your rights if you die or become incapable.
+
+    Body: {"name": "...", "relation": "...", "contact": "..."}
+    """
+    _require_self(request, user_id)
+    try:
+        return await nomination.record(
+            user_id, name=req.get("name", ""),
+            relation=req.get("relation", ""), contact=req.get("contact", ""))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Nomination failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.delete("/dpdp/nominee/{user_id}")
+async def remove_nominee(user_id: str, request: Request):
+    _require_self(request, user_id)
+    try:
+        return await nomination.remove(user_id)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.post("/dpdp/nominee/{user_id}/activate")
+async def activate_nominee(user_id: str, request: Request, req: dict):
+    """Allow a nominee to act, on established death or incapacity.
+
+    Admin-gated and evidence-bearing: activation transfers control of a
+    citizen's record, so it must never rest on the nominee's own assertion.
+    """
+    _require_admin(request)
+    reviewer_id = request.headers.get("X-Reviewer-Id", "").strip()
+    if not reviewer_id:
+        raise HTTPException(
+            status_code=400,
+            detail="X-Reviewer-Id is required so the activation is attributable.")
+    try:
+        return await nomination.activate(
+            user_id, reviewer_id=reviewer_id,
+            evidence=req.get("evidence", ""))
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Nomination activation failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))

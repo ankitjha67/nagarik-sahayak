@@ -33,7 +33,7 @@ BACKEND_MODULES = [
     "dpdp.classifier", "dpdp.registry", "dpdp.engine", "dpdp.consent",
     "dpdp.retention", "dpdp.ownership", "dpdp.crypto", "dpdp.profile_store",
     "dpdp.file_vault", "dpdp.terms", "dpdp.statutes", "dpdp.grievance",
-    "dpdp.incident", "dpdp.aadhaar_policy",
+    "dpdp.incident", "dpdp.aadhaar_policy", "dpdp.nomination",
 ]
 
 
@@ -96,6 +96,7 @@ class TestApplicationAssembly:
             "/api/forms/catalog", "/api/verify/application", "/api/review/queue",
             "/api/dpdp/notice", "/api/dpdp/my-data/{user_id}",
             "/api/dpdp/terms", "/api/dpdp/accessibility",
+            "/api/dpdp/nominee/{user_id}",
         ]:
             assert expected in paths, f"{expected} is not registered"
 

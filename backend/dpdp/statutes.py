@@ -253,10 +253,12 @@ OBLIGATIONS: tuple[Obligation, ...] = (
         "DPDP Act 2023", "s11-s14",
         "Rights to access information, correction and erasure, grievance "
         "redressal, and nomination.",
-        S.PARTIAL, E.PENALTY,
-        evidence="s11, s12 and s13 are implemented end to end.",
-        remediation="s14 nomination is recorded as a request but the nominee is "
-                    "not yet able to act on the account.",
+        S.COMPLIANT, E.PENALTY,
+        evidence="s11, s12, s13 and s14 are implemented end to end. A nominee "
+                 "gains access only after a reviewer establishes death or "
+                 "incapacity on stated evidence (dpdp/nomination.py), and may "
+                 "then exercise access, erasure and grievance but not apply "
+                 "for benefits as the citizen.",
     ),
 
     # ══ Accessibility ════════════════════════════════════════════════════

@@ -187,6 +187,17 @@ export const eraseMyData = (userId, body) => api.post(`/dpdp/erase/${userId}`, b
 export const lodgeRightsRequest = (userId, requestType, details) =>
   api.post(`/dpdp/request/${userId}`, { request_type: requestType, details });
 
+// ── Terms of service and s14 nomination ──
+
+export const getTerms = () => api.get("/dpdp/terms");
+export const getTermsStatus = (userId) => api.get(`/dpdp/terms/status/${userId}`);
+export const acceptTerms = (userId, version) =>
+  api.post(`/dpdp/terms/accept/${userId}`, { version });
+export const getNominee = (userId) => api.get(`/dpdp/nominee/${userId}`);
+export const setNominee = (userId, nominee) =>
+  api.post(`/dpdp/nominee/${userId}`, nominee);
+export const removeNominee = (userId) => api.delete(`/dpdp/nominee/${userId}`);
+
 // ── Reviewer queue ──
 // Reviewer credentials are passed per-call rather than stored on the shared
 // axios instance, so an ordinary citizen session can never accidentally carry
