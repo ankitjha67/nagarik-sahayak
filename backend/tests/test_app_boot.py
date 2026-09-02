@@ -30,7 +30,8 @@ BACKEND_MODULES = [
     "routes.pdf", "routes.demo", "routes.v2",
     "routes.discovery", "routes.exams", "routes.reports", "routes.notifications",
     "routes.forms", "routes.verification", "routes.review", "routes.dpdp",
-    "routes.kyc",
+    "routes.kyc", "routes.i18n",
+    "i18n.languages", "i18n.catalog", "i18n.resolve",
     "kyc.methods", "kyc.matching", "kyc.aadhaar_offline", "kyc.service",
     "dpdp.classifier", "dpdp.registry", "dpdp.engine", "dpdp.consent",
     "dpdp.retention", "dpdp.ownership", "dpdp.crypto", "dpdp.profile_store",
@@ -101,6 +102,7 @@ class TestApplicationAssembly:
             "/api/dpdp/nominee/{user_id}",
             "/api/kyc/methods", "/api/kyc/aadhaar/offline-xml",
             "/api/forms/catalog-states",
+            "/api/i18n/languages", "/api/i18n/bundle/{code}",
         ]:
             assert expected in paths, f"{expected} is not registered"
 
@@ -221,3 +223,50 @@ class TestKycRouting:
         body = r.json()
         assert body["count"] >= 10 and body["centralSchemes"] >= 10
         assert all(s["totalAvailable"] > s["stateSchemes"] for s in body["states"])
+
+
+class TestLanguageRouting:
+    """A language picker must be reachable before sign-in, like the notice."""
+
+    def test_language_list_is_public(self, client):
+        r = client.get("/api/i18n/languages")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["count"] >= 22
+        # Endonyms, or the picker is unusable by the people it is for.
+        assert all(l["endonym"] for l in body["languages"])
+
+    def test_a_bundle_serves_every_key_in_any_language(self, client):
+        for code in ("ta", "ur", "sat", "klingon"):
+            r = client.get(f"/api/i18n/bundle/{code}")
+            assert r.status_code == 200, code
+            assert r.json()["strings"]["nav.schemes"]
+
+    def test_an_untranslated_bundle_admits_the_fallback(self, client):
+        body = client.get("/api/i18n/bundle/mni").json()
+        assert body["fullyTranslated"] is False
+        assert body["fallbackNotice"]
+
+    def test_suggestion_follows_the_accept_language_header(self, client):
+        r = client.get("/api/i18n/suggest",
+                       headers={"Accept-Language": "ml-IN,ml;q=0.9"})
+        assert r.status_code == 200 and r.json()["recommended"] == "ml"
+
+    def test_suggestion_prefers_the_citizens_state(self, client):
+        r = client.get("/api/i18n/suggest?state=Tamil%20Nadu",
+                       headers={"Accept-Language": "hi-IN"})
+        assert r.json()["recommended"] == "ta"
+
+    def test_coverage_reports_draft_rather_than_a_bare_percentage(self, client):
+        body = client.get("/api/i18n/coverage").json()
+        assert body["summary"]["nativelyReviewed"] == 0
+        assert any(l["quality"] == "draft" for l in body["byLanguage"])
+
+    def test_the_notice_does_not_claim_more_languages_than_it_has(self, client):
+        """The interface reaches 14 languages; the consent notice reaches two.
+        Reporting them as one number would misstate the validity of a consent."""
+        body = client.get("/api/dpdp/languages").json()
+        assert set(body["available_now"]) == {"en", "hi"}
+        translated_ui = [l for l in body["eighth_schedule"]
+                         if l["interface_translated"]]
+        assert len(translated_ui) > len(body["available_now"])

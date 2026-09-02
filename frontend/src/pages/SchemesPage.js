@@ -4,7 +4,7 @@ import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
 import {
   getSchemes, getV2Schemes, getDiscoveredSchemes, downloadSchemesExcel,
-  getUserFullProfile, screenAllSchemes,
+  getUserFullProfile, screenAllSchemes, getFormCatalog, getCatalogStates,
 } from "../lib/api";
 import { Badge } from "../components/ui/badge";
 import {
@@ -67,6 +67,14 @@ export default function SchemesPage({ userId, language = "hi" }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  // "" means show everything. A named State shows that State's schemes *plus*
+  // every Central one — filtering a Bihar user down to Bihar-only schemes would
+  // hide most of what they can claim, and hide it silently.
+  const [stateFilter, setStateFilter] = useState(
+    () => localStorage.getItem("ns_state_filter") || ""
+  );
+  const [catalogStates, setCatalogStates] = useState([]);
+  const [catalogMeta, setCatalogMeta] = useState({});
   // scheme name -> {outcome, reasons_hi, reasons_en, benefit}
   const [eligibility, setEligibility] = useState({});
   const [checkingEligibility, setCheckingEligibility] = useState(false);
@@ -144,7 +152,33 @@ export default function SchemesPage({ userId, language = "hi" }) {
       ];
       setSchemes(merged);
     });
+
+    // The curated schemes come from the Scheme table, which may predate the
+    // level/state columns on a deployment that has not reseeded. The form
+    // catalog always has them, so it is kept alongside and consulted when a
+    // scheme carries no level of its own. Held separately rather than merged
+    // into `schemes`, because the two requests race and whichever resolved
+    // second would otherwise overwrite the other.
+    Promise.all([
+      getFormCatalog().catch(() => ({ data: { forms: [] } })),
+      getCatalogStates().catch(() => ({ data: { states: [] } })),
+    ]).then(([catRes, stateRes]) => {
+      const meta = {};
+      for (const f of catRes.data.forms || []) {
+        meta[f.schemeName] = { level: f.level, state: f.state };
+      }
+      setCatalogMeta(meta);
+      setCatalogStates(stateRes.data.states || []);
+    });
   }, []);
+
+  // Where a scheme sits, from the scheme itself or the form catalog. Anything
+  // with no level recorded counts as Central: showing a scheme that may not
+  // apply is recoverable, hiding one the citizen could have claimed is not.
+  const placeOf = (s) => ({
+    level: s.level || catalogMeta[s.title]?.level || "Central",
+    state: s.state || catalogMeta[s.title]?.state || "",
+  });
 
   const isHindi = language === "hi";
 
@@ -159,6 +193,11 @@ export default function SchemesPage({ userId, language = "hi" }) {
       if (!e || !eligibleOutcomes.has(e.outcome)) return false;
     }
     if (categoryFilter && s.category !== categoryFilter) return false;
+    // A State's residents see that State's schemes and every Central one.
+    if (stateFilter) {
+      const place = placeOf(s);
+      if (place.level === "State" && place.state !== stateFilter) return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const searchable = `${s.title || ""} ${s.title_hi || ""} ${s.description || ""} ${s.category || ""}`.toLowerCase();
@@ -207,6 +246,42 @@ export default function SchemesPage({ userId, language = "hi" }) {
             <Download size={14} />
           </button>
         </div>
+
+        {/* State selector. Placed above the category chips because where a
+            citizen lives decides what exists for them, and the category only
+            sorts what is left. */}
+        {catalogStates.length > 0 && (
+          <div className="mb-3 animate-fade-in-up">
+            <label htmlFor="state-filter" className="block text-[11px] font-semibold text-gray-600 mb-1">
+              {isHindi ? "आपका राज्य" : "Your State"}
+            </label>
+            <select
+              id="state-filter"
+              value={stateFilter}
+              onChange={(e) => {
+                setStateFilter(e.target.value);
+                localStorage.setItem("ns_state_filter", e.target.value);
+              }}
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
+            >
+              <option value="">
+                {isHindi ? "सभी राज्य" : "All States"}
+              </option>
+              {catalogStates.map((st) => (
+                <option key={st.state} value={st.state}>
+                  {st.state} ({st.totalAvailable})
+                </option>
+              ))}
+            </select>
+            {stateFilter && (
+              <p className="text-[11px] text-gray-500 mt-1">
+                {isHindi
+                  ? `${stateFilter} की योजनाएँ तथा सभी केंद्रीय योजनाएँ दिखाई जा रही हैं।`
+                  : `Showing ${stateFilter} schemes and every Central scheme.`}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Category Filter Chips */}
         {categories.length > 1 && (

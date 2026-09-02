@@ -68,7 +68,16 @@ model Scheme {
   descriptionHindi        String        @default("")
   officialWebsite         String        @default("")
   pdfUrl                  String
+  // "Central" or "State". A State scheme carries the State it belongs to, so a
+  // citizen is never shown a scheme they cannot claim because of where they
+  // live — and, just as importantly, a State resident still sees every Central
+  // scheme, which is the failure that would otherwise be silent.
+  level                   String        @default("Central")
+  state                   String        @default("")
   applications            Application[]
+
+  @@index([level])
+  @@index([state])
 }
 
 model FormTemplate {
@@ -80,6 +89,8 @@ model FormTemplate {
   description        String   @default("")
   descriptionHindi   String   @default("")
   category           String   @default("general")
+  level              String   @default("Central")
+  state              String   @default("")
   extractedFields    Json
   eligibilityCriteria Json?
   totalFields        Int      @default(0)

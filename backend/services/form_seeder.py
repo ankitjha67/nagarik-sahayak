@@ -41,6 +41,10 @@ def _template_data(entry: dict, pdf_url: str | None = None) -> dict:
         "description": entry.get("description", ""),
         "descriptionHindi": entry.get("descriptionHindi", ""),
         "category": entry.get("category", "general"),
+        "level": entry.get("level", "Central"),
+        # Empty string rather than null: a State view filters on equality and a
+        # null would silently drop the row from every query.
+        "state": entry.get("state") or "",
         "totalFields": len(fields),
         "extractedFields": Json(fields),
         "sections": Json(entry.get("sections", []) or []),
@@ -76,6 +80,11 @@ async def _upsert_scheme(entry: dict) -> None:
         "descriptionHindi": entry.get("descriptionHindi", ""),
         "officialWebsite": entry.get("officialWebsite", ""),
         "pdfUrl": entry.get("official_pdf_url", "") or entry.get("officialWebsite", ""),
+        "level": entry.get("level", "Central"),
+        # Empty string rather than null: the column is queried with a plain
+        # equality filter and a null would silently drop Central schemes from
+        # every State view.
+        "state": entry.get("state") or "",
     }
     existing = await prisma.scheme.find_first(where={"name": data["name"]})
     if existing:
@@ -103,7 +112,12 @@ async def seed_from_catalog(overwrite: bool = False) -> dict:
             if existing and not overwrite:
                 skipped += 1
             else:
-                action = await _upsert_template(entry)
+                # The catalog entry is not a Prisma payload — it carries
+                # snake_case keys (official_pdf_url, is_scanned) and raw lists
+                # where the client needs Json(). Passing it straight through
+                # made every seed fail into the errors list, silently, on a
+                # deployment nobody was watching.
+                action = await _upsert_template(_template_data(entry))
                 created += action == "created"
                 updated += action == "updated"
             await _upsert_scheme(entry)

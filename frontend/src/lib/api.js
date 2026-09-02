@@ -244,4 +244,42 @@ export const subscribeToExam = (userId, data) =>
 export const unsubscribeFromExam = (userId, subscriptionId) =>
   api.delete(`/notifications/subscriptions/${userId}/${subscriptionId}`);
 
+// ── Languages ──
+// Public: a person is entitled to read the interface in their own language
+// before signing in, so none of these carries a user header requirement.
+
+export const getLanguages = () => api.get("/i18n/languages");
+export const getLanguageBundle = (code) => api.get(`/i18n/bundle/${code}`);
+export const suggestLanguage = (state) =>
+  api.get("/i18n/suggest", { params: state ? { state } : {} });
+export const getLanguageCoverage = () => api.get("/i18n/coverage");
+
+// ── KYC / identity verification ──
+// None of these is a precondition for applying. They raise confidence in an
+// identity, which speeds a claim; the Aadhaar Act s7 proviso means a benefit
+// cannot be refused for want of authentication.
+
+export const getKycMethods = (onlyAvailable = false) =>
+  api.get("/kyc/methods", { params: { only_available: onlyAvailable } });
+export const getKycMethod = (key) => api.get(`/kyc/methods/${key}`);
+export const verifyAadhaarOfflineXml = (profile, fileBase64, shareCode) =>
+  api.post("/kyc/aadhaar/offline-xml", { profile, fileBase64, shareCode },
+           { timeout: 30000 });
+export const verifyAadhaarSecureQr = (profile, qr) =>
+  api.post("/kyc/aadhaar/secure-qr", { profile, qr });
+export const recordAttestation = (payload) => api.post("/kyc/attestation", payload);
+export const recordSelfDeclaration = (profile) =>
+  api.post("/kyc/self-declaration", { profile });
+export const getKycStatus = (outcomes) => api.post("/kyc/status", { outcomes });
+export const getKycSchemeGap = (outcomes, schemeName) =>
+  api.post("/kyc/scheme-gap", { outcomes, schemeName });
+
+// ── Scheme catalog, filtered by level and State ──
+// Passing a state returns that State's schemes *and* every Central scheme; a
+// resident of Bihar can claim both.
+
+export const getFormCatalog = ({ level, state } = {}) =>
+  api.get("/forms/catalog", { params: { ...(level && { level }), ...(state && { state }) } });
+export const getCatalogStates = () => api.get("/forms/catalog-states");
+
 export default api;

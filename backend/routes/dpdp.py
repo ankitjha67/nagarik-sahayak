@@ -293,28 +293,48 @@ async def retention_sweep(request: Request, req: dict | None = None):
 # The 22 languages of the Eighth Schedule. DPDP s5(3) entitles a Data Principal
 # to the notice in any of these; declaring which are actually translated is
 # honest, whereas silently serving English would not be.
-EIGHTH_SCHEDULE = [
-    ("as", "Assamese"), ("bn", "Bengali"), ("brx", "Bodo"), ("doi", "Dogri"),
-    ("gu", "Gujarati"), ("hi", "Hindi"), ("kn", "Kannada"), ("ks", "Kashmiri"),
-    ("gom", "Konkani"), ("mai", "Maithili"), ("ml", "Malayalam"),
-    ("mni", "Manipuri"), ("mr", "Marathi"), ("ne", "Nepali"), ("or", "Odia"),
-    ("pa", "Punjabi"), ("sa", "Sanskrit"), ("sat", "Santali"),
-    ("sd", "Sindhi"), ("ta", "Tamil"), ("te", "Telugu"), ("ur", "Urdu"),
-]
-TRANSLATED = {"hi", "en"}
+# The notice itself is served only in English and Hindi. That is narrower than
+# the interface, and deliberately so: a machine translation of a consent notice
+# produces a defective consent, and the person giving it believes they
+# understood what they agreed to. The interface catalogue (i18n/) is a separate,
+# lower-stakes surface and reaches 14 languages.
+NOTICE_LANGUAGES = {"hi", "en"}
 
 
 @api_router.get("/dpdp/languages")
 async def notice_languages():
-    """Which languages the s5(3) notice can be served in, and which exist."""
+    """Which languages the s5(3) notice can be served in, and which exist.
+
+    Reports the notice and the interface separately. Collapsing them would let
+    "the app speaks Tamil" be read as "the consent notice is valid in Tamil",
+    which it is not.
+    """
+    from i18n import languages as lang_registry
+    from i18n import resolve as i18n_resolve
+
     return {
-        "available_now": sorted(TRANSLATED),
+        "available_now": sorted(NOTICE_LANGUAGES),
         "entitlement": "DPDP Act 2023 s5(3): the notice must be available in "
                        "English or any language in the Eighth Schedule.",
         "eighth_schedule": [
-            {"code": code, "language": name, "translated": code in TRANSLATED}
-            for code, name in EIGHTH_SCHEDULE
+            {
+                "code": l.code,
+                "language": l.name_en,
+                "endonym": l.endonym,
+                "script": l.script,
+                "direction": "rtl" if l.rtl else "ltr",
+                "notice_translated": l.code in NOTICE_LANGUAGES,
+                "interface_translated":
+                    i18n_resolve.coverage(l.code)["quality"] != "missing",
+            }
+            for l in lang_registry.LANGUAGES if l.eighth_schedule
         ],
+        "interface_coverage": i18n_resolve.summary(),
+        "why_the_notice_is_narrower":
+            "A notice a person cannot rely on is not a notice. Interface text "
+            "generated without a native reviewer is usable; a consent notice "
+            "in the same state would produce a consent that is defective under "
+            "s6, and the person giving it would not know.",
         "request_translation": "POST /api/dpdp/request with "
                                "request_type=grievance names the language you need.",
     }

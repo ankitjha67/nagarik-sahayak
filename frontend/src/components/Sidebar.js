@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, BarChart3, ExternalLink, Zap, Globe, GraduationCap, Download, ShieldCheck } from "lucide-react";
+import { X, BarChart3, ExternalLink, Zap, Globe, GraduationCap, Download, ShieldCheck, BadgeCheck } from "lucide-react";
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -137,6 +137,26 @@ export const Sidebar = ({ isOpen, onClose }) => {
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
                 Crawl portals, view health
+              </span>
+            </div>
+          </button>
+
+          {/* Identity verification. Described as optional in the label itself,
+              not only inside the page — a menu entry that reads like a required
+              step turns people away before they ever open it. */}
+          <button
+            onClick={() => { onClose(); navigate("/identity"); }}
+            className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-green-50 group transition-colors w-full text-left"
+          >
+            <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
+              <BadgeCheck size={18} className="text-green-700" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
+                Verify Identity
+              </span>
+              <span className="text-xs text-gray-400 font-['Nunito']">
+                Optional — speeds up your claim
               </span>
             </div>
           </button>

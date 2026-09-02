@@ -1,4 +1,5 @@
 import { Menu, RotateCcw } from "lucide-react";
+import { LanguagePicker } from "./LanguagePicker";
 
 export const AppHeader = ({ title = "नागरिक सहायक", showBack, onBack, onMenuClick, onNewChat }) => (
   <header
@@ -29,6 +30,10 @@ export const AppHeader = ({ title = "नागरिक सहायक", showBa
       ) : null}
       <img src="/logo.png" alt="Nagarik Sahayak" className="h-10 w-auto object-contain" />
       <div className="flex-1" />
+      {/* In the header on every page rather than buried in settings. Someone who
+          cannot read the current language cannot navigate to a settings screen
+          to change it. */}
+      <LanguagePicker compact />
       {onNewChat && (
         <button
           data-testid="new-chat-btn"
