@@ -9,6 +9,7 @@ import SchemesPage from "@/pages/SchemesPage";
 import ExamsPage from "@/pages/ExamsPage";
 import DiscoveryPage from "@/pages/DiscoveryPage";
 import ProfilePage from "@/pages/ProfilePage";
+import ReviewPage from "@/pages/ReviewPage";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -109,6 +110,10 @@ function App() {
               isLoggedIn ? <DiscoveryPage language={language} /> : <Navigate to="/" replace />
             }
           />
+          {/* Reviewer console. Not behind the citizen login: reviewers are
+              departmental staff who authenticate with their own credentials,
+              and may never have a citizen account at all. */}
+          <Route path="/review" element={<ReviewPage />} />
           <Route
             path="/profile"
             element={

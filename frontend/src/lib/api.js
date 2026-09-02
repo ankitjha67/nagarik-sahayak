@@ -17,11 +17,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Endpoints that carry their own credentials and legitimately return 403 when
+// those are wrong. A rejected reviewer password must surface as an error on the
+// reviewer screen, not silently destroy the citizen's session and redirect them
+// to the login page.
+const SELF_AUTHENTICATING = ["/review/", "/forms/refresh", "/forms/seed", "/demo/toggle"];
+
 // Response interceptor — handle 401/403
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    const status = error.response?.status;
+    const url = error.config?.url || "";
+    const selfAuth = SELF_AUTHENTICATING.some((p) => url.includes(p));
+    if (!selfAuth && (status === 401 || status === 403)) {
       localStorage.removeItem("ns_user_id");
       localStorage.removeItem("ns_phone");
       localStorage.removeItem("ns_language");
@@ -160,6 +169,26 @@ export const extractLiveForm = (pdfUrl, schemeHint = "", saveToDb = false) =>
     { pdf_url: pdfUrl, scheme_hint: schemeHint, save_to_db: saveToDb },
     { timeout: 180000 }
   );
+
+// ── Reviewer queue ──
+// Reviewer credentials are passed per-call rather than stored on the shared
+// axios instance, so an ordinary citizen session can never accidentally carry
+// them. `creds` is {adminSecret, reviewerId}.
+
+const reviewHeaders = (creds) => ({
+  "X-Admin-Secret": creds?.adminSecret || "",
+  "X-Reviewer-Id": creds?.reviewerId || "",
+});
+
+export const getReviewQueue = (creds, { status = "pending", limit = 50, offset = 0 } = {}) =>
+  api.get("/review/queue", { params: { status, limit, offset }, headers: reviewHeaders(creds) });
+export const getReviewCase = (creds, caseId) =>
+  api.get(`/review/case/${caseId}`, { headers: reviewHeaders(creds) });
+export const decideReviewCase = (creds, caseId, decision, note = "") =>
+  api.post(`/review/case/${caseId}/decide`, { decision, note }, { headers: reviewHeaders(creds) });
+export const reopenReviewCase = (creds, caseId, note = "") =>
+  api.post(`/review/case/${caseId}/reopen`, { note }, { headers: reviewHeaders(creds) });
+export const getMyReviewCases = (userId) => api.get(`/review/my-cases/${userId}`);
 
 // ── Verification: field validity, eligibility, abuse screening ──
 

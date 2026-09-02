@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, BarChart3, ExternalLink, Zap, Globe, GraduationCap, Download } from "lucide-react";
+import { X, BarChart3, ExternalLink, Zap, Globe, GraduationCap, Download, ShieldCheck } from "lucide-react";
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -155,6 +155,24 @@ export const Sidebar = ({ isOpen, onClose }) => {
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
                 Deadlines, admit cards, results
+              </span>
+            </div>
+          </button>
+          {/* Reviewer console — departmental staff sign in with their own
+              credentials on the page itself. */}
+          <button
+            onClick={() => { onClose(); navigate("/review"); }}
+            className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-indigo-50 group transition-colors w-full text-left"
+          >
+            <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
+              <ShieldCheck size={18} className="text-indigo-700" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
+                Review Queue
+              </span>
+              <span className="text-xs text-gray-400 font-['Nunito']">
+                Staff only — flagged applications
               </span>
             </div>
           </button>

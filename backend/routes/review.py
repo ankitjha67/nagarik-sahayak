@@ -9,7 +9,7 @@ from fastapi import HTTPException, Request
 
 from routes import api_router
 from config import ADMIN_SECRET
-from services import review_queue
+from services import review_context, review_queue
 from services.review_queue import CaseStatus, TransitionError
 
 logger = logging.getLogger(__name__)
@@ -49,15 +49,25 @@ async def review_queue_list(
 
 @api_router.get("/review/case/{case_id}")
 async def review_case_detail(case_id: str, request: Request):
-    """Full detail for one case, including every risk signal that raised it."""
+    """Full detail for one case: risk signals, guidance, and applicant context.
+
+    Applicant context is resolved live rather than stored on the case, so the
+    queue never becomes a second copy of everyone's personal data and the
+    reviewer always sees current values. Identifiers are masked to their last
+    four digits — enough to confirm which number was used and whether two
+    applicants share it, which is all the flags actually turn on.
+    """
     _require_reviewer(request)
     try:
         case = await review_queue.get_case(case_id)
+        if not case:
+            raise HTTPException(status_code=404, detail="Review case not found")
+        return await review_context.enrich_case(case)
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Review case detail failed for {case_id}: {e}")
         raise HTTPException(status_code=503, detail=str(e))
-    if not case:
-        raise HTTPException(status_code=404, detail="Review case not found")
-    return case
 
 
 @api_router.post("/review/case/{case_id}/decide")

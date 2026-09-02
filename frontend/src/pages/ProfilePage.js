@@ -5,11 +5,15 @@ import { Sidebar } from "../components/Sidebar";
 import {
   getProfile, updateProfile,
   getNotificationPreferences, updateNotificationPreferences,
+  getMyReviewCases,
 } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
-import { UserCircle2, Phone, Globe, LogOut, Save, Loader2, Bell, Mail } from "lucide-react";
+import {
+  UserCircle2, Phone, Globe, LogOut, Save, Loader2, Bell, Mail,
+  ShieldCheck, Clock, CheckCircle2, XCircle,
+} from "lucide-react";
 
 function PrefToggle({ label, labelHi, checked, onChange }) {
   return (
@@ -48,6 +52,7 @@ export default function ProfilePage({ userId, onLogout }) {
     email: "",
   });
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [reviewCases, setReviewCases] = useState([]);
 
   useEffect(() => {
     if (userId) {
@@ -57,6 +62,12 @@ export default function ProfilePage({ userId, onLogout }) {
           setName(r.data.name || "");
           setLanguage(r.data.language || "hi");
         })
+        .catch(() => {});
+      // Applications held for verification. Someone whose benefit is delayed is
+      // entitled to know that a check is under way rather than assuming silence
+      // means refusal.
+      getMyReviewCases(userId)
+        .then((r) => setReviewCases(r.data.cases || []))
         .catch(() => {});
       getNotificationPreferences(userId)
         .then((r) => setPrefs({
@@ -193,6 +204,52 @@ export default function ProfilePage({ userId, onLogout }) {
             )}
           </Button>
         </div>
+
+        {/* Verification status */}
+        {reviewCases.length > 0 && (
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm mt-5 animate-fade-in-up">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldCheck size={16} className="text-[#FF9933]" />
+              <h3 className="text-sm font-bold text-[#000080] font-['Mukta']">
+                सत्यापन स्थिति / Verification Status
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {reviewCases.map((c, i) => {
+                const cfg = {
+                  pending: { Icon: Clock, cls: "bg-amber-50 border-amber-200 text-amber-800" },
+                  approved: { Icon: CheckCircle2, cls: "bg-green-50 border-green-200 text-green-800" },
+                  rejected: { Icon: XCircle, cls: "bg-red-50 border-red-200 text-red-800" },
+                }[c.status] || { Icon: Clock, cls: "bg-gray-50 border-gray-200 text-gray-700" };
+                const { Icon, cls } = cfg;
+                return (
+                  <div key={i} className={`rounded-xl border p-3 ${cls}`}>
+                    <div className="flex items-start gap-2">
+                      <Icon size={14} className="mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold font-['Mukta'] truncate">
+                          {c.scheme}
+                        </p>
+                        <p className="text-[11px] font-['Nunito'] opacity-90 mt-0.5">
+                          {c.message_hi}
+                        </p>
+                        <p className="text-[10px] font-['Nunito'] opacity-70">
+                          {c.message_en}
+                        </p>
+                        {/* Only rejections carry a note; an approval needs none. */}
+                        {c.note && (
+                          <p className="text-[10px] font-['Nunito'] mt-1 pt-1 border-t border-current/20">
+                            कारण / Reason: {c.note}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Notification Preferences */}
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm mt-5 animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
