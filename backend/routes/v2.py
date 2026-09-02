@@ -70,9 +70,8 @@ async def get_user_full_profile(user_id: str):
         raise HTTPException(status_code=404, detail="User not found")
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    full_profile = {}
-    if user.fullProfile:
-        full_profile = user.fullProfile if isinstance(user.fullProfile, dict) else json.loads(user.fullProfile) if isinstance(user.fullProfile, str) else {}
+    from dpdp import profile_store
+    full_profile = profile_store.load_full(user)
     return {
         "user_id": user.id, "phone": user.phone, "fullProfile": full_profile,
         "profileLastUpdated": user.profileLastUpdated.isoformat() if user.profileLastUpdated else None,
@@ -92,26 +91,21 @@ async def update_user_full_profile(user_id: str, req: dict = {}):
         raise HTTPException(status_code=404, detail="User not found")
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    existing = {}
-    if user.fullProfile:
-        existing = user.fullProfile if isinstance(user.fullProfile, dict) else json.loads(user.fullProfile) if isinstance(user.fullProfile, str) else {}
-    existing.update(fields)
     from prisma import Json
     import identity_index
-    from dpdp import aadhaar_policy
+    from dpdp import crypto, profile_store
 
-    # Fingerprints are computed from the complete profile, because the fraud
-    # engine must still be able to tell that two applicants used one Aadhaar.
+    existing = profile_store.load_full(user)
+    existing.update(fields)
+
+    # Fingerprints come from the complete profile, because the fraud engine
+    # must still detect two applicants sharing one Aadhaar — but the number
+    # itself is stripped before storage and the blob is encrypted at rest.
     fingerprint_source = dict(existing)
-
-    # ...but the Aadhaar itself is never persisted. Under the Aadhaar
-    # (Authentication) Regulations an entity that is not a Requesting Entity
-    # must not store the number, so only its last four digits survive.
-    storable, _withheld = aadhaar_policy.strip_for_storage(existing)
-    aadhaar_policy.assert_no_stored_aadhaar(storable, where="User.fullProfile")
+    stored_value, storable = profile_store.prepare_full_profile(existing)
 
     await prisma.user.update(where={"id": user_id}, data=identity_index.merge_into_update({
-        "fullProfile": Json(storable),
+        "fullProfile": stored_value if crypto.is_enabled() else Json(stored_value),
         "profileLastUpdated": datetime.now(timezone.utc),
     }, fingerprint_source))
     existing = storable
@@ -130,9 +124,8 @@ async def smart_profiler(req: dict = {}):
     user = await prisma.user.find_unique(where={"id": user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    full_profile = {}
-    if user.fullProfile:
-        full_profile = user.fullProfile if isinstance(user.fullProfile, dict) else json.loads(user.fullProfile) if isinstance(user.fullProfile, str) else {}
+    from dpdp import profile_store
+    full_profile = profile_store.load_full(user)
 
     all_fields = []
     seen_keys = set()
@@ -200,14 +193,8 @@ async def generate_real_filled_forms(req: dict = {}):
     user = await prisma.user.find_unique(where={"id": user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    full_profile = {}
-    if user.fullProfile:
-        full_profile = user.fullProfile if isinstance(user.fullProfile, dict) else json.loads(user.fullProfile) if isinstance(user.fullProfile, str) else {}
-    if user.profile:
-        basic = user.profile if isinstance(user.profile, dict) else json.loads(user.profile) if isinstance(user.profile, str) else {}
-        for k, v in basic.items():
-            if k not in full_profile or not full_profile[k]:
-                full_profile[k] = v
+    from dpdp import profile_store
+    full_profile = profile_store.load(user)
 
     t0 = _time.time()
     pdf_urls = []

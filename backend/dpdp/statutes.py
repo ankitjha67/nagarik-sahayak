@@ -109,11 +109,11 @@ OBLIGATIONS: tuple[Obligation, ...] = (
         "Reasonable security practices proportionate to the data held; "
         "negligence causing wrongful loss attracts compensation.",
         S.PARTIAL, E.PENALTY,
-        evidence="Ownership checks, hashed identifiers, redaction and leak "
-                 "scanning are in place.",
-        remediation="Encryption at rest for stored profiles and generated "
-                    "documents is still missing, as is a documented ISO 27001 "
-                    "or equivalent control set.",
+        evidence="Ownership checks, hashed identifiers, redaction, leak "
+                 "scanning, and AES-256-GCM encryption at rest for stored "
+                 "profiles (dpdp/crypto.py).",
+        remediation="Generated PDFs on disk are not yet encrypted, and no "
+                    "ISO 27001 or equivalent control set is documented.",
     ),
     Obligation(
         "CERT-In Directions 2022", "direction (i)",
@@ -205,8 +205,10 @@ OBLIGATIONS: tuple[Obligation, ...] = (
         "Reasonable security safeguards to prevent personal data breach.",
         S.PARTIAL, E.PENALTY,
         evidence="Artefact ownership checks, hashed identifiers, redaction "
-                 "before logging and third-party calls, automated leak scanning.",
-        remediation="Encryption at rest still outstanding.",
+                 "before logging and third-party calls, automated leak "
+                 "scanning, and authenticated encryption at rest for profiles.",
+        remediation="Generated documents on disk remain unencrypted; they are "
+                    "access-controlled but not encrypted.",
     ),
     Obligation(
         "DPDP Act 2023", "s8(5)",

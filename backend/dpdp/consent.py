@@ -174,17 +174,8 @@ async def access_summary(user_id: str) -> dict:
     if not user:
         return {"error": "No record found for this user."}
 
-    profile: dict = {}
-    for raw in (user.fullProfile, user.profile):
-        if not raw:
-            continue
-        try:
-            data = json.loads(raw) if isinstance(raw, str) else dict(raw)
-        except (ValueError, TypeError):
-            continue
-        for k, v in data.items():
-            if k not in profile or profile[k] in (None, ""):
-                profile[k] = v
+    from dpdp import profile_store
+    profile = profile_store.load(user)
 
     held = []
     for key, value in profile.items():

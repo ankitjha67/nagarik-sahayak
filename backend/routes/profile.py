@@ -11,9 +11,8 @@ async def get_profile(user_id: str):
     user = await prisma.user.find_unique(where={"id": user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    profile = {}
-    if user.profile:
-        profile = json.loads(user.profile) if isinstance(user.profile, str) else user.profile
+    from dpdp import profile_store
+    profile = profile_store.load_basic(user)
     return {
         "id": user.id, "phone": user.phone, "language": user.language,
         "name": profile.get("name", ""), "profile_data": profile,
@@ -31,32 +30,24 @@ async def update_profile(user_id: str, update: ProfileUpdate):
     if update.language:
         data["language"] = update.language
     if update.profile_data:
-        data["profile"] = json.dumps(update.profile_data, ensure_ascii=False)
+        data["profile"] = update.profile_data   # replaced below, post-fingerprint
         # Refresh identity fingerprints from the merged view, since the fraud
         # engine compares against a merged profile too. Computing them from this
         # endpoint's payload alone would drop identifiers held in fullProfile.
         import identity_index
 
-        merged = {}
-        if user.fullProfile:
-            try:
-                merged = (json.loads(user.fullProfile)
-                          if isinstance(user.fullProfile, str)
-                          else dict(user.fullProfile))
-            except (ValueError, TypeError):
-                merged = {}
+        from dpdp import profile_store
+
+        merged = profile_store.load_full(user)
         merged.update(update.profile_data)
         data = identity_index.merge_into_update(data, merged)
 
-        # Fingerprints are derived above from the full values; what gets
-        # written must not contain the Aadhaar itself.
-        from dpdp import aadhaar_policy
-        storable, _ = aadhaar_policy.strip_for_storage(update.profile_data)
-        aadhaar_policy.assert_no_stored_aadhaar(storable, where="User.profile")
-        data["profile"] = json.dumps(storable, ensure_ascii=False)
+        # Fingerprints are derived above from the full values; what is written
+        # has the Aadhaar stripped and is encrypted at rest.
+        data["profile"], _ = profile_store.prepare_basic_profile(update.profile_data)
     if data:
         user = await prisma.user.update(where={"id": user_id}, data=data)
-    profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})
+    profile = profile_store.load_basic(user)
     return {
         "id": user.id, "phone": user.phone, "language": user.language,
         "name": profile.get("name", ""), "profile_data": profile,

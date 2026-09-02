@@ -62,18 +62,8 @@ def mask_identifier(value, kind: str = "generic") -> str:
 
 def _load_profile(user) -> dict:
     """Merge a user's extended and basic profiles into one dict."""
-    merged: dict = {}
-    for raw in (getattr(user, "fullProfile", None), getattr(user, "profile", None)):
-        if not raw:
-            continue
-        try:
-            data = json.loads(raw) if isinstance(raw, str) else dict(raw)
-        except (ValueError, TypeError):
-            continue
-        for k, v in data.items():
-            if k not in merged or merged[k] in (None, ""):
-                merged[k] = v
-    return merged
+    from dpdp import profile_store
+    return profile_store.load(user)
 
 
 def build_applicant_context(user, profile: dict | None = None) -> dict:

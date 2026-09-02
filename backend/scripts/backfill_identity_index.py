@@ -27,19 +27,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def _profile_of(user) -> dict:
-    """Merge a user's extended and basic profiles, preferring the extended one."""
-    merged = {}
-    for raw in (user.fullProfile, user.profile):
-        if not raw:
-            continue
-        try:
-            data = json.loads(raw) if isinstance(raw, str) else dict(raw)
-        except (ValueError, TypeError):
-            continue
-        for k, v in data.items():
-            if k not in merged or merged[k] in (None, ""):
-                merged[k] = v
-    return merged
+    """Merge a user's extended and basic profiles, preferring the extended one.
+
+    Routed through profile_store so this reads encrypted rows too — otherwise
+    the backfill would silently compute fingerprints from ciphertext.
+    """
+    from dpdp import profile_store
+    return profile_store.load(user)
 
 
 async def main() -> int:

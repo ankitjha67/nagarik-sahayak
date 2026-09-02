@@ -223,13 +223,8 @@ async def compliance_row(user_id: str, request: Request):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    profile = {}
-    for raw in (user.fullProfile, user.profile):
-        if raw:
-            try:
-                profile.update(json.loads(raw) if isinstance(raw, str) else dict(raw))
-            except (ValueError, TypeError):
-                pass
+    from dpdp import profile_store
+    profile = profile_store.load(user)
 
     report = engine.check_row(
         profile, row_id=user_id, created_at=getattr(user, "createdAt", None),
@@ -256,13 +251,8 @@ async def compliance_audit(request: Request, limit: int = 200):
         raise HTTPException(status_code=503, detail=f"Could not read users: {e}")
 
     for user in users[:limit]:
-        profile = {}
-        for raw in (user.fullProfile, user.profile):
-            if raw:
-                try:
-                    profile.update(json.loads(raw) if isinstance(raw, str) else dict(raw))
-                except (ValueError, TypeError):
-                    pass
+        from dpdp import profile_store
+        profile = profile_store.load(user)
         if not profile:
             continue
         rows_checked += 1
@@ -460,4 +450,7 @@ async def statutory_register(request: Request):
     out["outstanding"] = [o.as_dict() for o in statutes.outstanding()]
     out["log_policy"] = incident.log_policy()
     out["grievance_officer"] = grievance.officer()
+
+    from dpdp import profile_store
+    out["data_at_rest"] = profile_store.status()
     return out

@@ -96,16 +96,9 @@ async def erase_fields(user_id: str, fields: list[str], *, reason: str = "") -> 
     if not user:
         return {"error": "User not found"}
 
-    def _load(raw):
-        if not raw:
-            return {}
-        try:
-            return json.loads(raw) if isinstance(raw, str) else dict(raw)
-        except (ValueError, TypeError):
-            return {}
-
-    full = _load(user.fullProfile)
-    basic = _load(user.profile)
+    from dpdp import profile_store
+    full = profile_store.load_full(user)
+    basic = profile_store.load_basic(user)
 
     erased, skipped = [], []
     for f in fields:
@@ -123,8 +116,16 @@ async def erase_fields(user_id: str, fields: list[str], *, reason: str = "") -> 
     # Identity fingerprints are derived from the profile, so they must be
     # recomputed — leaving a digest of an erased Aadhaar would keep the citizen
     # matchable by a value they asked to have removed.
+    # Written through profile_store so an erasure cannot silently downgrade an
+    # encrypted row to plaintext.
+    from dpdp import crypto
+    full_value, _ = profile_store.prepare_full_profile(full)
+    basic_value, _ = profile_store.prepare_basic_profile(basic)
     data = identity_index.merge_into_update(
-        {"fullProfile": Json(full), "profile": json.dumps(basic, ensure_ascii=False)},
+        {
+            "fullProfile": full_value if crypto.is_enabled() else Json(full_value),
+            "profile": basic_value,
+        },
         full,
     )
     await prisma.user.update(where={"id": user_id}, data=data)
@@ -150,13 +151,8 @@ async def erase_all(user_id: str, *, reason: str = "s12 erasure request") -> dic
     if not user:
         return {"error": "User not found"}
 
-    profile = {}
-    for raw in (user.fullProfile, user.profile):
-        if raw:
-            try:
-                profile.update(json.loads(raw) if isinstance(raw, str) else dict(raw))
-            except (ValueError, TypeError):
-                pass
+    from dpdp import profile_store
+    profile = profile_store.load(user)
 
     erasable = [k for k in profile if k not in LEGAL_HOLD_FIELDS and not k.startswith("_")]
     if erasable:
@@ -207,13 +203,8 @@ async def sweep(dry_run: bool = True, limit: int = 500) -> dict:
 
     for user in users[:limit]:
         report["scanned"] += 1
-        profile = {}
-        for raw in (user.fullProfile, user.profile):
-            if raw:
-                try:
-                    profile.update(json.loads(raw) if isinstance(raw, str) else dict(raw))
-                except (ValueError, TypeError):
-                    pass
+        from dpdp import profile_store
+        profile = profile_store.load(user)
 
         expired = expired_fields(profile, getattr(user, "createdAt", None))
         if not expired:
