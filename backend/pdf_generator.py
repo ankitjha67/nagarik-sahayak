@@ -39,8 +39,11 @@ def _mask_aadhaar(value: str, full: bool = False) -> str:
     """
     digits = re.sub(r'\D', '', str(value))
     if len(digits) == 12:
-        if full:
-            return f"{digits[:4]} {digits[4:8]} {digits[8:]}"
+        # `full` is accepted for signature compatibility but deliberately
+        # ignored. Aadhaar Act s29(4) forbids displaying the number, and these
+        # documents are written to disk and shared; UIDAI permits only the
+        # masked form. Honouring full=True here would put a criminal exposure
+        # one keyword argument away.
         return f"XXXX XXXX {digits[8:]}"
     return str(value)
 

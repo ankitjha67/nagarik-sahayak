@@ -73,7 +73,13 @@ function App() {
   return (
     <div className="App">
       <BrowserRouter>
+        {/* WCAG 2.4.1 — lets keyboard and screen-reader users bypass the
+            header rather than tabbing through it on every page. */}
+        <a href="#main-content" className="skip-to-content">
+          मुख्य सामग्री पर जाएं / Skip to main content
+        </a>
         <ErrorBoundary>
+        <main id="main-content">
         <Routes>
           <Route
             path="/"
@@ -133,6 +139,7 @@ function App() {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </main>
         </ErrorBoundary>
       </BrowserRouter>
       <Toaster position="top-center" richColors />

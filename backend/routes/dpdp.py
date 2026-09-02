@@ -15,7 +15,7 @@ from fastapi import HTTPException, Request
 from routes import api_router
 from config import ADMIN_SECRET
 from dpdp import consent as consent_service
-from dpdp import engine, registry, retention
+from dpdp import engine, grievance, incident, registry, retention, statutes
 from dpdp.registry import Purpose
 
 logger = logging.getLogger(__name__)
@@ -296,3 +296,168 @@ async def retention_sweep(request: Request, req: dict | None = None):
     except Exception as e:
         logger.error(f"Retention sweep failed: {e}")
         raise HTTPException(status_code=503, detail=str(e))
+
+
+# ── Published contacts and statements ────────────────────────────────────
+
+# The 22 languages of the Eighth Schedule. DPDP s5(3) entitles a Data Principal
+# to the notice in any of these; declaring which are actually translated is
+# honest, whereas silently serving English would not be.
+EIGHTH_SCHEDULE = [
+    ("as", "Assamese"), ("bn", "Bengali"), ("brx", "Bodo"), ("doi", "Dogri"),
+    ("gu", "Gujarati"), ("hi", "Hindi"), ("kn", "Kannada"), ("ks", "Kashmiri"),
+    ("gom", "Konkani"), ("mai", "Maithili"), ("ml", "Malayalam"),
+    ("mni", "Manipuri"), ("mr", "Marathi"), ("ne", "Nepali"), ("or", "Odia"),
+    ("pa", "Punjabi"), ("sa", "Sanskrit"), ("sat", "Santali"),
+    ("sd", "Sindhi"), ("ta", "Tamil"), ("te", "Telugu"), ("ur", "Urdu"),
+]
+TRANSLATED = {"hi", "en"}
+
+
+@api_router.get("/dpdp/languages")
+async def notice_languages():
+    """Which languages the s5(3) notice can be served in, and which exist."""
+    return {
+        "available_now": sorted(TRANSLATED),
+        "entitlement": "DPDP Act 2023 s5(3): the notice must be available in "
+                       "English or any language in the Eighth Schedule.",
+        "eighth_schedule": [
+            {"code": code, "language": name, "translated": code in TRANSLATED}
+            for code, name in EIGHTH_SCHEDULE
+        ],
+        "request_translation": "POST /api/dpdp/request with "
+                               "request_type=grievance names the language you need.",
+    }
+
+
+@api_router.get("/dpdp/grievance-officer")
+async def grievance_officer():
+    """Published Grievance Officer contact (IT Rules 3(2), DPDP s8(7))."""
+    return grievance.officer()
+
+
+@api_router.get("/dpdp/accessibility")
+async def accessibility_statement():
+    """Accessibility statement (GIGW 3.0; RPwD Act s40-s46).
+
+    Conformance is stated as partial because that is what it is. Claiming full
+    WCAG 2.1 AA without an assistive-technology audit would mislead exactly the
+    people the statement exists to serve.
+    """
+    return {
+        "standard": "WCAG 2.1 Level AA, as required by GIGW 3.0 and the RPwD "
+                    "Act 2016 (s40, s42, s46)",
+        "conformance": "partial",
+        "measures_taken": [
+            "Document language declared so screen readers pronounce Hindi and "
+            "English correctly.",
+            "Semantic landmarks and a skip link to the main content.",
+            "Every icon-only control carries an accessible name.",
+            "Status is never conveyed by colour alone — an icon and text "
+            "accompany every colour cue.",
+            "Visible keyboard focus on all interactive elements.",
+            "Minimum body text size raised for legibility.",
+        ],
+        "known_limitations": [
+            "A full audit with screen readers and magnifiers has not been "
+            "carried out.",
+            "Some secondary text may fall below the 4.5:1 contrast ratio.",
+            "The notice is available in Hindi and English only, not all 22 "
+            "Eighth Schedule languages.",
+        ],
+        "feedback": "Report an accessibility barrier via "
+                    "POST /api/dpdp/request with request_type=grievance. "
+                    "Barriers are treated as grievances under IT Rules 3(2), "
+                    "with the same 24-hour and 15-day deadlines.",
+        "contact": grievance.officer(),
+    }
+
+
+# ── Grievance handling (IT Rules 3(2)) ───────────────────────────────────
+
+@api_router.get("/dpdp/grievances")
+async def grievance_queue(request: Request, include_resolved: bool = False):
+    """Open grievances with their statutory deadlines."""
+    _require_admin(request)
+    return await grievance.queue(include_resolved=include_resolved)
+
+
+@api_router.post("/dpdp/grievances/{request_id}/resolve")
+async def resolve_grievance(request_id: str, request: Request, req: dict):
+    """Close a grievance, recording what was actually done."""
+    _require_admin(request)
+    resolution = (req.get("resolution") or "").strip()
+    if not resolution:
+        raise HTTPException(
+            status_code=400,
+            detail="A resolution must state what was done for the citizen.")
+    try:
+        return await grievance.resolve(
+            request_id, resolution, req.get("officer_id", ""))
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Grievance resolution failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+# ── Incident register (CERT-In 2022, DPDP s8(5)) ─────────────────────────
+
+@api_router.get("/dpdp/incidents")
+async def incident_register(request: Request, include_resolved: bool = False):
+    """Incidents with their CERT-In 6-hour clock and DPDP notification state."""
+    _require_admin(request)
+    return await incident.register(include_resolved=include_resolved)
+
+
+@api_router.post("/dpdp/incidents")
+async def record_incident(request: Request, req: dict):
+    """Record a cyber incident or personal data breach.
+
+    Recording starts the 6-hour CERT-In clock, so this should be called on
+    first awareness rather than after investigation.
+    """
+    _require_admin(request)
+    required = ("category", "severity", "description")
+    missing = [f for f in required if not (req.get(f) or "").strip()]
+    if missing:
+        raise HTTPException(
+            status_code=400, detail=f"Required: {', '.join(missing)}")
+    try:
+        return await incident.record(
+            category=req["category"], severity=req["severity"],
+            description=req["description"],
+            affected_count=int(req.get("affected_count", 0)),
+        )
+    except Exception as e:
+        logger.error(f"Incident recording failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.post("/dpdp/incidents/{incident_id}/notified")
+async def mark_incident_notified(incident_id: str, request: Request, req: dict):
+    """Record that CERT-In/the Board, or affected principals, were notified."""
+    _require_admin(request)
+    try:
+        return await incident.mark_notified(
+            incident_id,
+            board=req.get("board"), principals=req.get("principals"))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+# ── Statutory register ───────────────────────────────────────────────────
+
+@api_router.get("/dpdp/compliance/statutes")
+async def statutory_register(request: Request):
+    """Every statute and guideline this app is subject to, with its status."""
+    _require_admin(request)
+    out = statutes.summary()
+    out["outstanding"] = [o.as_dict() for o in statutes.outstanding()]
+    out["log_policy"] = incident.log_policy()
+    out["grievance_officer"] = grievance.officer()
+    return out

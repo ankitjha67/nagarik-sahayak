@@ -98,13 +98,23 @@ async def update_user_full_profile(user_id: str, req: dict = {}):
     existing.update(fields)
     from prisma import Json
     import identity_index
+    from dpdp import aadhaar_policy
 
-    # Refresh the identity fingerprints alongside the profile they describe, so
-    # the fraud index can never drift out of step with the stored data.
+    # Fingerprints are computed from the complete profile, because the fraud
+    # engine must still be able to tell that two applicants used one Aadhaar.
+    fingerprint_source = dict(existing)
+
+    # ...but the Aadhaar itself is never persisted. Under the Aadhaar
+    # (Authentication) Regulations an entity that is not a Requesting Entity
+    # must not store the number, so only its last four digits survive.
+    storable, _withheld = aadhaar_policy.strip_for_storage(existing)
+    aadhaar_policy.assert_no_stored_aadhaar(storable, where="User.fullProfile")
+
     await prisma.user.update(where={"id": user_id}, data=identity_index.merge_into_update({
-        "fullProfile": Json(existing),
+        "fullProfile": Json(storable),
         "profileLastUpdated": datetime.now(timezone.utc),
-    }, existing))
+    }, fingerprint_source))
+    existing = storable
     return {"success": True, "fullProfile": existing, "fieldsUpdated": list(fields.keys())}
 
 
@@ -283,7 +293,11 @@ async def generate_real_filled_forms(req: dict = {}):
                 logger.info(f"PDF filled via {fill_method} for '{sname}': {fill_result.get('filled_count', 0)} fields")
 
         if fill_method == "generated":
-            is_draft = not bool(original_pdf_url)
+            # Aadhaar is never printed in full. Section 29(4) forbids
+            # displaying the number, and these PDFs sit on disk and are shared;
+            # UIDAI permits only the masked form. The citizen writes the full
+            # number onto the printed form themselves.
+            is_draft = True
             generate_real_filled_form_pdf(
                 filled_fields=full_profile, scheme_name=sname,
                 scheme_name_hindi=ft.schemeNameHindi or "",

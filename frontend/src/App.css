@@ -1,1 +1,77 @@
 /* Nagarik Sahayak - Minimal App Styles */
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   Accessibility — RPwD Act 2016 (s40, s42, s46) and GIGW 3.0, which set
+   WCAG 2.1 Level AA as the baseline for government applications.
+
+   A benefits application a blind or low-vision citizen cannot operate
+   denies them the benefit itself, so these are correctness requirements
+   rather than polish.
+   ───────────────────────────────────────────────────────────────────── */
+
+/* Keyboard users must be able to see where they are. Removing focus rings
+   without replacing them is the single most common accessibility defect. */
+:focus-visible {
+  outline: 3px solid #000080;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skip link: keyboard and screen-reader users should not have to traverse
+   the whole header on every page to reach the content. Visible on focus. */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.75rem 1.25rem;
+  background: #000080;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 0 0 0.5rem 0;
+}
+.skip-to-content:focus {
+  left: 0;
+}
+
+/* WCAG 1.4.4 requires text to survive 200% zoom. Sizes below ~11px are
+   unreadable for low-vision users well before that point, so the floor is
+   raised rather than left to each component. */
+.text-\[9px\] { font-size: 11px !important; }
+.text-\[10px\] { font-size: 11px !important; }
+
+/* WCAG 2.5.5: touch targets need to be large enough to hit reliably —
+   this matters most for users with motor impairments and for the older
+   citizens these pension schemes serve. */
+button, a[role="button"], [role="switch"] {
+  min-height: 24px;
+}
+
+/* WCAG 2.3.3 / prefers-reduced-motion: animation can trigger symptoms for
+   users with vestibular disorders. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Respect a user's high-contrast preference rather than overriding it. */
+@media (prefers-contrast: more) {
+  .text-gray-400, .text-gray-500 { color: #374151 !important; }
+}
+
+/* Available to screen readers, invisible on screen — for context that a
+   sighted user gets from layout alone. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

@@ -268,14 +268,24 @@ class TestPdfGeneratorDraft:
         assert "XXXX" in result
         assert "123456789012" not in result
 
-    def test_format_field_value_final_shows_full_aadhaar(self):
+    def test_final_output_also_masks_aadhaar(self):
+        """Even a non-draft form must not carry the number (s29(4))."""
         from pdf_generator import _format_field_value
         result = _format_field_value("123456789012", "aadhaar", is_draft=False)
-        assert "1234 5678 9012" == result
+        assert result == "XXXX XXXX 9012"
+        assert "12345678" not in result
 
-    def test_mask_aadhaar_full_mode(self):
+    def test_aadhaar_is_masked_regardless_of_the_full_flag(self):
+        """Aadhaar Act s29(4) forbids displaying the number.
+
+        These PDFs are written to disk and shared, and UIDAI permits only the
+        masked form, so the unmasked branch was removed. `full` is still
+        accepted for signature compatibility but is deliberately ignored —
+        honouring it would leave a criminal exposure one keyword argument away.
+        The citizen writes the full number onto the printed form themselves.
+        """
         from pdf_generator import _mask_aadhaar
-        assert _mask_aadhaar("123456789012", full=True) == "1234 5678 9012"
+        assert _mask_aadhaar("123456789012", full=True) == "XXXX XXXX 9012"
         assert _mask_aadhaar("123456789012", full=False) == "XXXX XXXX 9012"
 
     def test_generate_pdf_with_draft_false_no_watermark(self):

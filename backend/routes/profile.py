@@ -47,6 +47,13 @@ async def update_profile(user_id: str, update: ProfileUpdate):
                 merged = {}
         merged.update(update.profile_data)
         data = identity_index.merge_into_update(data, merged)
+
+        # Fingerprints are derived above from the full values; what gets
+        # written must not contain the Aadhaar itself.
+        from dpdp import aadhaar_policy
+        storable, _ = aadhaar_policy.strip_for_storage(update.profile_data)
+        aadhaar_policy.assert_no_stored_aadhaar(storable, where="User.profile")
+        data["profile"] = json.dumps(storable, ensure_ascii=False)
     if data:
         user = await prisma.user.update(where={"id": user_id}, data=data)
     profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})
