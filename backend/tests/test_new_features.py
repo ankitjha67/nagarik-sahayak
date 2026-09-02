@@ -32,7 +32,7 @@ class TestDemoModeEndpoints:
         initial_state = initial["demo_mode"]
         
         # Toggle
-        toggle_response = requests.post(f"{BASE_URL}/api/demo/toggle")
+        toggle_response = requests.post(f"{BASE_URL}/api/demo/toggle", headers={"X-Admin-Secret": os.environ.get("ADMIN_SECRET", "test-secret")})
         assert toggle_response.status_code == 200
         toggled = toggle_response.json()
         assert "demo_mode" in toggled
@@ -45,11 +45,11 @@ class TestDemoModeEndpoints:
         initial = requests.get(f"{BASE_URL}/api/demo/status").json()["demo_mode"]
         
         # First toggle
-        first_toggle = requests.post(f"{BASE_URL}/api/demo/toggle").json()["demo_mode"]
+        first_toggle = requests.post(f"{BASE_URL}/api/demo/toggle", headers={"X-Admin-Secret": os.environ.get("ADMIN_SECRET", "test-secret")}).json()["demo_mode"]
         assert first_toggle != initial
         
         # Second toggle - should return to initial
-        second_toggle = requests.post(f"{BASE_URL}/api/demo/toggle").json()["demo_mode"]
+        second_toggle = requests.post(f"{BASE_URL}/api/demo/toggle", headers={"X-Admin-Secret": os.environ.get("ADMIN_SECRET", "test-secret")}).json()["demo_mode"]
         assert second_toggle == initial
         print(f"Round-trip: {initial} → {first_toggle} → {second_toggle}")
 

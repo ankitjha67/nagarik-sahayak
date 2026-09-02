@@ -204,7 +204,7 @@ class TestAuthFlow:
         # Then verify
         response = requests.post(
             f"{BASE_URL}/api/auth/verify-otp",
-            json={"phone": "9876543210", "otp": "1234"},
+            json={"phone": "9876543210", "otp": "123456"},
             headers={"Content-Type": "application/json"}
         )
         assert response.status_code == 200

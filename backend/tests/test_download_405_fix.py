@@ -24,7 +24,7 @@ def authenticated_user(api_client):
     assert resp.status_code == 200
     
     # Verify OTP
-    resp = api_client.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": "9876543210", "otp": "1234"})
+    resp = api_client.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": "9876543210", "otp": "123456"})
     assert resp.status_code == 200
     return resp.json()["user_id"]
 

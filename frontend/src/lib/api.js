@@ -8,6 +8,35 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// Request interceptor — attach user_id from localStorage
+api.interceptors.request.use((config) => {
+  const userId = localStorage.getItem("ns_user_id");
+  if (userId) {
+    config.headers["X-User-Id"] = userId;
+  }
+  return config;
+});
+
+// Response interceptor — handle 401/403
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      localStorage.removeItem("ns_user_id");
+      localStorage.removeItem("ns_phone");
+      localStorage.removeItem("ns_language");
+      window.location.href = "/";
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Cancel token helper using AbortController
+export const createCancelToken = () => {
+  const controller = new AbortController();
+  return { signal: controller.signal, cancel: () => controller.abort() };
+};
+
 // Auth
 export const sendOTP = (phone) => api.post("/auth/send-otp", { phone });
 export const verifyOTP = (phone, otp) => api.post("/auth/verify-otp", { phone, otp });
@@ -73,5 +102,60 @@ export const smartProfiler = (userId, schemeNames) =>
 
 export const generateRealFilledForms = (userId, schemeNames) =>
   api.post("/v2/generate-filled-forms", { user_id: userId, scheme_names: schemeNames });
+
+// Upload PDF and extract form fields (new scheme onboarding)
+export const uploadAndExtract = (formData) =>
+  api.post("/upload-and-extract", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 120000, // 2 min — extraction can take time
+  });
+
+// ── V3 Discovery APIs ──
+
+export const getDiscoveryStatus = () => api.get("/discovery/status");
+export const triggerDiscoveryCrawl = (portalNames) =>
+  api.post("/discovery/crawl", portalNames ? { portal_names: portalNames } : {});
+export const getDiscoveryPortals = () => api.get("/discovery/portals");
+export const getPortalHealth = () => api.get("/discovery/portal-health");
+export const getDiscoveryStats = () => api.get("/discovery/stats");
+
+// ── V3 Exam APIs ──
+
+export const getExams = (params = {}) =>
+  api.get("/exams", { params });
+export const getExamAlerts = (daysAhead = 30) =>
+  api.get("/exams/alerts", { params: { days_ahead: daysAhead } });
+export const getExamCategories = () => api.get("/exams/categories");
+export const getExamStats = () => api.get("/exams/stats");
+export const getExamDetail = (examId) => api.get(`/exams/${examId}`);
+
+// ── V3 Report APIs ──
+
+export const downloadSchemesExcel = () =>
+  api.get("/reports/schemes-excel", { responseType: "blob", timeout: 120000 });
+export const downloadExamsExcel = () =>
+  api.get("/reports/exams-excel", { responseType: "blob", timeout: 120000 });
+export const getNotificationConfig = () => api.get("/reports/notification-config");
+export const sendSchemeAlert = (data) => api.post("/reports/send-alert", data);
+
+// ── Discovered Schemes (V3 crawler DB) ──
+
+export const getDiscoveredSchemes = (params = {}) =>
+  api.get("/discovery/schemes", { params });
+export const resetPortalHealth = (portalName) =>
+  api.post(`/discovery/portal-health/${encodeURIComponent(portalName)}/reset`);
+
+// ── Notification Preferences & Exam Subscriptions ──
+
+export const getNotificationPreferences = (userId) =>
+  api.get(`/notifications/preferences/${userId}`);
+export const updateNotificationPreferences = (userId, prefs) =>
+  api.put(`/notifications/preferences/${userId}`, prefs);
+export const getExamSubscriptions = (userId) =>
+  api.get(`/notifications/subscriptions/${userId}`);
+export const subscribeToExam = (userId, data) =>
+  api.post(`/notifications/subscriptions/${userId}`, data);
+export const unsubscribeFromExam = (userId, subscriptionId) =>
+  api.delete(`/notifications/subscriptions/${userId}/${subscriptionId}`);
 
 export default api;

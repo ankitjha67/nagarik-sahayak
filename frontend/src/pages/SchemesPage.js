@@ -2,34 +2,119 @@ import { useState, useEffect } from "react";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
-import { getSchemes } from "../lib/api";
+import { getSchemes, getV2Schemes, getDiscoveredSchemes, downloadSchemesExcel } from "../lib/api";
 import { Badge } from "../components/ui/badge";
-import { Sprout, HeartPulse, Baby, ExternalLink, ChevronDown, ChevronUp, Users, IndianRupee } from "lucide-react";
+import {
+  Sprout, HeartPulse, Baby, ExternalLink, ChevronDown, ChevronUp,
+  Users, IndianRupee, Home, GraduationCap, Rocket, Briefcase,
+  Search, Download, Building2,
+} from "lucide-react";
 
 const ICON_MAP = {
   sprout: Sprout,
   "heart-pulse": HeartPulse,
   baby: Baby,
+  housing: Home,
+  education: GraduationCap,
+  agriculture: Sprout,
+  health: HeartPulse,
+  startup: Rocket,
+  finance: Briefcase,
+  general: Building2,
 };
 
 const CATEGORY_COLORS = {
   agriculture: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
   health: { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },
   savings: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
+  housing: { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200" },
+  education: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+  startup: { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200" },
+  finance: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
+  general: { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" },
 };
 
 export default function SchemesPage({ language = "hi" }) {
   const [schemes, setSchemes] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
 
   useEffect(() => {
-    getSchemes()
-      .then((r) => setSchemes(r.data || []))
-      .catch(() => {});
+    // Load curated (V1+V2) and crawler-discovered (V3) schemes, merge results
+    Promise.all([
+      getSchemes().catch(() => ({ data: [] })),
+      getV2Schemes().catch(() => ({ data: { schemes: [] } })),
+      getDiscoveredSchemes({ limit: 100 }).catch(() => ({ data: { schemes: [] } })),
+    ]).then(([v1Res, v2Res, v3Res]) => {
+      const v1 = v1Res.data || [];
+      const v2 = v2Res.data.schemes || [];
+      const v3 = v3Res.data.schemes || [];
+      // Merge: V2 (curated, has forms) first, then V1 not in V2, then V3 discovered
+      const v2Names = new Set(v2.map(s => s.name));
+      const curatedNames = new Set([...v2Names, ...v1.map(s => s.title)]);
+      const merged = [
+        ...v2.map(s => ({
+          ...s,
+          title: s.name,
+          title_hi: s.nameHindi || s.name,
+          description: s.description || "",
+          description_hi: s.descriptionHindi || s.description || "",
+          eligibility: s.eligibilityCriteriaText || "",
+          eligibility_hi: s.eligibilityCriteriaText || "",
+          category: s.category || "general",
+        })),
+        ...v1.filter(s => !v2Names.has(s.title)),
+        ...v3
+          .filter(s => s.name && !curatedNames.has(s.name))
+          .map(s => ({
+            id: s.scheme_id,
+            title: s.name,
+            title_hi: s.name,
+            description: s.summary || "",
+            description_hi: s.summary || "",
+            eligibility: s.eligibility || "",
+            eligibility_hi: s.eligibility || "",
+            benefits: s.benefit_amount || "",
+            benefits_hi: s.benefit_amount || "",
+            category: (s.sector || "general").toLowerCase(),
+            officialWebsite: s.official_website || s.detail_url || "",
+            discovered: true,
+            level: s.level,
+            state: s.state,
+          })),
+      ];
+      setSchemes(merged);
+    });
   }, []);
 
   const isHindi = language === "hi";
+
+  // Filter schemes
+  const filteredSchemes = schemes.filter(s => {
+    if (categoryFilter && s.category !== categoryFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const searchable = `${s.title || ""} ${s.title_hi || ""} ${s.description || ""} ${s.category || ""}`.toLowerCase();
+      if (!searchable.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const categories = [...new Set(schemes.map(s => s.category).filter(Boolean))];
+
+  const handleDownloadExcel = async () => {
+    try {
+      const res = await downloadSchemesExcel();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `GovScheme_Report_${new Date().toISOString().slice(0,10)}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {}
+  };
 
   return (
     <div data-testid="schemes-page" className="min-h-screen bg-gray-50 pb-20">
@@ -37,21 +122,71 @@ export default function SchemesPage({ language = "hi" }) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="max-w-md mx-auto px-4 pt-4">
+        {/* Search + Download */}
+        <div className="flex gap-2 mb-3 animate-fade-in-up">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={isHindi ? "योजना खोजें..." : "Search schemes..."}
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm font-['Nunito'] focus:border-[#FF9933] focus:ring-1 focus:ring-[#FF9933] outline-none"
+            />
+          </div>
+          <button
+            onClick={handleDownloadExcel}
+            className="flex items-center gap-1 px-3 py-2.5 bg-[#000080] text-white rounded-xl text-xs font-semibold hover:bg-[#000060] transition-colors"
+            aria-label="Download Excel Report"
+          >
+            <Download size={14} />
+          </button>
+        </div>
+
+        {/* Category Filter Chips */}
+        {categories.length > 1 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3 no-scrollbar animate-fade-in-up">
+            <button
+              onClick={() => setCategoryFilter("")}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all ${
+                !categoryFilter
+                  ? "bg-[#FF9933] text-white"
+                  : "bg-white text-gray-600 border border-gray-200"
+              }`}
+            >
+              {isHindi ? "सभी" : "All"} ({schemes.length})
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat === categoryFilter ? "" : cat)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all ${
+                  categoryFilter === cat
+                    ? "bg-[#FF9933] text-white"
+                    : "bg-white text-gray-600 border border-gray-200"
+                }`}
+              >
+                {cat} ({schemes.filter(s => s.category === cat).length})
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Info Banner */}
         <div className="bg-[#FFF0E0] rounded-xl p-4 border border-orange-100 mb-5 animate-fade-in-up">
           <p className="text-sm text-[#000080] font-['Mukta'] font-semibold">
             {isHindi
-              ? "नीचे दी गई योजनाओं की जानकारी देखें और अपनी पात्रता जांचें।"
-              : "Browse the schemes below and check your eligibility."}
+              ? `${filteredSchemes.length} योजनाओं की जानकारी देखें और अपनी पात्रता जांचें।`
+              : `Browse ${filteredSchemes.length} schemes below and check your eligibility.`}
           </p>
         </div>
 
         {/* Scheme Cards */}
         <div className="space-y-4 stagger-children">
-          {schemes.map((scheme) => {
+          {filteredSchemes.map((scheme) => {
             const isExpanded = expandedId === scheme.id;
-            const IconComp = ICON_MAP[scheme.icon] || Sprout;
-            const colors = CATEGORY_COLORS[scheme.category] || CATEGORY_COLORS.agriculture;
+            const IconComp = ICON_MAP[scheme.category] || ICON_MAP[scheme.icon] || Sprout;
+            const colors = CATEGORY_COLORS[scheme.category] || CATEGORY_COLORS.general;
 
             return (
               <div
@@ -75,12 +210,22 @@ export default function SchemesPage({ language = "hi" }) {
                     <p className="text-sm text-gray-500 font-['Nunito'] mt-1 line-clamp-2">
                       {isHindi ? scheme.description_hi : scheme.description}
                     </p>
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex gap-2 mt-2 flex-wrap">
                       <Badge
                         className={`${colors.bg} ${colors.text} ${colors.border} border text-[10px] font-semibold px-2 py-0.5`}
                       >
                         {scheme.category}
                       </Badge>
+                      {scheme.discovered && (
+                        <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 border text-[10px] font-semibold px-2 py-0.5">
+                          {isHindi ? "खोजी गई" : "Discovered"}
+                        </Badge>
+                      )}
+                      {scheme.state && (
+                        <Badge className="bg-gray-50 text-gray-600 border-gray-200 border text-[10px] font-semibold px-2 py-0.5">
+                          {scheme.state.replace(/_/g, " ")}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <div className="text-gray-400 mt-1">
@@ -117,17 +262,32 @@ export default function SchemesPage({ language = "hi" }) {
                       </p>
                     </div>
 
-                    {/* PDF Link */}
-                    <a
-                      href={scheme.pdf_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      data-testid={`scheme-pdf-${scheme.id}`}
-                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[#FFF0E0] rounded-full text-sm font-semibold text-[#000080] hover:bg-[#FFE4C4] transition-colors"
-                    >
-                      <ExternalLink size={14} />
-                      {isHindi ? "विस्तृत दिशानिर्देश (PDF)" : "Detailed Guidelines (PDF)"}
-                    </a>
+                    {/* Action Links */}
+                    <div className="flex gap-2 mt-4 flex-wrap">
+                      {scheme.pdf_url && (
+                        <a
+                          href={scheme.pdf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-testid={`scheme-pdf-${scheme.id}`}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#FFF0E0] rounded-full text-sm font-semibold text-[#000080] hover:bg-[#FFE4C4] transition-colors"
+                        >
+                          <ExternalLink size={14} />
+                          {isHindi ? "दिशानिर्देश (PDF)" : "Guidelines (PDF)"}
+                        </a>
+                      )}
+                      {scheme.officialWebsite && (
+                        <a
+                          href={scheme.officialWebsite}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#E8EAF6] rounded-full text-sm font-semibold text-[#000080] hover:bg-[#C5CAE9] transition-colors"
+                        >
+                          <ExternalLink size={14} />
+                          {isHindi ? "आधिकारिक वेबसाइट" : "Official Website"}
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

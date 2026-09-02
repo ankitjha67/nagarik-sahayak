@@ -58,7 +58,9 @@ model ChatLog {
   message   String
   timestamp DateTime @default(now())
   sender    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Application {
@@ -70,6 +72,38 @@ model Application {
   filledFields Json?
   downloadedAt DateTime?
   createdAt    DateTime  @default(now())
-  user         User      @relation(fields: [userId], references: [id])
-  scheme       Scheme    @relation(fields: [schemeId], references: [id])
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheme       Scheme    @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([schemeId])
+}
+
+model ExamSubscription {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  examId     String
+  examName   String
+  category   String   @default("")
+  alertTypes Json     @default("[]") // ["deadline", "admit_card", "result"]
+  email      String   @default("")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([examId])
+}
+
+model CrawlRun {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  runType         String   @default("schemes") // schemes | exams | full
+  status          String   @default("running") // running | completed | failed
+  schemesFound    Int      @default(0)
+  schemesNew      Int      @default(0)
+  schemesUpdated  Int      @default(0)
+  portalsCrawled  Int      @default(0)
+  portalsFailed   Int      @default(0)
+  error           String?
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
 }

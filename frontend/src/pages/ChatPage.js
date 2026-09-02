@@ -358,6 +358,7 @@ export default function ChatPage({ userId, language = "hi" }) {
             onClick={() => fileInputRef.current?.click()}
             disabled={loading || isRecording}
             title="PDF अपलोड करें"
+            aria-label="Upload PDF file"
             className="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 bg-gray-100 text-gray-500 hover:bg-[#FFF0E0] hover:text-[#FF9933]"
           >
             <Paperclip size={18} />
@@ -374,6 +375,7 @@ export default function ChatPage({ userId, language = "hi" }) {
             }}
             disabled={loading || isRecording}
             title={sttLang === "hi" ? "Voice language: Hindi — click to switch" : "Voice language: English — click to switch"}
+            aria-label={sttLang === "hi" ? "Switch voice language to English" : "Switch voice language to Hindi"}
             className="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 bg-[#E6E6F2] text-[#000080] hover:bg-[#D0D0E8] active:scale-95 text-xs font-bold font-['Mukta']"
           >
             {sttLang === "hi" ? "हि" : "EN"}
@@ -385,6 +387,7 @@ export default function ChatPage({ userId, language = "hi" }) {
             onClick={isRecording ? stopRecording : startRecording}
             disabled={loading && !isRecording}
             title={isRecording ? "रिकॉर्डिंग बंद करें" : "बोलकर पूछें"}
+            aria-label={isRecording ? "Stop recording" : "Start voice recording"}
             className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
               isRecording
                 ? "bg-red-500 text-white recording-pulse"

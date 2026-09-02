@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { smartProfiler, updateUserFullProfile, generateRealFilledForms } from "../lib/api";
+import api from "../lib/api";
 import { Check, ChevronRight, FileDown, Loader2, Download, RotateCcw } from "lucide-react";
 
 export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) => {
@@ -24,7 +25,9 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
   }, [userId, schemeNames]);
 
   useEffect(() => {
+    const controller = new AbortController();
     fetchProfilerState();
+    return () => controller.abort();
   }, [fetchProfilerState]);
 
   const handleSubmitAnswer = async () => {
@@ -173,6 +176,14 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
   const progress = profilerState.progress;
   const nextQ = profilerState.nextQuestion;
 
+  if (!nextQ) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 size={24} className="text-[#FF9933] animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div data-testid="smart-profiler-active" className="space-y-3 animate-fade-in-up">
       {/* Progress bar */}
@@ -284,7 +295,6 @@ const DownloadAllButton = ({ pdfUrls, backendUrl, userId }) => {
     setDone(true);
     setDownloading(false);
     try {
-      const api = (await import("../lib/api")).default;
       await api.get(`/download-all?user_id=${userId || ""}&count=${pdfUrls.length}`);
     } catch {}
   };
