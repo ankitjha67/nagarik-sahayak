@@ -18,8 +18,25 @@ model User {
   profileLastUpdated DateTime?
   schemeHistory      Json?
   createdAt          DateTime      @default(now())
+
+  // Keyed HMAC digests of the identifiers used for cross-applicant fraud
+  // checks. Stored as hashes, not values: the engine only ever asks whether two
+  // applicants share an identifier, which equality answers, so the database
+  // gains the signal without holding a second plaintext copy of everyone's
+  // Aadhaar. Indexed so the check is a counted query rather than a table scan.
+  // Populated by identity_index.py; see scripts/backfill_identity_index.py.
+  aadhaarFp          String?
+  bankAccountFp      String?
+  mobileFp           String?
+  rationCardFp       String?
+
   chatLogs           ChatLog[]
   applications       Application[]
+
+  @@index([aadhaarFp])
+  @@index([bankAccountFp])
+  @@index([mobileFp])
+  @@index([rationCardFp])
 }
 
 model Scheme {

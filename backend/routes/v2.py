@@ -97,10 +97,14 @@ async def update_user_full_profile(user_id: str, req: dict = {}):
         existing = user.fullProfile if isinstance(user.fullProfile, dict) else json.loads(user.fullProfile) if isinstance(user.fullProfile, str) else {}
     existing.update(fields)
     from prisma import Json
-    await prisma.user.update(where={"id": user_id}, data={
+    import identity_index
+
+    # Refresh the identity fingerprints alongside the profile they describe, so
+    # the fraud index can never drift out of step with the stored data.
+    await prisma.user.update(where={"id": user_id}, data=identity_index.merge_into_update({
         "fullProfile": Json(existing),
         "profileLastUpdated": datetime.now(timezone.utc),
-    })
+    }, existing))
     return {"success": True, "fullProfile": existing, "fieldsUpdated": list(fields.keys())}
 
 

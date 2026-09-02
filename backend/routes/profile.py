@@ -32,6 +32,21 @@ async def update_profile(user_id: str, update: ProfileUpdate):
         data["language"] = update.language
     if update.profile_data:
         data["profile"] = json.dumps(update.profile_data, ensure_ascii=False)
+        # Refresh identity fingerprints from the merged view, since the fraud
+        # engine compares against a merged profile too. Computing them from this
+        # endpoint's payload alone would drop identifiers held in fullProfile.
+        import identity_index
+
+        merged = {}
+        if user.fullProfile:
+            try:
+                merged = (json.loads(user.fullProfile)
+                          if isinstance(user.fullProfile, str)
+                          else dict(user.fullProfile))
+            except (ValueError, TypeError):
+                merged = {}
+        merged.update(update.profile_data)
+        data = identity_index.merge_into_update(data, merged)
     if data:
         user = await prisma.user.update(where={"id": user_id}, data=data)
     profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})

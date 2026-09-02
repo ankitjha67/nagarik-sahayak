@@ -37,7 +37,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field as dc_field
 from enum import Enum
 
-from validation import compute_age, normalize_digits, parse_date
+from validation import compute_age, parse_date
 
 
 class Decision(str, Enum):
@@ -367,7 +367,6 @@ async def build_history(user_id: str, profile: dict, scheme_name: str) -> Applic
     losing fraud signal is preferable to blocking a citizen because of an
     infrastructure fault.
     """
-    import json
     import logging
     from datetime import datetime, timedelta, timezone
 
@@ -377,34 +376,21 @@ async def build_history(user_id: str, profile: dict, scheme_name: str) -> Applic
     try:
         from database import prisma
 
-        aadhaar = normalize_digits(profile.get("aadhaar_number"))
-        account = normalize_digits(profile.get("bank_account_number"))
-        mobile = normalize_digits(profile.get("mobile_number"))
-        ration = str(profile.get("ration_card_number") or "").strip().lower()
+        # Shared-identifier counts, answered by indexed counting queries against
+        # stored fingerprints. This previously loaded every user row and
+        # compared in Python, which ran on the critical path of every single
+        # application — an O(users) scan per submission.
+        import identity_index
 
-        # Shared-identifier counts. MongoDB via Prisma cannot query inside an
-        # arbitrary JSON blob, so this scans users and compares in Python. That
-        # is acceptable at this scale and keeps the logic obvious; if the user
-        # table grows large, these identifiers should be promoted to indexed
-        # columns.
-        users = await prisma.user.find_many()
-        for u in users:
-            raw = u.fullProfile or u.profile
-            if not raw:
-                continue
-            try:
-                p = json.loads(raw) if isinstance(raw, str) else dict(raw)
-            except (ValueError, TypeError):
-                continue
-            if aadhaar and normalize_digits(p.get("aadhaar_number")) == aadhaar and u.id != user_id:
-                history.users_sharing_aadhaar += 1
-            if account and normalize_digits(p.get("bank_account_number")) == account and u.id != user_id:
-                history.users_sharing_bank_account += 1
-            if mobile and normalize_digits(p.get("mobile_number")) == mobile and u.id != user_id:
-                history.users_sharing_mobile += 1
-            if (ration and str(p.get("ration_card_number") or "").strip().lower() == ration
-                    and u.id != user_id):
-                history.household_claims_same_scheme += 1
+        fps = identity_index.fingerprints_for(profile)
+        history.users_sharing_aadhaar = 1 + await identity_index.count_sharing(
+            prisma, "aadhaarFp", fps["aadhaarFp"], user_id)
+        history.users_sharing_bank_account = 1 + await identity_index.count_sharing(
+            prisma, "bankAccountFp", fps["bankAccountFp"], user_id)
+        history.users_sharing_mobile = 1 + await identity_index.count_sharing(
+            prisma, "mobileFp", fps["mobileFp"], user_id)
+        history.household_claims_same_scheme = await identity_index.count_sharing(
+            prisma, "rationCardFp", fps["rationCardFp"], user_id)
 
         # Application history for this user.
         apps = await prisma.application.find_many(where={"userId": user_id})
