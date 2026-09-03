@@ -225,14 +225,25 @@ class TestColumnHeaders:
         words = [_word(210, 125, 250, 137, "Existing")]
         assert not fg.is_blank(Cell(200, 120, 260, 140), words)
 
+    # Every cell of a header row carries a heading; that is what makes it one.
+    HEADINGS = [_word(25, 104, 150, 116, "Name of the College/School"),
+                _word(205, 104, 250, 116, "Class")]
+
     def test_a_heading_resolves_to_its_data_cell(self):
         label = _rect(25, 104, 150, 116)
-        target = fg.header_data_cell(self.CELLS, label, [])
+        target = fg.header_data_cell(self.CELLS, label, self.HEADINGS)
         assert target == Cell(20, 120, 200, 140)
+
+    def test_a_label_with_its_own_box_beside_it_is_not_a_heading(self):
+        """The row is one label and an empty box: an ordinary field. Treating
+        it as a heading put a loan amount in the next section's cell."""
+        lone = [_word(25, 104, 150, 116, "Amount of Loan required")]
+        label = _rect(25, 104, 150, 116)
+        assert fg.header_data_cell(self.CELLS, label, lone) is None
 
     def test_an_ordinary_label_over_an_occupied_row_gets_nothing(self):
         label = _rect(25, 144, 150, 156)
-        assert fg.header_data_cell(self.CELLS, label, []) is None
+        assert fg.header_data_cell(self.CELLS, label, self.HEADINGS) is None
 
 
 class TestBridgingLostRules:

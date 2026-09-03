@@ -326,6 +326,18 @@ def fill_overlay_pdf(
         if not value:
             continue
 
+        # A value belongs beside its label, or just under it. Anything further
+        # away is in another field's box — and on the Kisan Credit Card form
+        # that meant a loan amount on the "Name of the Applicant" line, which
+        # is a false statement on a signed declaration. Enforced here, at the
+        # single point every placement rule passes through.
+        label_y1 = pos.get("label_y1")
+        if label_y1 is not None and not (
+                pos.get("label_y0", label_y1) - 4 <= y <= label_y1 + MAX_BELOW_DROP):
+            logger.info("Dropped '%s': placed %.0fpt from its label",
+                        profile_key, y - label_y1)
+            continue
+
         # Get field type for formatting
         field_type = "text"
         if form_fields:
@@ -541,6 +553,22 @@ MIN_USABLE_WIDTH = 34
 # A value squeezed below this fraction of the width it needs comes out cut and
 # unreadable. Reported unplaced instead, so the citizen writes it by hand.
 MIN_LEGIBLE_FRACTION = 0.6
+
+# A value written below its heading must stay close to it. Without a cap the
+# two-row walk drifted out of one section of the Kisan Credit Card form and
+# into the next, putting the loan amount on the "Name of the Applicant" line —
+# which is worse than leaving it blank, because a wrong value on a signed form
+# is a false declaration.
+MAX_BELOW_DROP = 40.0
+
+# A horizontal gap wider than this between two printed words means they belong
+# to different columns, not to one label.
+COLUMN_GAP = 22.0
+
+# How far a data cell may start to the right of the heading it belongs to.
+# A few points absorbs the padding a form leaves inside a cell; more than that
+# means the cell belongs to something else.
+COLUMN_ALIGN_TOLERANCE = 8.0
 _SENTENCE_MARKERS = (
     " that ", " have ", " has been", " shall ", " will ", " are to ",
     " is to ", " i ", " my ", " been ", " enclose", " submitted",
@@ -1054,6 +1082,50 @@ class _Rect:
         self.x0, self.y0, self.x1, self.y1 = x0, y0, x1, y1
 
 
+def _line_at(words, rect, tolerance: float = 2.0) -> str:
+    """The printed phrase a rectangle belongs to.
+
+    Two things this has to avoid, and they pull in opposite directions.
+
+    Searching the page text for the label returns the *first* line containing
+    it, so a label that appears twice — "Amount of loan required" sits in a
+    section heading and again as a field on the Kisan Credit Card form — is
+    judged by the wrong one, and the real field gets thrown away with the
+    heading.
+
+    Grouping by the extractor's own block and line is no better: PyMuPDF
+    merged the row-14 prose of the Haryana form with the table heading beneath
+    it, so "Name of Tournament, Venue & Date" arrived interleaved with a
+    sentence and was rejected as prose.
+
+    So: the words on this rect's own visual row, expanded outward only while
+    they stay close together. A wide horizontal gap is the next column, not
+    more of this label.
+    """
+    band_top, band_bottom = rect.y0 - tolerance, rect.y1 + tolerance
+    on_row = sorted((w for w in words
+                     if band_top <= (w[1] + w[3]) / 2 <= band_bottom),
+                    key=lambda w: w[0])
+    if not on_row:
+        return ""
+
+    inside = [i for i, w in enumerate(on_row)
+              if not (w[2] < rect.x0 - tolerance or w[0] > rect.x1 + tolerance)]
+    if not inside:
+        return " ".join(w[4] for w in on_row)
+
+    start, end = min(inside), max(inside)
+    while start > 0 and on_row[start][0] - on_row[start - 1][2] < COLUMN_GAP:
+        start -= 1
+    while end + 1 < len(on_row) and on_row[end + 1][0] - on_row[end][2] < COLUMN_GAP:
+        end += 1
+    # Scan specks are dropped from the phrase but kept in the gap arithmetic
+    # above: "10·. .. Bank's Name:" carries three stray dots, and counting them
+    # as punctuation made a plain label look like prose.
+    return " ".join(w[4] for w in on_row[start:end + 1]
+                    if not form_geometry._is_scan_noise(w[4]))
+
+
 def _place_in_grid(cells, horizontals, label_rect, words, page_width: float,
                    needed: float, font_size: float):
     """Where to write a value on a ruled form, as (x, baseline_y, width).
@@ -1073,6 +1145,16 @@ def _place_in_grid(cells, horizontals, label_rect, words, page_width: float,
     Returns None when neither works, so the caller reports the field unplaced
     rather than writing it somewhere a clerk will not look.
     """
+    # An empty cell on the label's own row settles it: that is the field's box,
+    # whatever else the page offers. Checked before the gap arithmetic because
+    # a row whose cells came out fragmented can hide a perfectly good box from
+    # the gap calculation, and a blank cell below in the *next section* then
+    # looks like the better answer. It is not.
+    own_row = form_geometry.blank_cell_right_of(cells, label_rect, words)
+    if own_row is not None:
+        return {"x": own_row.x0 + 3, "y": label_rect.y1 - 1.5,
+                "width": own_row.width - 6, "box": own_row, "below": False}
+
     gaps = form_geometry.writable_gaps(cells, label_rect, words, page_width)
     fits = next((g for g in gaps if g[1] - g[0] >= needed), None)
     if fits is not None:
@@ -1081,9 +1163,22 @@ def _place_in_grid(cells, horizontals, label_rect, words, page_width: float,
         return {"x": fits[0], "y": label_rect.y1 - 1.5,
                 "width": fits[1] - fits[0], "box": box, "below": False}
 
+    # Two rows deep, because a table can carry a two-line heading: the Kisan
+    # Credit Card form prints "Name of the | Survey/ Khasra | Title | Area in
+    # acres" and then "Village | No. | Owned Leased Share Cropper | ..." before
+    # the blank data row. Safe at this depth because every candidate row must
+    # be blank across all its cells, and MAX_BELOW_DROP caps how far a value
+    # may travel from its own heading.
     data_cell = form_geometry.header_data_cell(
-        cells, label_rect, words, horizontals=horizontals)
-    if data_cell is not None:
+        cells, label_rect, words, max_depth=2, horizontals=horizontals)
+    # A column heading sits *above* its data cell, so the cell must start at or
+    # before the label does. Without this the Kisan Credit Card form put the
+    # loan amount in the "Name of the Applicant" box: that cell is blank and
+    # directly below, but it begins 90 points to the right of the label, which
+    # is what gives it away as a different field's box.
+    aligned = (data_cell is not None
+               and data_cell.x0 <= label_rect.x0 + COLUMN_ALIGN_TOLERANCE)
+    if aligned and data_cell.y0 - label_rect.y1 <= MAX_BELOW_DROP:
         # Bounded to this heading's own column, so "Session" and "Admission
         # No." sharing one undivided box still write under their own headings
         # instead of on top of each other.
@@ -1092,8 +1187,9 @@ def _place_in_grid(cells, horizontals, label_rect, words, page_width: float,
         if right - left >= max(needed * MIN_LEGIBLE_FRACTION,
                                form_geometry.MIN_DATA_CELL_WIDTH):
             baseline = data_cell.y0 + min(font_size + 1, data_cell.height - 1)
-            return {"x": left, "y": baseline, "width": right - left,
-                    "box": data_cell, "below": True}
+            if baseline - label_rect.y1 <= MAX_BELOW_DROP:
+                return {"x": left, "y": baseline, "width": right - left,
+                        "box": data_cell, "below": True}
 
     if gaps:
         widest = max(gaps, key=lambda g: g[1] - g[0])
@@ -1189,9 +1285,9 @@ def _detect_fill_positions(doc, form_fields: list = None, field_values: dict = N
                 placed = False
                 found_here = True
                 for rect in rects:
-                    # The line this hit sits on, so prose can be rejected.
-                    context = next(
-                        (ln for ln in lines if alias.lower() in ln.lower()), alias)
+                    # This rect's own line, so two occurrences of one label are
+                    # judged separately.
+                    context = _line_at(words, rect) or alias
                     if not _looks_like_a_label(context):
                         continue
 
@@ -1208,6 +1304,18 @@ def _detect_fill_positions(doc, form_fields: list = None, field_values: dict = N
                             continue
                         x, y, available = spot["x"], spot["y"], spot["width"]
                         box = spot["box"]
+
+                        # Last line of defence, independent of which rule
+                        # produced the position: a value belongs beside or just
+                        # under the label it answers. Anything further away is
+                        # in someone else's box, and a wrong value on a signed
+                        # form is a false declaration — so it is dropped and
+                        # reported unplaced instead.
+                        if not (rect.y0 - 4 <= y <= rect.y1 + MAX_BELOW_DROP):
+                            logger.info(
+                                "Dropped '%s': placement %.0fpt from its label",
+                                pk, y - rect.y1)
+                            continue
                     else:
                         x = rect.x1 + 5
                         available = max(
@@ -1240,8 +1348,21 @@ def _detect_fill_positions(doc, form_fields: list = None, field_values: dict = N
                         "font_size": font_size,
                         "max_width": available,
                         "box": box.as_dict() if box is not None else None,
+                        # Kept so the writer can re-check proximity. The
+                        # detector has several placement rules and each has
+                        # been wrong at least once; the writer enforcing one
+                        # invariant over all of them is worth more than trying
+                        # to make every rule individually infallible.
+                        "label_y0": rect.y0,
+                        "label_y1": rect.y1,
                         # Prefer a longer alias (more specific) and more room.
-                        "_score": (len(alias), available),
+                        # A label that *is* the line beats one buried inside a
+                        # heading: on the KCC form "Amount of loan required"
+                        # appears in a section heading and again as the field
+                        # itself, and only the second has a box beside it.
+                        "_score": (_normalise_token(context)
+                                   == _normalise_token(alias),
+                                   len(alias), available),
                     }
                     if pk not in best or candidate["_score"] > best[pk]["_score"]:
                         best[pk] = candidate
@@ -1512,8 +1633,16 @@ def verify_filled_pdf(output_path: str, written: list[dict]) -> dict:
                     })
 
                 # The symptom a clerk actually sees: a value sitting on top of
-                # the form's own printing. Checked independently of any cell,
-                # because it is true wherever it happens.
+                # the form's own printing.
+                #
+                # Only on a page that has its own text. On a scan the verifier
+                # must re-OCR the filled page, and OCR merges our ink with the
+                # print beneath it — "Punjab N" over a dotted leader comes back
+                # as "BanRutiab.N", which matches neither side and looks like a
+                # collision that is not there. The geometric checks above stay
+                # valid on such pages because they use recorded coordinates.
+                if not native_text:
+                    continue
                 # `word` rather than `text`: the outer check reads the whole
                 # page's text, and rebinding that name here made every field
                 # after the first compare itself against a single word.

@@ -904,3 +904,125 @@ class TestVerificationOnAScan:
         assert "unconfirmed" in check and "textCheckReliable" in check
         assert not [p for p in check["problems"]
                     if p["kind"] == "value_not_in_output"]
+
+
+class TestNeverTheWrongRow:
+    """A value in the wrong field is worse than a blank one.
+
+    The Kisan Credit Card form carries "Amount of loan required" twice — once
+    inside a section heading, once as the field itself. Placing against the
+    heading dropped the loan amount onto the "Name of the Applicant" line of
+    the next section, which on a signed declaration is a false statement.
+    """
+
+    def test_a_labels_context_is_its_own_row(self):
+        from pdf_filler import _line_at
+
+        words = [
+            (20, 100, 60, 112, "Mobile", 0, 0, 0),
+            (62, 100, 90, 112, "No:", 0, 0, 1),
+            (200, 100, 240, 112, "Email", 0, 0, 2),
+            (242, 100, 262, 112, "ID:", 0, 0, 3),
+        ]
+
+        class R:
+            x0, y0, x1, y1 = 20, 100, 90, 112
+
+        # Stops at the column gap: the email half is a different field.
+        assert _line_at(words, R()) == "Mobile No:"
+
+    def test_scan_specks_do_not_make_a_label_look_like_prose(self):
+        """"10·. .. Bank's Name:" carries three stray dots, and counting them
+        as punctuation rejected a plain label."""
+        from pdf_filler import _line_at, _looks_like_a_label
+
+        words = [
+            (20, 100, 30, 112, "10·.", 0, 0, 0),
+            (32, 100, 38, 112, "..", 0, 0, 1),
+            (40, 100, 90, 112, "Bank's", 0, 0, 2),
+            (92, 100, 130, 112, "Name:", 0, 0, 3),
+        ]
+
+        class R:
+            x0, y0, x1, y1 = 40, 100, 130, 112
+
+        assert _looks_like_a_label(_line_at(words, R()))
+
+    def test_a_bare_label_outranks_one_inside_a_heading(self):
+        """Only the second occurrence has a box beside it."""
+        import os
+        pytest.importorskip("numpy")
+        if not os.path.exists("/tmp/demo_kcc/original.pdf"):
+            pytest.skip("run demo_fill.py --scheme 'Kisan Credit Card (KCC)'")
+
+        import tempfile
+        from data.gov_forms import get_by_name
+        from pdf_filler import fill_pdf_form
+
+        scheme = get_by_name("Kisan Credit Card (KCC)")
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            out = tmp.name
+        report = fill_pdf_form("/tmp/demo_kcc/original.pdf", out,
+                               {"loan_amount_required": 150000},
+                               scheme["extractedFields"])
+        os.unlink(out)
+
+        # Either placed against the real field row, or not placed at all.
+        # What it must never do is land in the section below.
+        for item in report.get("written", []):
+            if item["profileKey"] == "loan_amount_required":
+                assert item["y"] < 215, \
+                    "the loan amount dropped into the applicant's section"
+
+    def test_a_data_row_must_be_blank_across_every_cell(self):
+        """Checking only the column under the heading was not enough — that one
+        cell is empty under a real column header and under an ordinary label
+        alike."""
+        import form_geometry as fg
+        from form_geometry import Cell
+
+        header_row = [Cell(20, 100, 200, 120), Cell(200, 100, 300, 120)]
+        blank_row = [Cell(20, 120, 200, 140), Cell(200, 120, 300, 140)]
+        cells = header_row + blank_row
+
+        # Nothing anywhere on the row below: a genuine data row.
+        assert fg.row_is_blank(cells, 120, 140, [])
+
+        # A label in the neighbouring cell: this row belongs to another field.
+        labelled = [(210, 125, 290, 137, "Name of the Applicant", 0, 0, 0)]
+        assert not fg.row_is_blank(cells, 120, 140, labelled)
+
+
+class TestMandatoryCoverage:
+    """The end the whole exercise is for."""
+
+    def test_every_mandatory_answer_reaches_the_haryana_form(self):
+        import os
+        pytest.importorskip("numpy")
+        if not os.path.exists("/tmp/demo_fill/original.pdf"):
+            pytest.skip("run scripts/demo_fill.py to fetch the source form")
+
+        import sys
+        import tempfile
+
+        sys.argv = ["demo"]
+        from data.gov_forms import get_by_name
+        from pdf_filler import fill_pdf_form
+        from scripts.demo_fill import demo_applicant
+
+        scheme = get_by_name("Sports Achievement Scholarship (Haryana)")
+        profile = demo_applicant(scheme)
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            out = tmp.name
+        report = fill_pdf_form("/tmp/demo_fill/original.pdf", out, profile,
+                               scheme["extractedFields"])
+        os.unlink(out)
+
+        satisfied = {k for w in report["written"]
+                     for k in w.get("satisfies", [w["profileKey"]])}
+        mandatory = {f["profileKey"] for f in scheme["extractedFields"]
+                     if f.get("required") and profile.get(f["profileKey"])}
+
+        assert mandatory <= satisfied, sorted(mandatory - satisfied)
+        assert report["verification"]["clean"], \
+            report["verification"]["problems"]

@@ -69,6 +69,14 @@ MIN_CELL_POINTS = 8.0
 MIN_DATA_CELL_WIDTH = 26.0
 MIN_DATA_CELL_HEIGHT = 9.0
 
+# How far below a heading's cell its data row may begin. A printed table puts
+# them flush; anything more means a row was skipped.
+ADJACENT_ROW_TOLERANCE = 4.0
+
+# How far to the right of a label its box may begin before it is somebody
+# else's box rather than a wide gap after the colon.
+MAX_LABEL_TO_BOX_GAP = 40.0
+
 
 @dataclass(frozen=True)
 class Cell:
@@ -104,6 +112,28 @@ def _longest_run(mask) -> int:
     padded = np.concatenate(([False], mask, [False]))
     edges = np.flatnonzero(padded[1:] != padded[:-1])
     return int((edges[1::2] - edges[::2]).max())
+
+
+def _spans_full_height(mask, tolerance: int = 2) -> bool:
+    """True when an ink run reaches both ends of the band.
+
+    A printed column divider is drawn from one rule to the next, so it touches
+    both. A capital letter in an 11-point row occupies about three quarters of
+    the row's height — enough to pass a fractional test, which is how the
+    strokes of "Amount of Loan required" came to be read as four column
+    dividers, chopping the row into slivers and hiding the empty box beside it.
+    Letters leave a gap above and below; a rule does not.
+    """
+    import numpy as np
+
+    if mask.size < 3 or not mask[:tolerance + 1].any() or not mask[-(tolerance + 1):].any():
+        return False
+    # Contiguous from top to bottom, allowing the scan to drop a pixel or two.
+    gaps = np.flatnonzero(~mask)
+    if gaps.size == 0:
+        return True
+    runs = _merge_runs([int(g) for g in gaps], gap=1)
+    return all(end - start + 1 <= tolerance for start, end in runs)
 
 
 def _merge_runs(indices: list[int], gap: int = 3) -> list[tuple[int, int]]:
@@ -257,10 +287,16 @@ def detect_rules(page, scale: float = RENDER_SCALE):
         row_top, row_bottom = int(top) + 1, int(bottom)
         if row_bottom - row_top < MIN_ROW_PIXELS:
             continue
-        band = widened[row_top:row_bottom, :]
+        # Raw ink, not the skew-widened copy. Widening ORs each pixel two
+        # columns sideways, which turns the stroke of a letter into a
+        # full-height column — that is how "Amount of Loan required" came to be
+        # read as four column dividers. Inside a single row the skew is under a
+        # pixel anyway, so there is nothing to compensate for.
+        band = ink[row_top:row_bottom, :]
         needed = max(int(band.shape[0] * MIN_VERTICAL_RUN_FRACTION), 6)
         for j in range(band.shape[1]):
-            if _longest_run(band[:, j]) >= needed:
+            column = band[:, j]
+            if _longest_run(column) >= needed and _spans_full_height(column):
                 segments.append((j / scale, row_top / scale, row_bottom / scale))
 
     horizontals = [y / scale for y in horizontal_px]
@@ -402,25 +438,113 @@ def _synthesised_below(header: Cell, horizontals, words) -> Cell | None:
     below = sorted(y for y in (horizontals or []) if y > header.y1 + 1)
     if len(below) < 2:
         return None
-    region = Cell(header.x0, below[0], header.x1, below[1])
+    # The region must begin where the heading's own cell ends. Taking the next
+    # two rules regardless let it skip a whole row — on the Kisan Credit Card
+    # form, past the "Amount of Loan required" row and into "Name of the
+    # Applicant", where writing a loan amount is a false statement on a signed
+    # declaration.
+    # A row may be skipped only if the strip being skipped is itself empty in
+    # this column. The tournament box on the Haryana form sits below a
+    # Gold/Silver/Bronze sub-heading that occupies other columns and leaves
+    # this one clear, so skipping is right there. On the Kisan Credit Card form
+    # the strip carries the "Amount of Loan required" label itself, so skipping
+    # it would put the value in the next field's box — a false statement on a
+    # signed declaration.
+    # The strip between the heading and the first rule below it must be clear
+    # too, or the region begins past something already printed.
+    if (below[0] - header.y1 > ADJACENT_ROW_TOLERANCE
+            and not is_blank(Cell(header.x0, header.y1, header.x1, below[0]),
+                             words)):
+        return None
+
+    start = 0
+    while (start + 1 < len(below)
+           and not is_blank(Cell(header.x0, below[start], header.x1,
+                                 below[start + 1]), words)):
+        start += 1
+    if start + 1 >= len(below):
+        return None
+    region = Cell(header.x0, below[start], header.x1, below[start + 1])
     if region.height < MIN_DATA_CELL_HEIGHT or region.width < MIN_DATA_CELL_WIDTH:
         return None
     return region if is_blank(region, words) else None
 
 
+def row_is_blank(cells: list[Cell], row_top: float, row_bottom: float,
+                 words, tolerance: float = 2.0) -> bool:
+    """True when every cell of a row is empty.
+
+    This is what separates a column-header row from an ordinary label. Under
+    "Name of the College/School | Class | Session | Admission No." the whole
+    next row is empty — it is the data row for those headings. Under "Amount of
+    Loan required" the next row says "Name of the Applicant", which is a
+    different field in a different section, and writing the loan amount there
+    put a wrong number on a signed declaration.
+
+    Checking only the column under the heading was not enough: that one cell is
+    empty in both cases.
+    """
+    row = [c for c in cells
+           if abs(c.y0 - row_top) <= tolerance and abs(c.y1 - row_bottom) <= tolerance]
+    if not row:
+        return False
+    return all(is_blank(c, words) for c in row)
+
+
+def blank_cell_right_of(cells: list[Cell], label_rect, words,
+                        min_width: float = MIN_DATA_CELL_WIDTH) -> Cell | None:
+    """An empty cell on the label's own row, to its right.
+
+    This is the ordinary shape of a form: a label in one cell and its box in
+    the next. Finding it settles the question that "beside or below?" otherwise
+    leaves open — "Amount of Loan required" has a wide empty box beside it and
+    a blank-looking cell beneath it in the *next section*, and only the first
+    is the field's own.
+
+    Preferred over anything below, always. A form that gives a label a box on
+    its own row is not a column heading.
+    """
+    centre_y = (label_rect.y0 + label_rect.y1) / 2
+    candidates = [
+        c for c in cells
+        if c.y0 - 2 <= centre_y <= c.y1 + 2
+        and c.x0 >= label_rect.x1 - 2
+        # Adjacent, not merely somewhere to the right. The photograph box on
+        # the Haryana form is blank and on the same row as "Game/Sport:", and
+        # taking the nearest blank cell without this put "Kabaddi" in it.
+        and c.x0 <= label_rect.x1 + MAX_LABEL_TO_BOX_GAP
+        and c.width >= min_width
+        and is_blank(c, words)
+    ]
+    return min(candidates, key=lambda c: c.x0) if candidates else None
+
+
 def header_data_cell(cells: list[Cell], label_rect, words,
-                     max_depth: int = 2, horizontals=None) -> Cell | None:
+                     max_depth: int = 1, horizontals=None) -> Cell | None:
     """The blank cell a column heading writes into, if this label is one.
 
-    Walks down at most `max_depth` rows. One step finds the ordinary case —
-    "Name of the College/School" over a blank row. Two are needed where a
-    heading has a sub-heading: "Medal Won" sits above "Gold | Silver | Bronze |
-    Participation", and the writable space is below both. Any deeper and the
-    walk would start dropping values into unrelated parts of the table.
+    Two conditions, and both are needed. The cell below must be blank — and so
+    must every other cell on that row, because a row that carries any label of
+    its own belongs to a different field. Dropping a value into the first blank
+    cell it found put the loan amount on the "Name of the Applicant" line of
+    the Kisan Credit Card form, which is worse than leaving it blank: a wrong
+    value on a signed form is a false declaration.
     """
     header = cell_containing(cells, (label_rect.x0 + label_rect.x1) / 2,
                              (label_rect.y0 + label_rect.y1) / 2)
     if header is None:
+        return None
+
+    # The label's row must actually look like a row of headings: two or more
+    # cells, every one of them carrying text. A row that is one label beside an
+    # empty box is an ordinary field, and the blank cell under it belongs to
+    # whatever comes next — on the Kisan Credit Card form, to "Name of the
+    # Applicant" in the following section. Writing a loan amount there is a
+    # false statement on a signed declaration, so coverage gives way to
+    # correctness here: the field is reported unplaced instead.
+    row = [c for c in cells
+           if abs(c.y0 - header.y0) <= 2 and abs(c.y1 - header.y1) <= 2]
+    if len(row) < 2 or any(is_blank(c, words) for c in row):
         return None
 
     current = header
@@ -430,7 +554,8 @@ def header_data_cell(cells: list[Cell], label_rect, words,
             return _synthesised_below(header, horizontals, words)
         if (is_blank(target, words)
                 and target.width >= MIN_DATA_CELL_WIDTH
-                and target.height >= MIN_DATA_CELL_HEIGHT):
+                and target.height >= MIN_DATA_CELL_HEIGHT
+                and row_is_blank(cells, target.y0, target.y1, words)):
             return target
         current = target
 
