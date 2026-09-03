@@ -6,6 +6,7 @@ import {
   getSchemes, getV2Schemes, getDiscoveredSchemes, downloadSchemesExcel,
   getUserFullProfile, screenAllSchemes, getFormCatalog, getCatalogStates,
 } from "../lib/api";
+import { loadKycOutcomes } from "../lib/kycStore";
 import { Badge } from "../components/ui/badge";
 import {
   Sprout, HeartPulse, Baby, ExternalLink, ChevronDown, ChevronUp,
@@ -91,7 +92,10 @@ export default function SchemesPage({ userId, language = "hi" }) {
       .then((r) => {
         const profile = r.data?.fullProfile || {};
         if (!Object.keys(profile).length) return null;
-        return screenAllSchemes(profile, userId);
+        // Any identity checks this citizen has completed go in with the
+        // screen, so verifying actually buys them something here rather than
+        // only on the identity page.
+        return screenAllSchemes(profile, userId, loadKycOutcomes());
       })
       .then((res) => {
         if (cancelled || !res) return;

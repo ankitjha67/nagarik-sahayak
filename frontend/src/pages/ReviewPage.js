@@ -5,9 +5,9 @@ import {
 } from "../lib/api";
 import { toast } from "sonner";
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, ChevronRight, Clock, Eye, EyeOff,
-  FileWarning, Inbox, Loader2, LogOut, RefreshCw, RotateCcw, Search,
-  ShieldAlert, ShieldCheck, User, XCircle,
+  AlertTriangle, ArrowLeft, BadgeCheck, CheckCircle2, ChevronRight, Clock,
+  Eye, EyeOff, FileWarning, Inbox, Loader2, LogOut, RefreshCw, RotateCcw,
+  Search, ShieldAlert, ShieldCheck, User, XCircle,
 } from "lucide-react";
 
 // Reviewer credentials live in sessionStorage, not localStorage: they should
@@ -292,6 +292,82 @@ function SignalCard({ signal }) {
   );
 }
 
+// What identity evidence stands behind this application. A reviewer needs to
+// tell apart an applicant who produced a UIDAI-signed document from one who
+// typed a number into a form — those deserve different amounts of scrutiny,
+// and without this panel they look identical on screen.
+//
+// "Self-declared" is rendered as a neutral state, not a warning. It is the
+// normal, lawful condition of an applicant under the Aadhaar Act s7 proviso,
+// and colouring it red would train reviewers to treat the unverified poor as
+// suspects.
+const ASSURANCE_TONE = {
+  0: "bg-gray-50 border-gray-200 text-gray-700",
+  1: "bg-gray-50 border-gray-200 text-gray-700",
+  2: "bg-blue-50 border-blue-200 text-blue-900",
+  3: "bg-green-50 border-green-200 text-green-900",
+  4: "bg-green-50 border-green-200 text-green-900",
+  5: "bg-green-50 border-green-200 text-green-900",
+};
+
+function IdentityPanel({ identity }) {
+  if (!identity) return null;
+  const tone = ASSURANCE_TONE[identity.assurance] || ASSURANCE_TONE[0];
+
+  return (
+    <div className={`rounded-xl border p-3 ${tone}`}>
+      <div className="flex items-center gap-2">
+        <BadgeCheck size={14} className="shrink-0" aria-hidden="true" />
+        <span className="text-[12px] font-bold font-['Mukta']">
+          {identity.label}
+        </span>
+        {identity.contradiction && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-semibold">
+            Document disagrees
+          </span>
+        )}
+      </div>
+
+      <p className="text-[11px] mt-1.5 leading-relaxed font-['Nunito']">
+        {identity.reviewer_note}
+      </p>
+
+      {identity.methodsUsed?.length > 0 && (
+        <p className="text-[11px] mt-1.5 opacity-80 font-['Nunito']">
+          Checks completed: {identity.methodsUsed.join(", ").replace(/_/g, " ")}
+        </p>
+      )}
+
+      {identity.comparisons?.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-black/10">
+          <p className="text-[10px] font-bold uppercase tracking-wide opacity-70">
+            Field comparison
+          </p>
+          <ul className="mt-1 space-y-1">
+            {identity.comparisons.map((c, i) => (
+              <li key={i} className="text-[11px] font-['Nunito']">
+                <span className="font-semibold">
+                  {String(c.field).replace(/_/g, " ")}
+                </span>
+                {c.decisive ? " — cannot be a transcription difference: " : " — "}
+                {c.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Shown so the reviewer knows exactly what the applicant has been told,
+          and does not contradict it on a phone call. */}
+      {identity.citizen_is_told?.en && (
+        <p className="text-[10px] mt-2 pt-2 border-t border-black/10 opacity-70 font-['Nunito']">
+          The applicant is being shown: “{identity.citizen_is_told.en}”
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ApplicantPanel({ applicant, error }) {
   if (error || !applicant) {
     return (
@@ -511,6 +587,13 @@ function CaseDetail({ creds, caseId, onBack, onDecided }) {
           Applicant details
         </p>
         <ApplicantPanel applicant={detail.applicant} error={detail.applicant_error} />
+      </div>
+
+      <div className="mb-3">
+        <p className="text-[11px] font-bold text-gray-600 font-['Mukta'] mb-1.5">
+          Identity evidence
+        </p>
+        <IdentityPanel identity={detail.identity} />
       </div>
 
       <div className="mb-3">

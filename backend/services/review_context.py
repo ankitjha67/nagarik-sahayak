@@ -113,6 +113,28 @@ def explain_signal(signal: dict) -> dict:
 # and the concrete step that settles it. Written so that clearing a flagged
 # citizen is as easy as confirming one.
 SIGNAL_GUIDANCE: dict[str, dict[str, str]] = {
+    "identity_verified": {
+        "means": "The applicant produced an identity document that was checked, "
+                 "so their identity rests on more than the form they filled in.",
+        "innocent": "Not a suspicion at all — this signal lowers the risk score. "
+                    "It appears here so a reviewer can see what evidence exists, "
+                    "not so it can be second-guessed.",
+        "check": "Read the assurance level in the identity panel. VERIFIED means "
+                 "a UIDAI signature was checked; DOCUMENTED means a document was "
+                 "supplied but its signature was not, and is worth a glance.",
+    },
+    "identity_document_contradicted": {
+        "means": "A document the applicant supplied disagrees with their form on "
+                 "a point that cannot be a spelling or transliteration "
+                 "difference — in practice, a date of birth off by years.",
+        "innocent": "The wrong document may have been uploaded, or it may belong "
+                    "to a relative with a similar name. A name or gender "
+                    "mismatch NEVER reaches this signal, precisely because those "
+                    "have innocent explanations that are more common than fraud.",
+        "check": "Open the identity panel and read the per-field comparison. Ask "
+                 "the applicant for the document again before drawing any "
+                 "conclusion; do not refuse on this alone.",
+    },
     "aadhaar_shared_across_users": {
         "means": "The same Aadhaar number is registered to more than one account.",
         "innocent": "A family member or CSC operator may have registered on the "
@@ -228,10 +250,53 @@ SIGNAL_GUIDANCE: dict[str, dict[str, str]] = {
 }
 
 
+def build_identity_context(case: dict) -> dict:
+    """What identity evidence, if any, stands behind this application.
+
+    A reviewer looking at a flagged case needs to know whether the applicant is
+    someone who produced a UIDAI-signed document or someone who typed a number
+    into a form — those warrant different amounts of scrutiny, and without this
+    panel the reviewer cannot tell them apart.
+
+    Absence is reported as a neutral state. "Self-declared" is the normal
+    condition of a lawful applicant under the Aadhaar Act s7 proviso, and a
+    reviewer must not read it as a strike.
+    """
+    from kyc import service as kyc_service
+    from services.application_guard import _normalise_outcomes
+
+    outcomes = _normalise_outcomes(case.get("kycOutcomes")
+                                   or case.get("kyc_outcomes") or [])
+    summary = kyc_service.assurance_summary(outcomes)
+    # assurance_summary() is written for the citizen and addresses them
+    # directly ("Your identity is verified"). Moved under its own key so a
+    # reviewer reading this panel knows they are looking at what the applicant
+    # was told, not at advice addressed to them.
+    summary["citizen_is_told"] = {
+        "en": summary.pop("nextStep", ""),
+        "hi": summary.pop("nextStepHindi", ""),
+    }
+    summary["verificationIsOptional"] = True
+    summary["reviewer_note"] = (
+        "No identity check was completed. That is a normal, lawful state — a "
+        "benefit cannot be refused for want of authentication — so weigh this "
+        "case on its other evidence."
+        if not outcomes else
+        "Weigh the assurance level: a checked UIDAI signature is stronger "
+        "evidence than anything this system can infer from the form."
+    )
+    summary["comparisons"] = [
+        m.as_dict() if hasattr(m, "as_dict") else m
+        for o in outcomes for m in getattr(o, "matches", [])
+    ]
+    return summary
+
+
 async def enrich_case(case: dict) -> dict:
-    """Add applicant context and signal guidance to a stored review case."""
+    """Add applicant context, identity evidence and signal guidance."""
     enriched = dict(case)
     enriched["signals"] = [explain_signal(s) for s in case.get("signals", []) or []]
+    enriched["identity"] = build_identity_context(case)
 
     try:
         from database import prisma

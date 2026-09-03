@@ -224,12 +224,19 @@ export const verifyFields = (profile, schemeName) =>
   api.post("/verify/fields", { profile, scheme_name: schemeName });
 export const verifyEligibility = (profile, schemeName) =>
   api.post("/verify/eligibility", { profile, scheme_name: schemeName });
-export const verifyApplication = (profile, schemeName, userId) =>
+// `kycOutcomes` are whatever the /kyc endpoints returned for this citizen.
+// Passing none is normal and never counts against them — under the Aadhaar Act
+// s7 proviso a benefit cannot be refused for want of authentication. Passing
+// them can only lower the friction an honest applicant meets.
+export const verifyApplication = (profile, schemeName, userId, kycOutcomes = []) =>
   api.post("/verify/application", {
     profile, scheme_name: schemeName, user_id: userId,
+    kyc_outcomes: kycOutcomes,
   });
-export const screenAllSchemes = (profile, userId) =>
-  api.post("/verify/screen-all", { profile, user_id: userId }, { timeout: 60000 });
+export const screenAllSchemes = (profile, userId, kycOutcomes = []) =>
+  api.post("/verify/screen-all",
+           { profile, user_id: userId, kyc_outcomes: kycOutcomes },
+           { timeout: 60000 });
 
 // ── Notification Preferences & Exam Subscriptions ──
 

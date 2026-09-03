@@ -166,11 +166,17 @@ python scripts/smoke_test.py            # full run, needs network for stages 1-2
 python scripts/smoke_test.py --offline  # everything else
 ```
 
-Thirteen stages: live-form fetch, OCR extraction, validation, eligibility,
+Fourteen stages: live-form fetch, OCR extraction, validation, eligibility,
 fraud screening, PDF generation, adversarial cases, the combined gate,
 Central/State catalog coverage, demo applicants in four States, KYC, language
-coverage, and DPDP notice scope. Exit code is non-zero if any check fails, so
-it doubles as a CI gate. It needs no database and no LLM key.
+coverage, DPDP notice scope, and the wiring between all of them. Exit code is
+non-zero if any check fails, so it doubles as a CI gate. It needs no database
+and no LLM key.
 
+Stage 14 exists because two bugs lived in the gaps between layers that every
+unit test passed over: KYC evidence that never reached the decision function
+the API calls, and a missing identity document classified as invalid data —
+a refusal — rather than an unfinished form. Both are pinned there and in
+`tests/test_gate_integration.py`.
 
-All 77 smoke-test checks pass on the current tree.
+All 88 smoke-test checks pass on the current tree (83 with `--offline`).

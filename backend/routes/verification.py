@@ -66,11 +66,18 @@ async def verify_eligibility(req: dict):
 async def verify_application(req: dict):
     """Full gate: validation + eligibility + abuse screening for one scheme.
 
-    Body: {"profile": {...}, "scheme_name": "...", "user_id": "..." (optional)}
+    Body: {"profile": {...}, "scheme_name": "...", "user_id": "..." (optional),
+           "kyc_outcomes": [...] (optional)}
 
     Omitting user_id skips cross-applicant checks, which is the right behaviour
     for an anonymous pre-check: a citizen can see whether they qualify before
     creating an account.
+
+    `kyc_outcomes` are whatever the /kyc endpoints returned for this citizen.
+    Omitting them is normal and never counts against the applicant — under the
+    Aadhaar Act s7 proviso a benefit cannot be refused for want of
+    authentication. Supplying them can only lower the friction an honest
+    applicant meets, except where a document flatly contradicts the form.
     """
     profile = req.get("profile") or {}
     scheme_name = (req.get("scheme_name") or "").strip()
@@ -84,9 +91,13 @@ async def verify_application(req: dict):
         raise HTTPException(status_code=404, detail=f"'{scheme_name}' not in catalog")
 
     user_id = req.get("user_id") or ""
+    kyc_outcomes = req.get("kyc_outcomes") or []
+    if not isinstance(kyc_outcomes, list):
+        raise HTTPException(status_code=400, detail="kyc_outcomes must be a list")
+
     result = await application_guard.evaluate_application(
         profile=profile, scheme=entry, user_id=user_id,
-        check_fraud=bool(user_id),
+        check_fraud=bool(user_id), kyc_outcomes=kyc_outcomes,
     )
     return result.as_dict()
 
@@ -97,20 +108,35 @@ async def screen_all_schemes(req: dict):
 
     Answers the question citizens actually have — "what am I entitled to?" —
     rather than making them guess a scheme name first.
+
+    When the profile says which State the citizen lives in, other States'
+    schemes are left out of the screen. They would every one come back
+    "not eligible — you do not live there", which buries the handful of real
+    answers under three dozen items the citizen can do nothing about. Central
+    schemes are always screened, whatever the State.
     """
     profile = req.get("profile") or {}
     if not isinstance(profile, dict):
         raise HTTPException(status_code=400, detail="profile must be an object")
     user_id = req.get("user_id") or ""
+    kyc_outcomes = req.get("kyc_outcomes") or []
+    if not isinstance(kyc_outcomes, list):
+        raise HTTPException(status_code=400, detail="kyc_outcomes must be a list")
+
+    home_state = str(profile.get("state") or "").strip()
+    catalog = get_catalog(state=home_state) if home_state else get_catalog()
+    skipped = len(get_catalog()) - len(catalog)
 
     approved, blocked, incomplete = [], [], []
-    for entry in get_catalog():
+    for entry in catalog:
         result = await application_guard.evaluate_application(
             profile=profile, scheme=entry, user_id=user_id,
-            check_fraud=bool(user_id),
+            check_fraud=bool(user_id), kyc_outcomes=kyc_outcomes,
         )
         summary = {
             "scheme": result.scheme,
+            "level": entry.get("level", "Central"),
+            "state": entry.get("state"),
             "outcome": result.outcome.value,
             "benefit": entry.get("eligibilityCriteria", {}).get("benefit", ""),
             "reasons_en": result.reasons_en,
@@ -129,5 +155,12 @@ async def screen_all_schemes(req: dict):
         "not_eligible": blocked,
         "needs_more_info": incomplete,
         "eligible_count": len(approved),
-        "total_screened": len(get_catalog()),
+        "total_screened": len(catalog),
+        "total_in_catalog": len(get_catalog()),
+        # Named rather than silently dropped: a citizen is entitled to know the
+        # screen was narrowed and on what basis, not to wonder where the other
+        # schemes went.
+        "home_state": home_state,
+        "other_state_schemes_skipped": skipped,
+        "identity": application_guard._identity_summary(kyc_outcomes),
     }

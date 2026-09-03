@@ -46,6 +46,17 @@ class Finding:
         }
 
 
+# Error codes that mean "this is not filled in yet", as against "what you typed
+# is wrong". Absence is never a refusal: a citizen part-way through a form has
+# not been rejected, and must not be told they have been.
+#
+# `identity_document_missing` belongs here and it is easy to get wrong. It is
+# raised only when no accepted document appears in the profile at all — a
+# malformed one is caught by that document's own validator with its own code —
+# so it always means "please add one", never "the one you gave is bad".
+ABSENCE_CODES = frozenset({"required_missing", "identity_document_missing"})
+
+
 @dataclass
 class ValidationResult:
     findings: list[Finding] = dc_field(default_factory=list)
@@ -68,7 +79,7 @@ class ValidationResult:
     @property
     def missing_required(self) -> list[Finding]:
         """Errors that are only 'you have not finished the form yet'."""
-        return [f for f in self.errors if f.code == "required_missing"]
+        return [f for f in self.errors if f.code in ABSENCE_CODES]
 
     @property
     def has_invalid_values(self) -> bool:
@@ -76,9 +87,11 @@ class ValidationResult:
 
         Callers must distinguish these: telling a citizen their data is invalid
         when they have simply not reached the end of the form is both wrong and
-        discouraging.
+        discouraging. Downstream, the gate turns the first into a refusal and
+        the second into a request, so a code landing in the wrong bucket is the
+        difference between "you are rejected" and "please add this".
         """
-        return any(f.code != "required_missing" for f in self.errors)
+        return any(f.code not in ABSENCE_CODES for f in self.errors)
 
     def as_dict(self) -> dict:
         return {

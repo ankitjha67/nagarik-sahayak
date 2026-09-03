@@ -20,6 +20,7 @@ Stages
  11. KYC: offline Aadhaar, tolerant matching, and what it decides
  12. Language coverage across the Eighth Schedule
  13. DPDP: notice scope and the processing register
+ 14. The wiring between all of the above, as the API traverses it
 
 Needs no database and no LLM key. Exit code is non-zero if any stage fails, so
 it doubles as a CI check.
@@ -735,6 +736,121 @@ def stage_dpdp_and_notice() -> None:
           ", ".join(sorted(f.field for f in health)[:4]) + " …")
 
 
+async def stage_end_to_end_integration() -> None:
+    """The path the API actually takes, with every layer connected.
+
+    Every other stage exercises a layer. This one checks the wiring between
+    them, which is where both of the bugs it now guards were found: KYC
+    evidence that never reached the decision, and a missing document that was
+    reported as invalid data rather than an unfinished form.
+    """
+    banner("STAGE 14  End to end — the wiring between the layers")
+
+    import fraud_detection as fd
+    from data.gov_forms import get_by_name, get_catalog
+    from kyc.methods import Assurance
+    from kyc.service import VerificationOutcome
+    from services import application_guard
+    from services.application_guard import GateOutcome
+
+    pension = get_by_name("Indira Gandhi National Old Age Pension")
+    aadhaar = make_valid_aadhaar("48291736450")
+    full = {
+        "name": "Kamla Devi", "father_husband_name": "Ram Prasad",
+        "aadhaar_number": aadhaar, "date_of_birth": "1958-04-12", "age": 68,
+        "gender": "Female", "category": "OBC", "mobile_number": "9876543210",
+        "address_line": "House 42", "district": "Sitapur",
+        "state": "Uttar Pradesh", "pincode": "261001", "is_bpl": "Yes",
+        "annual_income": 42000, "bank_account_number": "50100234567890",
+        "ifsc_code": "SBIN0001234", "bank_name": "State Bank of India",
+    }
+
+    async def run(profile, **kw):
+        return await application_guard.evaluate_application(
+            profile=profile, scheme=pension, **kw)
+
+    # An unfinished form asks for more. It does not refuse.
+    partial = await run({"name": "Sunita Devi", "age": 34, "gender": "Female"})
+    check("Unfinished form is INCOMPLETE, not a refusal",
+          partial.outcome is GateOutcome.INCOMPLETE,
+          f"{partial.outcome.value} — "
+          f"{partial.reasons_en[0][:44] if partial.reasons_en else ''}")
+
+    # An identity document that is absent is an absence, not bad data.
+    from validation import ABSENCE_CODES
+    check("A missing identity document is an absence, not invalid data",
+          "identity_document_missing" in ABSENCE_CODES,
+          "the difference between 'please add this' and 'you are rejected'")
+
+    # But something objectively wrong still blocks.
+    bad = await run(dict(full, aadhaar_number="111111111111"))
+    check("An impossible value still blocks",
+          bad.outcome is GateOutcome.BLOCKED_INVALID_DATA,
+          bad.reasons_en[0][:52] if bad.reasons_en else "")
+
+    # KYC evidence must reach the decision, not just the unit that computes it.
+    repeat = fd.ApplicantHistory(prior_applications_same_scheme=3)
+    verified = VerificationOutcome(
+        method="aadhaar_offline_xml", succeeded=True,
+        assurance=Assurance.VERIFIED, fraud_signal=-15)
+
+    without = await run(full, history=repeat)
+    with_kyc = await run(full, history=repeat, kyc_outcomes=[verified])
+    check("Verification changes the gate's outcome",
+          without.outcome is GateOutcome.APPROVED_WITH_REVIEW
+          and with_kyc.outcome is GateOutcome.APPROVED,
+          f"{without.outcome.value} (risk {without.risk['risk_score']}) -> "
+          f"{with_kyc.outcome.value} (risk {with_kyc.risk['risk_score']})")
+
+    # And it must survive the JSON round trip a browser puts it through.
+    as_json = await run(full, history=repeat, kyc_outcomes=[verified.as_dict()])
+    check("Outcomes survive the wire as plain JSON",
+          as_json.outcome is with_kyc.outcome
+          and as_json.risk["risk_score"] == with_kyc.risk["risk_score"],
+          "dict and object produce the same decision")
+
+    # Malformed client input must not lose somebody's application.
+    junk = await run(full, kyc_outcomes=[{"assurance": "high"}, None, "nonsense"])
+    check("Malformed client input degrades instead of raising",
+          junk.outcome is GateOutcome.APPROVED,
+          "a bad client must not cost the citizen their application")
+
+    # Never a refusal on identity grounds, whatever the evidence.
+    for label, outcomes in [("no checks", []),
+                            ("verified", [verified])]:
+        result = await run(full, kyc_outcomes=outcomes)
+        text = (result.identity["label"] + result.identity["reviewer_note"]
+                if "reviewer_note" in result.identity
+                else result.identity["label"]).lower()
+        check(f"Identity state reads neutrally: {label}",
+              "refus" not in text and "reject" not in text
+              and result.identity["verificationIsOptional"] is True,
+              result.identity["label"])
+
+    # The reviewer sees the identity evidence, or cannot weigh the case.
+    from services import review_context
+    panel = review_context.build_identity_context(
+        {"kycOutcomes": [verified.as_dict()]})
+    check("Reviewer console shows what identity evidence exists",
+          panel["assurance"] == int(Assurance.VERIFIED)
+          and "UIDAI" in panel["reviewer_note"],
+          panel["label"])
+
+    empty_panel = review_context.build_identity_context({})
+    check("An unverified applicant is shown neutrally to the reviewer",
+          "normal" in empty_panel["reviewer_note"].lower(),
+          "self-declared is a lawful state, not a strike")
+
+    # Screening narrows to the citizen's State without hiding Central schemes.
+    home = get_catalog(state="Uttar Pradesh")
+    central_total = sum(1 for e in get_catalog() if e["level"] == "Central")
+    home_central = sum(1 for e in home if e["level"] == "Central")
+    check("Screening narrows by State but keeps every Central scheme",
+          home_central == central_total and len(home) < len(get_catalog()),
+          f"UP resident screened against {len(home)} of {len(get_catalog())} "
+          f"({central_total} Central + {len(home) - central_total} State)")
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -757,6 +873,7 @@ async def main() -> int:
     stage_kyc()
     stage_languages()
     stage_dpdp_and_notice()
+    await stage_end_to_end_integration()
 
     passed = sum(1 for s, _, _ in _results if s == PASS)
     failed = sum(1 for s, _, _ in _results if s == FAIL)

@@ -1,14 +1,22 @@
 """Single gate every benefit application passes through before a form is issued.
 
-Composes the three independent checks into one verdict:
+Composes the independent checks into one verdict:
 
   1. validation.py         — is the data objectively valid?
   2. eligibility_engine.py — does the applicant meet the scheme's stated rules?
   3. fraud_detection.py    — does this application look abusive?
+  4. kyc/                   — what identity evidence, if any, backs it?
 
 Only (1) and (2) can stop an application, and both give the citizen a concrete,
 translated reason. (3) never refuses on its own; it routes to a human. See the
 design stance documented in fraud_detection.py for why.
+
+(4) is evidence, never a gate. A citizen who has verified nothing must still be
+able to apply — the Aadhaar Act s7 proviso says a benefit cannot be refused for
+want of authentication — so identity evidence only ever moves the risk score,
+and only ever downward for an honest applicant. The one exception is a
+contradiction that cannot be a spelling difference, which raises the score and
+routes to a reviewer; it still does not refuse.
 """
 from __future__ import annotations
 
@@ -38,6 +46,9 @@ class GateResult:
     validation: dict = dc_field(default_factory=dict)
     eligibility: dict = dc_field(default_factory=dict)
     risk: dict = dc_field(default_factory=dict)
+    # What identity evidence backed this decision. Empty is a normal state and
+    # is reported as "self-declared", never as a deficiency.
+    identity: dict = dc_field(default_factory=dict)
     reasons_en: list[str] = dc_field(default_factory=list)
     reasons_hi: list[str] = dc_field(default_factory=list)
 
@@ -56,7 +67,60 @@ class GateResult:
             "validation": self.validation,
             "eligibility": self.eligibility,
             "risk": self.risk,
+            "identity": self.identity,
         }
+
+
+def _normalise_outcomes(raw) -> list:
+    """Accept VerificationOutcome objects or the dicts the API returns.
+
+    The HTTP path round-trips outcomes through JSON, so by the time they come
+    back they are plain dicts. Rebuilding them here means the caller does not
+    have to, and a client that omits a field gets the safe default rather than
+    an exception mid-decision.
+    """
+    if not raw:
+        return []
+    from kyc.methods import Assurance
+    from kyc.service import VerificationOutcome
+
+    out = []
+    for item in raw:
+        if isinstance(item, VerificationOutcome):
+            out.append(item)
+            continue
+        if not isinstance(item, dict):
+            continue
+        try:
+            level = Assurance(int(item.get("assurance", 0)))
+        except (ValueError, TypeError):
+            level = Assurance.NONE
+        signal = item.get("fraudSignal", item.get("fraud_signal", 0))
+        try:
+            signal = int(signal)
+        except (ValueError, TypeError):
+            signal = 0
+        out.append(VerificationOutcome(
+            method=str(item.get("method") or ""),
+            succeeded=bool(item.get("succeeded")),
+            assurance=level,
+            contradicted=bool(item.get("contradicted")),
+            needs_review=bool(item.get("needsReview", item.get("needs_review"))),
+            fraud_signal=signal,
+        ))
+    return out
+
+
+def _identity_summary(raw) -> dict:
+    """The identity state to report alongside the decision."""
+    from kyc import service as kyc_service
+
+    outcomes = _normalise_outcomes(raw)
+    summary = kyc_service.assurance_summary(outcomes)
+    # Restated at the top level so no caller has to infer it, and so a UI
+    # cannot accidentally render "not verified" as a blocker.
+    summary["verificationIsOptional"] = True
+    return summary
 
 
 async def evaluate_application(
@@ -65,8 +129,14 @@ async def evaluate_application(
     user_id: str = "",
     history: fraud_detection.ApplicantHistory | None = None,
     check_fraud: bool = True,
+    kyc_outcomes: list | None = None,
 ) -> GateResult:
-    """Run the full gate for one applicant against one scheme."""
+    """Run the full gate for one applicant against one scheme.
+
+    `kyc_outcomes` are VerificationOutcome objects (or the dicts the KYC
+    endpoints return) from any identity checks the citizen chose to complete.
+    Passing none is normal and never counts against them.
+    """
     scheme_name = scheme.get("schemeName", "Unknown scheme")
     fields = scheme.get("extractedFields", []) or []
 
@@ -84,7 +154,9 @@ async def evaluate_application(
     if check_fraud:
         if history is None and user_id:
             history = await fraud_detection.build_history(user_id, profile, scheme_name)
-        risk = fraud_detection.assess(profile, scheme, history).as_dict()
+        outcomes = _normalise_outcomes(kyc_outcomes)
+        risk = fraud_detection.assess(
+            profile, scheme, history, kyc_outcomes=outcomes).as_dict()
 
     reasons_en: list[str] = []
     reasons_hi: list[str] = []
@@ -133,6 +205,7 @@ async def evaluate_application(
     return GateResult(
         outcome=outcome, scheme=scheme_name,
         validation=validation, eligibility=eligibility, risk=risk,
+        identity=_identity_summary(kyc_outcomes),
         reasons_en=reasons_en, reasons_hi=reasons_hi,
     )
 

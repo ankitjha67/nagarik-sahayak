@@ -179,3 +179,97 @@ class TestSignalGuidance:
             assert any(w in text for w in
                        ("legitimate", "common", "benign", "weak", "do not")), \
                 f"{code} guidance does not convey that it is weak evidence"
+
+
+class TestIdentityPanel:
+    """What a reviewer learns about the applicant's identity evidence.
+
+    The panel exists because a flagged case with a UIDAI-signed document behind
+    it and a flagged case with nothing behind it look identical in a queue, and
+    they warrant very different amounts of a reviewer's time.
+    """
+
+    def test_no_verification_is_a_neutral_state(self):
+        """"Self-declared" is the lawful, ordinary condition of an applicant
+        under the Aadhaar Act s7 proviso. A panel that reads it as a strike
+        would train reviewers to treat the unverified poor as suspects."""
+        from services.review_context import build_identity_context
+
+        panel = build_identity_context({})
+        assert panel["assurance"] == 0
+        assert panel["verificationIsOptional"] is True
+        note = panel["reviewer_note"].lower()
+        assert "normal" in note and "lawful" in note
+        assert "suspic" not in note and "fail" not in note
+
+    def test_a_verified_applicant_is_distinguishable(self):
+        from services.review_context import build_identity_context
+
+        panel = build_identity_context({"kycOutcomes": [
+            {"method": "aadhaar_offline_xml", "succeeded": True, "assurance": 3},
+        ]})
+        assert panel["assurance"] == 3
+        assert "aadhaar_offline_xml" in panel["methodsUsed"]
+        assert "UIDAI" in panel["reviewer_note"]
+
+    def test_citizen_facing_text_is_not_mistaken_for_reviewer_advice(self):
+        """assurance_summary() addresses the applicant directly ("Your identity
+        is verified"). In a reviewer panel that reads as an instruction unless
+        it is clearly labelled as what the applicant was told."""
+        from services.review_context import build_identity_context
+
+        panel = build_identity_context({"kycOutcomes": [
+            {"method": "aadhaar_offline_xml", "succeeded": True, "assurance": 3},
+        ]})
+        assert "nextStep" not in panel
+        assert panel["citizen_is_told"]["en"].startswith("Your")
+        assert not panel["reviewer_note"].startswith("Your")
+
+    def test_a_contradiction_is_surfaced(self):
+        from services.review_context import build_identity_context
+
+        panel = build_identity_context({"kycOutcomes": [
+            {"method": "aadhaar_offline_xml", "succeeded": True,
+             "assurance": 2, "contradicted": True, "needsReview": True},
+        ]})
+        assert panel["contradiction"] is True
+
+    def test_malformed_stored_outcomes_do_not_break_the_panel(self):
+        """A reviewer must not lose the whole case screen because one stored
+        field is the wrong shape."""
+        from services.review_context import build_identity_context
+
+        for junk in (None, [], ["nonsense"], [{"assurance": "high"}], [{}]):
+            panel = build_identity_context({"kycOutcomes": junk})
+            assert "label" in panel and panel["verificationIsOptional"] is True
+
+
+class TestIdentitySignalGuidance:
+    def test_both_identity_signals_carry_guidance(self):
+        from services.review_context import SIGNAL_GUIDANCE
+
+        for code in ("identity_verified", "identity_document_contradicted"):
+            g = SIGNAL_GUIDANCE[code]
+            assert g["means"] and g["innocent"] and g["check"]
+
+    def test_the_contradiction_guidance_rules_out_the_common_innocent_cases(self):
+        """Name and gender mismatches never reach this signal. The guidance has
+        to say so, or a reviewer will read a date-of-birth flag as covering
+        them and refuse someone on a maiden name."""
+        from services.review_context import SIGNAL_GUIDANCE
+
+        text = SIGNAL_GUIDANCE["identity_document_contradicted"]["innocent"]
+        assert "NEVER" in text
+        assert "name" in text.lower() and "gender" in text.lower()
+
+    def test_the_positive_signal_is_not_presented_as_suspicion(self):
+        from services.review_context import SIGNAL_GUIDANCE
+
+        text = SIGNAL_GUIDANCE["identity_verified"]["innocent"]
+        assert "lowers the risk" in text
+
+    def test_no_guidance_tells_a_reviewer_to_refuse_on_identity_alone(self):
+        from services.review_context import SIGNAL_GUIDANCE
+
+        check = SIGNAL_GUIDANCE["identity_document_contradicted"]["check"]
+        assert "do not refuse on this alone" in check.lower()

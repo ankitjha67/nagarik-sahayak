@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { useLanguage } from "../lib/i18n";
+import { loadKycOutcomes, saveKycOutcome } from "../lib/kycStore";
 import {
   getKycMethods,
   getKycStatus,
@@ -218,7 +219,9 @@ export default function IdentityPage({ userId }) {
   const { t } = useLanguage();
   const [methods, setMethods] = useState([]);
   const [profile, setProfile] = useState({});
-  const [outcomes, setOutcomes] = useState([]);
+  // Seeded from what this browser already recorded, so a citizen who verified
+  // last week is not asked to do it again.
+  const [outcomes, setOutcomes] = useState(() => loadKycOutcomes());
   const [status, setStatus] = useState(null);
   const [active, setActive] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -243,10 +246,20 @@ export default function IdentityPage({ userId }) {
       .catch(() => setStatus(null));
   }, []);
 
+  // Show what this browser already holds on arrival, so the page opens on the
+  // citizen's actual state rather than a blank one.
+  useEffect(() => {
+    if (outcomes.length) refreshStatus(outcomes);
+    // Deliberately runs once: later changes go through record().
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const record = useCallback(
     (outcome) => {
-      const next = [...outcomes, outcome];
-      setOutcomes(next);
+      // saveKycOutcome persists the verdict only — the demographics read out
+      // of the document are deliberately not written to this device.
+      const next = saveKycOutcome(outcome);
+      setOutcomes(next.length ? next : [...outcomes, outcome]);
       refreshStatus(next);
     },
     [outcomes, refreshStatus]
