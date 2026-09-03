@@ -950,6 +950,10 @@ async def stage_form_geometry(offline: bool) -> None:
         "institution_name": "Government College for Women",
         "sport_name": "Kabaddi", "bank_account_number": "39281746503921",
         "ifsc_code": "PUNB0123456", "bank_name": "Punjab National Bank",
+        # This form prints no "Branch Name" anywhere, so the value has nowhere
+        # to go. Supplied on purpose: it is what makes the report below prove
+        # something rather than pass by having nothing left over.
+        "branch_name": "Bahadurgarh Main",
     }
 
     audit = audit_form(str(source), scheme["extractedFields"], profile)
@@ -982,15 +986,24 @@ async def stage_form_geometry(offline: bool) -> None:
           verification.get("clean"),
           "; ".join(f"{p['kind']}:{p['profileKey']}"
                     for p in verification.get("problems", [])) or "clean")
-    check("Values the form has no room for are reported to the citizen",
-          bool(report.get("unplaced")),
-          f"{len(report.get('unplaced', []))} to be written by hand")
-
     written_keys = {w["profileKey"] for w in report.get("written", [])}
     mandatory = {f["profileKey"] for f in scheme["extractedFields"]
                  if f.get("required") and profile.get(f["profileKey"])}
     satisfied = {k for w in report.get("written", [])
                  for k in w.get("satisfies", [w["profileKey"]])}
+
+    # The property, not a quota. An earlier version required the report to be
+    # non-empty, which made every improvement to the filler look like a
+    # failure. What matters is that nothing falls between the two lists: a
+    # value the citizen gave is either on the page or named as theirs to write.
+    reported = {u["profileKey"] for u in report.get("unplaced", [])}
+    accounted = satisfied | written_keys | reported
+    supplied = {f["profileKey"] for f in scheme["extractedFields"]
+                if profile.get(f["profileKey"])}
+    check("Every value the citizen gave is either on the page or reported",
+          supplied <= accounted,
+          ", ".join(sorted(supplied - accounted)) or
+          f"{len(reported)} to be written by hand")
     check("Every mandatory field the citizen answered is on the form",
           mandatory <= satisfied,
           f"{len(mandatory & satisfied)} of {len(mandatory)}; missing: "

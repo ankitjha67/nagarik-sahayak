@@ -60,6 +60,7 @@ DEMO_BY_KEY = {
     "ration_card_type": "Priority Household (PHH)",
     "residency_years": 20,
     "occupation": "Student",
+    "applied_other_scholarship": "No",
 }
 
 DEMO_BY_TYPE = {

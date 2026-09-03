@@ -77,6 +77,10 @@ ADJACENT_ROW_TOLERANCE = 4.0
 # else's box rather than a wide gap after the colon.
 MAX_LABEL_TO_BOX_GAP = 40.0
 
+# How far the next cell may start from the end of the label's own cell before
+# it is a different part of the form rather than this field's box.
+ADJACENT_CELL_TOLERANCE = 4.0
+
 
 @dataclass(frozen=True)
 class Cell:
@@ -100,6 +104,11 @@ class Cell:
     def as_dict(self) -> dict:
         return {"x0": round(self.x0, 1), "y0": round(self.y0, 1),
                 "x1": round(self.x1, 1), "y1": round(self.y1, 1)}
+
+
+def _normalise_token(token: str) -> str:
+    """Lower-case alphanumerics only — the same reduction the matcher uses."""
+    return re.sub(r"[^0-9a-z\u0900-\u097f]", "", str(token).lower())
 
 
 def _longest_run(mask) -> int:
@@ -372,7 +381,8 @@ def _is_scan_noise(token: str) -> bool:
     return len(stripped) <= 4 and letters <= 1
 
 
-def cell_below(cells: list[Cell], cell: Cell, tolerance: float = 3.0) -> Cell | None:
+def cell_below(cells: list[Cell], cell: Cell, tolerance: float = 3.0,
+               prefer=None) -> Cell | None:
     """The cell directly beneath this one in the same column.
 
     A column-header row — "Name of the College/School | Class | Session |
@@ -381,15 +391,23 @@ def cell_below(cells: list[Cell], cell: Cell, tolerance: float = 3.0) -> Cell | 
     difference between a value crammed illegibly beside a heading and one
     sitting in its own box.
     """
+    # A candidate must sit under this cell — inside its span — and, when a
+    # label is given, actually overlap it. Requiring half the *header's* width
+    # was too coarse: "Session | Admission No." share one printed header box,
+    # so the session's own column below it covers only 39% of that box and was
+    # filtered out before the preference could choose it.
+    target = prefer if prefer is not None else cell
     below = [
         c for c in cells
         if abs(c.y0 - cell.y1) <= tolerance
-        and min(c.x1, cell.x1) - max(c.x0, cell.x0) > cell.width * 0.5
+        and c.x0 >= cell.x0 - tolerance and c.x1 <= cell.x1 + tolerance
+        and min(c.x1, target.x1) - max(c.x0, target.x0) > 0
     ]
     if not below:
         return None
-    # The one that lines up best with this column.
-    return max(below, key=lambda c: min(c.x1, cell.x1) - max(c.x0, cell.x0))
+    # Lined up against `prefer` — the label itself — when one is given.
+    return max(below,
+               key=lambda c: min(c.x1, target.x1) - max(c.x0, target.x0))
 
 
 def _is_content(token: str) -> bool:
@@ -491,32 +509,186 @@ def row_is_blank(cells: list[Cell], row_top: float, row_bottom: float,
     return all(is_blank(c, words) for c in row)
 
 
+# ── Comb fields: one character to a box ──────────────────────────────────
+#
+# A great many Indian government forms record a number as a row of small
+# squares — twelve for an Aadhaar, ten for a mobile, sixteen for an account.
+# Writing "39281746503921" as one string across them produces a form a clerk
+# will reject: the digits do not line up with the boxes, and a data-entry
+# operator keying from the squares reads nonsense.
+#
+# A comb is recognised by shape rather than by any label: a run of adjacent
+# cells on one row, all blank, all about the same width, and narrow.
+
+# A comb box is at most this wide. Wider and it is an ordinary cell.
+MAX_COMB_BOX_WIDTH = 30.0
+
+# Box widths within a comb vary by no more than this fraction of the median.
+# A printed comb is drawn by repetition and is very regular; a row of ordinary
+# cells that happen to be narrow is not.
+COMB_WIDTH_TOLERANCE = 0.28
+
+# Fewer boxes than this is not a comb — two or three narrow cells side by side
+# happen by accident all over a form.
+MIN_COMB_BOXES = 4
+
+# Boxes must sit within this many points of each other to be one comb.
+MAX_COMB_BOX_GAP = 4.0
+
+
+def find_combs(cells: list[Cell], words, min_boxes: int = MIN_COMB_BOXES
+               ) -> list[list[Cell]]:
+    """Every run of small equal boxes on the page, left to right.
+
+    Returned as lists of cells so the caller can write one character per box.
+    """
+    by_row: dict[tuple, list[Cell]] = {}
+    for cell in cells:
+        if cell.width > MAX_COMB_BOX_WIDTH or cell.width < 4:
+            continue
+        if not is_blank(cell, words):
+            continue
+        by_row.setdefault((round(cell.y0, 1), round(cell.y1, 1)), []).append(cell)
+
+    combs: list[list[Cell]] = []
+    for row in by_row.values():
+        row.sort(key=lambda c: c.x0)
+        run: list[Cell] = []
+        for cell in row:
+            if run and cell.x0 - run[-1].x1 > MAX_COMB_BOX_GAP:
+                if len(run) >= min_boxes:
+                    combs.extend(_split_uneven(run, min_boxes))
+                run = []
+            run.append(cell)
+        if len(run) >= min_boxes:
+            combs.extend(_split_uneven(run, min_boxes))
+    return combs
+
+
+def _split_uneven(run: list[Cell], min_boxes: int) -> list[list[Cell]]:
+    """Break a run wherever the box width changes, and keep the long parts.
+
+    Two combs printed side by side — a date as DD MM YYYY, say — are adjacent
+    but differently grouped, and treating them as one long comb would spread a
+    value across both.
+    """
+    widths = sorted(c.width for c in run)
+    median = widths[len(widths) // 2]
+    out, current = [], []
+    for cell in run:
+        if abs(cell.width - median) <= median * COMB_WIDTH_TOLERANCE:
+            current.append(cell)
+            continue
+        if len(current) >= min_boxes:
+            out.append(current)
+        current = []
+    if len(current) >= min_boxes:
+        out.append(current)
+    return out
+
+
+def comb_for(cells: list[Cell], label_rect, words,
+             max_drop: float = 30.0) -> list[Cell] | None:
+    """The comb this label writes into, if there is one.
+
+    Looked for on the label's own row first, then just below it — the two
+    places a form puts one. Bounded by `max_drop` so a comb further down the
+    page, belonging to another field, is never claimed.
+    """
+    combs = find_combs(cells, words)
+    if not combs:
+        return None
+
+    centre_y = (label_rect.y0 + label_rect.y1) / 2
+    same_row = [c for c in combs
+                if c[0].y0 - 2 <= centre_y <= c[0].y1 + 2
+                and c[0].x0 >= label_rect.x1 - 4]
+    if same_row:
+        return min(same_row, key=lambda c: c[0].x0)
+
+    below = [c for c in combs
+             if 0 <= c[0].y0 - label_rect.y1 <= max_drop
+             and c[-1].x1 >= label_rect.x0
+             and c[0].x0 <= label_rect.x1 + MAX_LABEL_TO_BOX_GAP]
+    if below:
+        return min(below, key=lambda c: (c[0].y0, c[0].x0))
+    return None
+
+
 def blank_cell_right_of(cells: list[Cell], label_rect, words,
                         min_width: float = MIN_DATA_CELL_WIDTH) -> Cell | None:
-    """An empty cell on the label's own row, to its right.
+    """The empty cell that comes straight after the label's own cell.
 
-    This is the ordinary shape of a form: a label in one cell and its box in
-    the next. Finding it settles the question that "beside or below?" otherwise
+    This is the ordinary shape of a form: a label in one cell, its box in the
+    next. Finding it settles the question that "beside or below?" otherwise
     leaves open — "Amount of Loan required" has a wide empty box beside it and
     a blank-looking cell beneath it in the *next section*, and only the first
     is the field's own.
 
-    Preferred over anything below, always. A form that gives a label a box on
-    its own row is not a column heading.
+    Two things are measured from the label's **cell**, not from its text. A
+    short label in a wide cell — "Full Name" in 160 points — leaves the box a
+    long way from the words, so measuring from the text missed it entirely.
+    And the box must share the cell's top and bottom: the photograph panel on
+    the Haryana form is blank, starts right where the "Game/Sport" cell ends,
+    and spans three rows, which is exactly what gives it away as something
+    else.
     """
     centre_y = (label_rect.y0 + label_rect.y1) / 2
+    own = cell_containing(cells, (label_rect.x0 + label_rect.x1) / 2, centre_y)
+    if own is None:
+        return None
+
     candidates = [
         c for c in cells
-        if c.y0 - 2 <= centre_y <= c.y1 + 2
-        and c.x0 >= label_rect.x1 - 2
-        # Adjacent, not merely somewhere to the right. The photograph box on
-        # the Haryana form is blank and on the same row as "Game/Sport:", and
-        # taking the nearest blank cell without this put "Kabaddi" in it.
-        and c.x0 <= label_rect.x1 + MAX_LABEL_TO_BOX_GAP
+        if abs(c.y0 - own.y0) <= 2 and abs(c.y1 - own.y1) <= 2
+        and abs(c.x0 - own.x1) <= ADJACENT_CELL_TOLERANCE
         and c.width >= min_width
         and is_blank(c, words)
     ]
     return min(candidates, key=lambda c: c.x0) if candidates else None
+
+
+def option_cell_right_of(cells: list[Cell], label_rect, words,
+                         options: list[str]) -> tuple[Cell, float] | None:
+    """An adjacent cell whose only content is this field's own choices.
+
+    "Yes/No" printed in the cell beside a question is not an empty box and not
+    a label — it is the answer cell, with the choices offered. Writing the
+    answer in the space left over is what a person does, and treating the cell
+    as occupied left every such question blank.
+
+    Returns the cell and the x to start writing at, just past the printed
+    choices.
+    """
+    if not options:
+        return None
+    wanted = {_normalise_token(o) for o in options if o}
+    centre_y = (label_rect.y0 + label_rect.y1) / 2
+    own = cell_containing(cells, (label_rect.x0 + label_rect.x1) / 2, centre_y)
+    if own is None:
+        return None
+
+    for cell in cells:
+        if abs(cell.x0 - own.x1) > ADJACENT_CELL_TOLERANCE:
+            continue
+        if not (cell.y0 - 2 <= centre_y <= cell.y1 + 2):
+            continue
+        inside = [w for w in words
+                  if cell.x0 - 1 <= (w[0] + w[2]) / 2 <= cell.x1 + 1
+                  and cell.y0 - 1 <= (w[1] + w[3]) / 2 <= cell.y1 + 1
+                  and not _is_scan_noise(w[4])]
+        if not inside:
+            continue
+        # Every printed word must be one of the offered choices, or part of
+        # one — "Yes/No" arrives as a single token on many forms.
+        joined = _normalise_token("".join(w[4] for w in inside))
+        if not joined or not all(o in joined for o in wanted):
+            continue
+        right_edge = max(w[2] for w in inside)
+        if cell.x1 - right_edge < MIN_DATA_CELL_WIDTH:
+            continue
+        return cell, right_edge + 4
+    return None
 
 
 def header_data_cell(cells: list[Cell], label_rect, words,
@@ -549,7 +721,7 @@ def header_data_cell(cells: list[Cell], label_rect, words,
 
     current = header
     for _ in range(max_depth):
-        target = cell_below(cells, current)
+        target = cell_below(cells, current, prefer=label_rect)
         if target is None:
             return _synthesised_below(header, horizontals, words)
         if (is_blank(target, words)

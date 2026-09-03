@@ -643,6 +643,25 @@ GOV_FORM_CATALOG: list[dict] = [
             _f("admission_number", "Admission Number", "प्रवेश संख्या",
                section="Academic Details", profile_key="admission_number",
                required=False),
+            # The achievements grid has its own "Event" column, and event is
+            # not the same question as sport: an athlete's sport is Athletics
+            # and their event is the 100m. So it is a field in its own right —
+            # sharing sport_name's key would have made the catalog ask one
+            # question twice and answer the other never.
+            #
+            # For a kabaddi player the two answers coincide, and most citizens
+            # will not fill in a separate event. `fallbackProfileKey` says so:
+            # with no event of their own, the sport fills the column, which is
+            # what they would write there by hand.
+            _f("event_discipline", "Event", "स्पर्धा",
+               section="Sports Achievement", profile_key="event_discipline",
+               fallbackProfileKey="sport_name", required=False),
+            _f("applied_other_scholarship",
+               "Applied for any other sports scholarship?",
+               "क्या किसी अन्य खेल छात्रवृत्ति हेतु आवेदन किया है?", "select",
+               section="Sports Achievement",
+               profile_key="applied_other_scholarship",
+               options=["No", "Yes"], required=False),
             *bank_fields(),
         ],
     },

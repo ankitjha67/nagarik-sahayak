@@ -241,6 +241,8 @@ REGISTRY: tuple[FieldRecord, ...] = (
     # ── Sports / misc scheme fields ──────────────────────────────────────
     FieldRecord("sport_name", C.NAME, (P.FORM_COMPLETION,),
                 retention_days=_APPLICATION_CYCLE),
+    FieldRecord("event_discipline", C.NAME, (P.FORM_COMPLETION,),
+                retention_days=_APPLICATION_CYCLE),
     FieldRecord("event_name", C.NAME, (P.FORM_COMPLETION,),
                 retention_days=_APPLICATION_CYCLE),
     FieldRecord("event_date", C.DATE_OF_BIRTH, (P.FORM_COMPLETION,),
@@ -333,6 +335,11 @@ REGISTRY: tuple[FieldRecord, ...] = (
     FieldRecord("mother_occupation", C.FINANCIAL, (P.FORM_COMPLETION,),
                 retention_days=_APPLICATION_CYCLE,
                 note="Asked by scholarship forms to establish family means."),
+    FieldRecord("applied_other_scholarship", C.NAME,
+                (P.SCHEME_ELIGIBILITY, P.FRAUD_PREVENTION),
+                retention_days=_APPLICATION_CYCLE, decisional=True,
+                note="Several scholarships exclude an applicant already "
+                     "holding another for the same achievement."),
     FieldRecord("academic_session", C.NAME, (P.FORM_COMPLETION,),
                 retention_days=_APPLICATION_CYCLE),
     FieldRecord("admission_number", C.NAME, (P.FORM_COMPLETION,),
