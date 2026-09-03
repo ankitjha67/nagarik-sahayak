@@ -23,11 +23,80 @@ except ImportError:
     logger.info("PyMuPDF (fitz) not available — PDF form filling disabled")
 
 
+# ── Fonts ───────────────────────────────────────────────────────────────
+#
+# Everything written onto a form used the base-14 "helv", which is encoded in
+# Latin-1 and has no glyph beyond it. PyMuPDF does not refuse such a string —
+# it writes a middle dot for every character it cannot draw. So a citizen who
+# gave their name as प्रिया शर्मा, in an app that offers full language support,
+# got "······ ·····" on the official form, and nothing anywhere reported a
+# problem: the page had text on it, in the right box, the right width.
+#
+# The Noto faces are already bundled for the generated PDF. The chain below is
+# tried in order and the first face that can draw *every* character of the
+# value is used. "helv" stays first so an ASCII value is written exactly as
+# before, embedding nothing.
+FONTS_DIR = Path(__file__).parent / "fonts"
+_FONT_CHAIN = (
+    ("helv", None),
+    ("nagarik-latin", FONTS_DIR / "NotoSans-Regular.ttf"),
+    ("nagarik-deva", FONTS_DIR / "NotoSansDevanagari-Regular.ttf"),
+)
+_FONT_OBJECTS: dict = {}
+
+
+def _font_object(name: str, path):
+    """The measurable Font for a chain entry, or None if it cannot be loaded."""
+    if name not in _FONT_OBJECTS:
+        try:
+            _FONT_OBJECTS[name] = (fitz.Font(fontname=name) if path is None
+                                   else fitz.Font(fontfile=str(path)))
+        except Exception:  # noqa: BLE001 — a missing face is not a crash
+            _FONT_OBJECTS[name] = None
+    return _FONT_OBJECTS[name]
+
+
+def _font_for(text: str):
+    """The first bundled face that can draw every character of `text`.
+
+    Returns (fontname, fontfile_or_None, font_object), or None when no face
+    covers the value — a Tamil or Gurmukhi name, say, for which nothing here
+    has glyphs. The caller must then decline to write it rather than lay down
+    a row of dots that reads as an answer.
+    """
+    chars = {c for c in str(text) if not c.isspace()}
+    if not chars:
+        return _FONT_CHAIN[0][0], None, _font_object(*_FONT_CHAIN[0])
+    for name, path in _FONT_CHAIN:
+        if path is not None and not path.exists():
+            continue
+        font = _font_object(name, path)
+        if font is None:
+            continue
+        if all(font.has_glyph(ord(c)) for c in chars):
+            return name, (str(path) if path else None), font
+    return None
+
+
+def _text_width(text: str, font, size: float) -> float:
+    """Width of `text` in the face that will actually draw it."""
+    try:
+        return font.text_length(str(text), size)
+    except Exception:  # noqa: BLE001
+        return fitz.get_text_length(str(text), "helv", size)
+
+
 def _format_value_for_fill(value, field_type: str = "text") -> str:
     """Format a value for writing into a PDF form field (no masking — full values needed)."""
     if value is None or value == "":
         return ""
-    val = str(value)
+    # One line, single-spaced, whatever arrived. A form field is a line on a
+    # page: a value that is only whitespace is not a value at all, and an
+    # embedded newline cannot be drawn — it comes out as a box glyph in the
+    # middle of the citizen's address.
+    val = " ".join(str(value).split())
+    if not val:
+        return ""
     if field_type == "date":
         # Convert ISO to DD/MM/YYYY
         match = re.match(r'^(\d{4})-(\d{2})-(\d{2})', val)
@@ -402,6 +471,17 @@ def fill_overlay_pdf(
         if not formatted:
             continue
 
+        # Which face can actually draw this. None means no bundled font has
+        # glyphs for it, and writing it would put dots on the page where the
+        # citizen's name belongs — so it is left for the unplaced report.
+        chosen = _font_for(formatted)
+        if chosen is None:
+            logger.warning("Dropped '%s': no bundled font can draw it; "
+                           "reported for the citizen to write by hand",
+                           profile_key)
+            continue
+        font_name, font_file, font = chosen
+
         # A composite box takes the parts that belong with it — the district,
         # state and PIN code that go in an address, the date that the
         # "Name of Tournament, Venue & Date" heading asks for. Only where the
@@ -439,10 +519,9 @@ def fill_overlay_pdf(
             # filling the form in by hand would do.
             room_for = int((box["y1"] - box["y0"]) // (font_size + 1.5))
             if (room_for >= 2
-                    and fitz.get_text_length(formatted, "helv", font_size)
-                    > max_width):
+                    and _text_width(formatted, font, font_size) > max_width):
                 wrapped = _wrap_to_width(formatted, max_width, font_size,
-                                         room_for)
+                                         room_for, font)
                 # Only when the whole value fits. A half-written name is worse
                 # than one the citizen is told to write themselves.
                 if wrapped and "".join(wrapped).replace(" ", "") == \
@@ -452,33 +531,31 @@ def fill_overlay_pdf(
         page = doc[page_num]
         try:
             # Shrink to fit the space beside the label rather than running over
-            # the cell border into the next column. Below 6pt the text stops
-            # being readable, so it is truncated with an ellipsis instead —
-            # a visibly cut value tells the citizen to write it by hand, where
-            # an illegible one does not.
+            # the cell border into the next column.
+            #
+            # And if shrinking is not enough, do not write at all. An earlier
+            # version cut the value and appended an ellipsis, on the reasoning
+            # that a visibly cut value tells the citizen to write it by hand.
+            # It does not. "Government College for Women, B…" in the school
+            # box of an admission form reads as an answer, and the citizen
+            # signs beneath it; the ellipsis is three points wide and nobody
+            # looks for it. The unplaced report already names the field, in
+            # the citizen's own language, where they will actually read it.
             if max_width and not pos.get("comb"):
                 def _widest(size):
-                    return max(fitz.get_text_length(ln, "helv", size)
-                               for ln in lines)
+                    return max(_text_width(ln, font, size) for ln in lines)
 
                 while font_size > 6 and _widest(font_size) > max_width:
                     font_size -= 0.5
                 if _widest(font_size) > max_width:
-                    trimmed = []
-                    for line in lines:
-                        while (len(line) > 4
-                               and fitz.get_text_length(line + "…", "helv",
-                                                        font_size) > max_width):
-                            line = line[:-1]
-                        trimmed.append(line + "…"
-                                       if fitz.get_text_length(
-                                           line, "helv", font_size) > max_width
-                                       or line != lines[len(trimmed)] else line)
-                    lines = trimmed
+                    logger.info("Dropped '%s': needs %.0fpt in %.0fpt of space "
+                                "even at %.1fpt type",
+                                profile_key, _widest(font_size), max_width,
+                                font_size)
+                    continue
                 formatted = lines[0]
 
-            width = max(fitz.get_text_length(ln, "helv", font_size)
-                        for ln in lines)
+            width = max(_text_width(ln, font, font_size) for ln in lines)
             candidate = {"x": x, "y": y, "width": width, "font_size": font_size}
 
             # Never write over a value already placed on this page.
@@ -495,21 +572,36 @@ def fill_overlay_pdf(
                 # the row, or a wide character spills over its own square.
                 box_width = comb_boxes[0]["x1"] - comb_boxes[0]["x0"]
                 font_size = min(font_size, box_width * 0.85)
-                glyphs, overflowed = _comb_glyphs(formatted, comb_boxes, font_size)
+                # An identifier's separators are noise the boxes replace; a
+                # name's spaces are part of the name and take a box of their
+                # own. Which of the two this is comes from the field's type.
+                # A date's slashes go too: the boxes are DDMMYYYY, eight of
+                # them, and "14/08/2005" is ten characters. Counting the
+                # slashes made the value too long for its own comb, so the
+                # date of birth went unplaced on a form that draws a box per
+                # digit.
+                numeric = field_type in ("aadhaar", "phone", "number", "date")
+                glyphs, overflowed = _comb_glyphs(formatted, comb_boxes,
+                                                  font_size, numeric=numeric,
+                                                  font=font)
                 for glyph in glyphs:
                     page.insert_text(
                         fitz.Point(glyph["x"], y), glyph["char"],
-                        fontsize=font_size, fontname="helv",
-                        color=(0, 0, 0.5),
+                        fontsize=font_size, fontname=font_name,
+                        fontfile=font_file, color=(0, 0, 0.5),
                     )
-                lines = ["".join(g["char"] for g in glyphs)]
+                lines = [_comb_text(formatted, comb_boxes, numeric)]
             else:
                 for offset, line in enumerate(lines):
                     page.insert_text(
                         fitz.Point(x, y + offset * (font_size + 1.5)),
                         line,
                         fontsize=font_size,
-                        fontname="helv",  # Helvetica (built-in PDF font)
+                        # The face chosen for this value: "helv" for anything
+                        # Latin-1, an embedded Noto for the rest. Writing every
+                        # value in helv turned Devanagari into middle dots.
+                        fontname=font_name,
+                        fontfile=font_file,
                         color=(0, 0, 0.5),  # Dark blue, distinct from print
                     )
             claimed.setdefault(page_num, []).append(candidate)
@@ -520,7 +612,12 @@ def fill_overlay_pdf(
                 "x": x, "y": y,
                 "width": width,
                 "font_size": font_size,
-                "text": lines[0],
+                # All of it. A value wrapped across two lines of a tall box is
+                # fully on the page, but recording only the first line made
+                # every summary the citizen reads — and the presence check
+                # below — describe "Rajesh" where "Rajesh Sharma" was written.
+                # `lines` keeps the geometry; `text` is what is on the form.
+                "text": " ".join(lines),
                 "lines": lines,
                 "satisfies": satisfied,
                 "comb_boxes": len(comb_boxes) if comb_boxes else 0,
@@ -562,11 +659,24 @@ def fill_overlay_pdf(
 # Ordered most specific first: "father's name" must be tried before "name", or
 # every name field on the form collects the applicant's own.
 FIELD_ALIASES: dict[str, tuple[str, ...]] = {
-    "father_husband_name": ("father's name", "fathers name", "father / husband",
-                            "father's / husband's name", "husband's name",
+    # "Full Name of Father" is the Daman & Diu phrasing, and "name of father"
+    # does not begin that line, so the anchor test rejected the only match on
+    # the page and the field went to the signature block instead.
+    #
+    # Father leads. A form that splits this combined field into separate
+    # Father / Husband / Mother rows — as the Daman & Diu form does — offers a
+    # blank husband row a student will not fill, and aliases are tried longest
+    # first, so a "full name of husband" variant would be reached before "full
+    # name of father" and claim the value for the wrong row. The generic
+    # "father / husband" label still covers a form that prints the two
+    # together; a husband-only form is left for the citizen to write, which is
+    # the safe outcome for a field this ambiguous.
+    "father_husband_name": ("full name of father",
+                            "father's name", "fathers name", "father / husband",
+                            "father's / husband's name",
                             "name of father", "पिता का नाम"),
-    "mother_name": ("mother's name", "mothers name", "name of mother",
-                    "माता का नाम"),
+    "mother_name": ("full name of mother", "mother's name", "mothers name",
+                    "name of mother", "माता का नाम"),
     "guardian_name": ("guardian's name", "name of guardian"),
     "name": ("name of the applicant", "name of applicant", "applicant's name",
              "full name", "name of the student", "student's name",
@@ -574,7 +684,11 @@ FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "date_of_birth": ("date of birth", "dob", "जन्म तिथि", "जन्म दिनांक"),
     "gender": ("sex", "gender", "लिंग"),
     "category": ("category", "caste category", "श्रेणी", "जाति"),
-    "aadhaar_number": ("aadhar no", "aadhaar no", "aadhar number",
+    # "Aadhar Card No" is the Daman & Diu spelling, and neither "aadhar no"
+    # nor "aadhar number" is a substring of it, so the field went unplaced on
+    # a form that plainly asks for it. Longest first, as everywhere here.
+    "aadhaar_number": ("aadhar card no", "aadhaar card no", "aadhar card number",
+                       "aadhar no", "aadhaar no", "aadhar number",
                        "aadhaar number", "uid no", "आधार संख्या"),
     "mobile_number": ("mobile no", "mobile number", "contact no", "phone no",
                       "मोबाइल"),
@@ -585,7 +699,9 @@ FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "pincode": ("pin code", "pincode", "postal code", "पिन कोड"),
     "village": ("village", "town", "vtc", "गाँव"),
     "tehsil": ("tehsil", "taluka", "तहसील"),
-    "institution_name": ("name of the college/school", "name of college/school",
+    "institution_name": ("name of the college/institute",
+                         "name of college/institute",
+                         "name of the college/school", "name of college/school",
                          "name of the institution", "name of the college",
                          "name of college", "name of the school",
                          "name of institution", "college/school",
@@ -600,9 +716,10 @@ FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     # no slot for a word, so the field is reported unplaced and hand-written.
     "achievement_position": ("position obtained", "position secured",
                              "rank obtained", "प्राप्त स्थान"),
-    "bank_name": ("bank's name", "banks name", "name of bank", "bank name",
-                  "बैंक का नाम"),
-    "bank_account_number": ("bank account number", "account no", "a/c no",
+    "bank_name": ("name of the bank", "bank's name", "banks name",
+                  "name of bank", "bank name", "बैंक का नाम"),
+    "bank_account_number": ("saving bank account number", "bank account number",
+                            "account no", "a/c no",
                             "account number", "खाता संख्या"),
     "ifsc_code": ("ifsc code", "ifsc", "आईएफएससी"),
     "branch_name": ("branch name", "name of branch", "शाखा"),
@@ -659,6 +776,11 @@ COLUMN_GAP = 22.0
 # A few points absorbs the padding a form leaves inside a cell; more than that
 # means the cell belongs to something else.
 COLUMN_ALIGN_TOLERANCE = 8.0
+# A ruled cell holding no more than this many words is form furniture — a
+# heading, a label, a pair of column titles — not a paragraph. Prose needs
+# more words than this to be prose.
+MAX_WORDS_IN_A_LABEL_CELL = 8
+
 _SENTENCE_MARKERS = (
     " that ", " have ", " has been", " shall ", " will ", " are to ",
     " is to ", " i ", " my ", " been ", " enclose", " submitted",
@@ -684,7 +806,11 @@ def _printed_choice_pair(line: str, options: list) -> bool:
     return False
 
 
-def _looks_like_a_label(text: str, options: list | None = None) -> bool:
+_ITEM_NUMBER = re.compile(r"^\s*(?:\(?[0-9ivxa-z]{1,4}[).\]]\s*)+", re.IGNORECASE)
+
+
+def _looks_like_a_label(text: str, options: list | None = None,
+                        alias: str | None = None) -> bool:
     """True if this line is plausibly a field label rather than prose.
 
     Length and sentence structure decide it, not punctuation. An earlier
@@ -694,6 +820,15 @@ def _looks_like_a_label(text: str, options: list | None = None) -> bool:
     stripped = text.strip()
     if not stripped:
         return False
+
+    # An instruction in brackets is not prose. "Date of Birth (Please write as
+    # per Leaving Certificate of HSC)" is sixty-one characters, one over the
+    # cap, and every one of them past "Birth" is telling the citizen how to
+    # fill the field rather than adding a clause to a sentence.
+    without_asides = re.sub(r"\([^)]*\)", "", stripped).strip()
+    if without_asides and without_asides != stripped:
+        return _looks_like_a_label(without_asides, options, alias)
+
     # A question printed on a form is a field, however long: "Has the applicant
     # applied for any other sports scholarship …?" is item 15 of the Haryana
     # form with a Yes/No box beside it, and rejecting it as prose left the box
@@ -708,7 +843,24 @@ def _looks_like_a_label(text: str, options: list | None = None) -> bool:
     # its punctuation, and the space just past them is where a person writes.
     if options and _printed_choice_pair(stripped, options):
         return True
-    if len(stripped) > MAX_LABEL_CHARS:
+
+    # A line that begins with the label being looked for may run past the
+    # length cap — government forms write the instructions into the label
+    # itself, and "a) Name of the College/Institute where Girl student is
+    # pursing Diploma, P.G. Diploma, Graduation, Post-graduation course." is
+    # one field on the Daman & Diu form, thrown away as prose by length alone.
+    #
+    # It lifts the cap and nothing else. Lifting the prose tests as well was a
+    # mistake with teeth: a paragraph wraps where it likes, and the Daman & Diu
+    # undertaking has a line beginning "State Government/ Union Territory
+    # Administration that the information given by me…" — which starts with
+    # "state", is not a field, and took the applicant's state into the middle
+    # of a signed declaration.
+    starts_with_alias = False
+    if alias:
+        opening = _ITEM_NUMBER.sub("", stripped).lower()
+        starts_with_alias = opening.startswith(str(alias).strip().lower())
+    if not starts_with_alias and len(stripped) > MAX_LABEL_CHARS:
         return False
     lowered = f" {stripped.lower()} "
     # Sentence markers only mean prose in a line long enough to be prose. OCR
@@ -718,6 +870,36 @@ def _looks_like_a_label(text: str, options: list | None = None) -> bool:
         return False
     # Prose runs to several clauses; a label does not.
     return stripped.count(",") < 3 and stripped.count(".") < 3
+
+
+def _alias_is_outranked(line: str, alias: str, profile_key: str) -> bool:
+    """Does a longer label for a *different* field start at the same place?
+
+    "full name" is one of the applicant's own aliases, and the Daman & Diu form
+    prints "1. Full Name of Father", "2. Full Name of Husband", "3. Full Name
+    of Mother". Each of those begins with "full name", each is anchored, and
+    each has a comb of its own beneath it — so the applicant's name was written
+    into the father's boxes, and the father's name was then dropped for
+    colliding with it. The form was signed by a girl student under her father's
+    name.
+
+    Longest match at the same offset wins, and if it belongs to another field
+    this occurrence is not ours. The same principle as `_alias_hit`, applied
+    where the aliases are actually tried.
+    """
+    low = str(line).lower()
+    own = str(alias).strip().lower()
+    start = low.find(own)
+    if start == -1:
+        return False
+    for other_key, aliases in FIELD_ALIASES.items():
+        if other_key == profile_key:
+            continue
+        for other in aliases:
+            candidate = str(other).strip().lower()
+            if len(candidate) > len(own) and low.find(candidate) == start:
+                return True
+    return False
 
 
 def _alias_hit(line_lower: str, profile_key: str, catalog_labels: tuple) -> str | None:
@@ -787,6 +969,37 @@ OCR_DPI = 300
 # every lookup and silently reports a form as having no readable labels at all.
 _OCR_ATTR = "_nagarik_ocr_pages"
 
+# A second cache, across documents, keyed by the file itself.
+#
+# Auditing a form and then filling it opens the same PDF twice, and a Document
+# cache cannot span the two. On the Daman & Diu form — fourteen legal-size
+# pages, seven of them pure scans — that meant OCR ran twice over the same
+# images: 298 seconds to audit and 267 to fill, for one application.
+#
+# Keyed on path, size and mtime together, so an edited or replaced file is
+# re-read rather than answered from a stale entry. Words and text only: a
+# TextPage belongs to the Document that made it and cannot outlive it, so what
+# is kept here is the *result* of OCR, and searches are served from the words.
+_OCR_FILE_CACHE: dict = {}
+_OCR_FILE_CACHE_LIMIT = 64
+
+
+def _file_key(doc):
+    """Identity of the file behind a document, or None if it has no file."""
+    path = getattr(doc, "name", None)
+    if not path:
+        return None
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (path, st.st_size, st.st_mtime_ns)
+
+
+def clear_ocr_cache() -> None:
+    """Forget every cached OCR result. For tests and long-running processes."""
+    _OCR_FILE_CACHE.clear()
+
 
 def _text_source(page):
     """A text page for `page`, running OCR when the PDF carries no text.
@@ -796,9 +1009,8 @@ def _text_source(page):
     returns nothing, no value can be placed, and the form comes back blank
     with no explanation. Tesseract gives it a text layer to work from.
 
-    Returns None when the page already has text, which means "use the normal
-    path". OCR is never run over a substantial text layer that already exists:
-    it would be slower and worse.
+    OCR is never run over a substantial text layer that already exists: it
+    would be slower and worse.
 
     A *thin* text layer is the awkward case. A one-line cover page, or a form
     whose only typed text is four field labels, falls under the threshold
@@ -811,6 +1023,12 @@ def _text_source(page):
     adopted only if it reads *more* words than the page already offers. On a
     genuine scan the native layer has nothing and OCR wins outright; on a
     sparse but typed page the native layer wins and is kept.
+
+    Returns (words, text) when OCR is to be used, and None to mean "the page's
+    own text is fine". The OCR *result* is what is cached rather than the
+    TextPage that produced it, because a TextPage belongs to the Document that
+    made it and dies with it — and auditing a form then filling it opens the
+    same file twice.
     """
     doc = page.parent
     try:
@@ -824,6 +1042,23 @@ def _text_source(page):
     if cache is not None and page.number in cache:
         return cache[page.number]
 
+    file_key = _file_key(doc)
+    entry = (file_key, page.number)
+    if file_key is not None and entry in _OCR_FILE_CACHE:
+        result = _OCR_FILE_CACHE[entry]
+        if cache is not None:
+            cache[page.number] = result
+        return result
+
+    def remember(result):
+        if cache is not None:
+            cache[page.number] = result
+        if file_key is not None:
+            if len(_OCR_FILE_CACHE) >= _OCR_FILE_CACHE_LIMIT:
+                _OCR_FILE_CACHE.clear()
+            _OCR_FILE_CACHE[entry] = result
+        return result
+
     try:
         native_words = page.get_text("words")
     except Exception:  # noqa: BLE001
@@ -833,57 +1068,110 @@ def _text_source(page):
     except Exception:  # noqa: BLE001
         native_chars = MIN_TEXT_LAYER_CHARS
     if native_chars >= MIN_TEXT_LAYER_CHARS:
-        if cache is not None:
-            cache[page.number] = None
-        return None
+        return remember(None)
 
-    textpage = None
     try:
-        candidate = page.get_textpage_ocr(dpi=OCR_DPI, full=True)
-        ocr_words = page.get_text("words", textpage=candidate)
-        if len(ocr_words) > len(native_words):
-            textpage = candidate
+        textpage = page.get_textpage_ocr(dpi=OCR_DPI, full=True)
+        ocr_words = page.get_text("words", textpage=textpage)
+        # Decisively more, not merely more. A page carrying a handful of real
+        # typed words and a page that is a scan with a stray mark on it both
+        # fall under the character threshold, and only the second should be
+        # re-read. OCR of a sparse page invents words — "Mobile No" came back
+        # as "wovieno" — so on a near-tie the page's own text wins. A genuine
+        # scan is not a near-tie: it reads nothing natively and hundreds of
+        # words under OCR.
+        if len(native_words) < 2 or len(ocr_words) >= 3 * len(native_words):
             logger.info("Page %d had a %d-character text layer; OCR read %d "
                         "words against %d and was used instead",
                         page.number, native_chars, len(ocr_words),
                         len(native_words))
-        else:
-            logger.info("Page %d has a thin text layer (%d characters) but OCR "
-                        "read no more than it; keeping the page's own text",
-                        page.number, native_chars)
+            return remember((ocr_words, page.get_text(textpage=textpage)))
+        logger.info("Page %d has a thin text layer (%d characters) but OCR "
+                    "read no more than it; keeping the page's own text",
+                    page.number, native_chars)
     except Exception as exc:  # noqa: BLE001 — tesseract may be absent
         logger.warning("Thin text layer and OCR unavailable (%s): the form "
                        "will be filled from what text there is and the rest "
                        "reported as unplaced", type(exc).__name__)
-    if cache is not None:
-        cache[page.number] = textpage
-    return textpage
+    return remember(None)
+
+
+def _search_words(words, needle: str) -> list:
+    """Find `needle` in a words list, the way search_for finds it in a page.
+
+    Needed because the OCR result outlives the TextPage it came from, and
+    `search_for` requires a TextPage. Matching is done on each line's
+    concatenated text, so a needle spanning several words — or sitting inside
+    one, as "name" sits inside "Surname" — is found exactly as before.
+    """
+    target = str(needle or "").lower()
+    if not target:
+        return []
+    lines: dict = {}
+    for w in words:
+        lines.setdefault((w[5], w[6]), []).append(w)
+
+    out = []
+    for row in lines.values():
+        row.sort(key=lambda w: w[0])
+        text, spans = "", []
+        for w in row:
+            if text:
+                text += " "
+                spans.append((w, None, 0))
+            piece = str(w[4])
+            for i in range(len(piece)):
+                spans.append((w, i, len(piece)))
+            text += piece
+        lowered = text.lower()
+        start = lowered.find(target)
+        while start != -1:
+            covered = [s for s in spans[start:start + len(target)]
+                       if s[1] is not None]
+            if covered:
+                # Interpolated across the word, not snapped to its edges. A
+                # needle matching the front of a longer printed word — "Name"
+                # inside "Name:-" — must not push the value out past the whole
+                # word, or every value drifts right of where it belongs.
+                first, last = covered[0], covered[-1]
+                x0 = first[0][0] + (first[0][2] - first[0][0]) * (
+                    first[1] / first[2])
+                x1 = last[0][0] + (last[0][2] - last[0][0]) * (
+                    (last[1] + 1) / last[2])
+                out.append(fitz.Rect(x0, min(c[0][1] for c in covered),
+                                     x1, max(c[0][3] for c in covered)))
+            start = lowered.find(target, start + 1)
+    out.sort(key=lambda r: (r.y0, r.x0))
+    return out
 
 
 def _page_words(page):
     """Words on a page, from OCR when the PDF has no text of its own."""
-    textpage = _text_source(page)
+    ocr = _text_source(page)
+    if ocr is not None:
+        return ocr[0]
     try:
-        return (page.get_text("words", textpage=textpage) if textpage
-                else page.get_text("words"))
+        return page.get_text("words")
     except Exception:  # noqa: BLE001
         return []
 
 
 def _page_text(page) -> str:
-    textpage = _text_source(page)
+    ocr = _text_source(page)
+    if ocr is not None:
+        return ocr[1]
     try:
-        return (page.get_text(textpage=textpage) if textpage
-                else page.get_text())
+        return page.get_text()
     except Exception:  # noqa: BLE001
         return ""
 
 
 def _page_search(page, needle: str):
-    textpage = _text_source(page)
+    ocr = _text_source(page)
+    if ocr is not None:
+        return _search_words(ocr[0], needle)
     try:
-        return (page.search_for(needle, textpage=textpage, quads=False)
-                if textpage else page.search_for(needle, quads=False))
+        return page.search_for(needle, quads=False)
     except Exception:  # noqa: BLE001
         return []
 
@@ -1021,22 +1309,46 @@ def _right_bound(words, rect, page_width: float) -> float:
     return edge
 
 
-def _comb_glyphs(value: str, boxes: list[dict], font_size: float) -> list[dict]:
+def _comb_text(value: str, boxes: list, numeric: bool) -> str:
+    """What a comb actually ends up carrying, spaces and truncation included.
+
+    Reported back as the written text, so the verification check and the
+    citizen's summary both describe the page rather than the intention.
+    """
+    text = str(value)
+    cleaned = re.sub(r"[\s\-/.]", "", text) if numeric else " ".join(text.split())
+    return cleaned[:len(boxes)]
+
+
+def _comb_glyphs(value: str, boxes: list[dict], font_size: float,
+                 numeric: bool = True, font=None) -> list[dict]:
     """One character per box, each centred in its own square.
 
-    Separators are dropped first. A citizen types "2345 6789 0124" or
-    "PUNB0123456" and the form's twelve squares expect the characters alone;
-    writing the spaces would push the last digits out of the comb entirely.
+    For a number, separators are dropped first. A citizen types
+    "2345 6789 0124" or "PUNB0123456" and the form's twelve squares expect the
+    characters alone; writing the spaces would push the last digits out of the
+    comb entirely.
+
+    For a name it is the opposite. A comb for a name leaves an empty box where
+    the space goes — that is how everyone fills one in, and how a data-entry
+    operator reads it back. Stripping the space wrote "SnehaFernandes" across
+    the boxes of the Daman & Diu form: one character to a square, perfectly
+    aligned, and not the applicant's name.
 
     A value longer than the comb is truncated rather than overflowed — running
     past the last box puts characters on whatever is printed beside it — and
     the caller is told, because a truncated identifier is worse than none and
     the citizen must be sent to complete it by hand.
     """
-    cleaned = re.sub(r"[\s\-/.]", "", str(value))
+    if font is None:
+        font = _font_object(*_FONT_CHAIN[0])
+    text = str(value)
+    cleaned = re.sub(r"[\s\-/.]", "", text) if numeric else " ".join(text.split())
     glyphs = []
     for char, box in zip(cleaned, boxes):
-        width = fitz.get_text_length(char, "helv", font_size)
+        if char == " ":
+            continue          # the empty box is the separator
+        width = _text_width(char, font, font_size)
         centre = (box["x0"] + box["x1"]) / 2
         glyphs.append({"char": char, "x": centre - width / 2})
     return glyphs, len(cleaned) > len(boxes)
@@ -1106,14 +1418,20 @@ def _composite_text(primary: str, field_values: dict,
 
 
 def _wrap_to_width(text: str, width: float, font_size: float,
-                   max_lines: int) -> list[str]:
-    """Break text into lines that fit the box, longest-first, never mid-word."""
+                   max_lines: int, font=None) -> list[str]:
+    """Break text into lines that fit the box, longest-first, never mid-word.
+
+    Measured in the face that will draw it — a Devanagari name is a different
+    width in Noto Devanagari than the Latin fallback would suggest.
+    """
+    if font is None:
+        font = _font_object(*_FONT_CHAIN[0])
     words = text.split()
     lines: list[str] = []
     current = ""
     for word in words:
         trial = f"{current} {word}".strip()
-        if current and fitz.get_text_length(trial, "helv", font_size) > width:
+        if current and _text_width(trial, font, font_size) > width:
             lines.append(current)
             current = word
             if len(lines) >= max_lines:
@@ -1298,7 +1616,8 @@ def _line_at(words, rect, tolerance: float = 2.0) -> str:
 
 
 def _place_in_grid(cells, horizontals, label_rect, words, page_width: float,
-                   needed: float, font_size: float, options=None):
+                   needed: float, font_size: float, options=None,
+                   comb_chars: int = 0):
     """Where to write a value on a ruled form, as (x, baseline_y, width).
 
     Two placements, tried in the order a person would:
@@ -1321,6 +1640,17 @@ def _place_in_grid(cells, horizontals, label_rect, words, page_width: float,
     # the characters do not line up with the boxes, and an operator keying from
     # the squares reads nonsense.
     comb = form_geometry.comb_for(cells, label_rect, words)
+    # Only if the value fits it. Filling the boxes one character at a time and
+    # stopping when they run out writes a different number — or a different
+    # name — from the one the citizen gave, aligned so neatly that nothing on
+    # the page suggests anything is missing. On the Daman & Diu form that put
+    # "Anthony" where "Anthony Fernandes" belonged. A comb too short is not
+    # this field's box: step past it and let the other rules look, and if none
+    # finds a home the field is reported for the citizen to write by hand.
+    if comb is not None and comb_chars and comb_chars > len(comb):
+        logger.info("Comb of %d boxes cannot hold a %d-character value; "
+                    "looking elsewhere on the row", len(comb), comb_chars)
+        comb = None
     if comb is not None:
         return {"x": comb[0].x0, "y": comb[0].y1 - 4,
                 "width": comb[-1].x1 - comb[0].x0,
@@ -1355,6 +1685,23 @@ def _place_in_grid(cells, horizontals, label_rect, words, page_width: float,
             cells, fits[0] + 1, (label_rect.y0 + label_rect.y1) / 2)
         return {"x": fits[0], "y": label_rect.y1 - 1.5,
                 "width": fits[1] - fits[0], "box": box, "below": False}
+
+    # A label too long to leave room beside itself. The colon that ends it, on
+    # the line below, is the form saying where the answer goes — and the rule
+    # drawn after that colon is where a person would write.
+    anchor = form_geometry.colon_anchor(cells, label_rect, words)
+    if anchor is not None:
+        left, right, baseline = anchor
+        if right - left >= max(needed * MIN_LEGIBLE_FRACTION,
+                               form_geometry.MIN_DATA_CELL_WIDTH):
+            # One line tall, deliberately. The enclosing cell holds the label
+            # as well, and a box reported as its full height would let a long
+            # value wrap downward out of the cell — or, worse, upward through
+            # the printed label it answers.
+            box = form_geometry.Cell(left, baseline - font_size - 1,
+                                     right, baseline + 1)
+            return {"x": left, "y": baseline, "width": right - left,
+                    "box": box, "below": True}
 
     # Two rows deep, because a table can carry a two-line heading: the Kisan
     # Credit Card form prints "Name of the | Survey/ Khasra | Title | Area in
@@ -1431,11 +1778,106 @@ def _needed_width(profile_key: str, field_values: dict, form_fields: list,
         return 0.0
     field_type = next((f.get("type", "text") for f in (form_fields or [])
                        if f.get("profileKey") == profile_key), "text")
+    formatted = _format_value_for_fill(value, field_type)
+    chosen = _font_for(formatted)
+    if chosen is None:
+        return 0.0
     try:
-        return fitz.get_text_length(
-            _format_value_for_fill(value, field_type), "helv", font_size)
+        return _text_width(formatted, chosen[2], font_size)
     except Exception:  # noqa: BLE001 — an unmeasurable value is placed anyway
         return 0.0
+
+
+def _answer_marker_after(words, label_rect, options=None) -> bool:
+    """Does something on this line mark where an answer goes?
+
+    A form without printed rules still says where to write: it puts a colon
+    after the label, draws a leader of dots or underscores, or prints the
+    choices to tick. This is what separates "Full Name: ______" from a
+    sentence that happens to contain the word "name".
+
+    Checked only on the label's own line and only to its right, because that
+    is where the marker for *this* label would be.
+    """
+    centre_y = (label_rect.y0 + label_rect.y1) / 2
+    after = [w for w in words
+             if label_rect.y0 - 2 <= (w[1] + w[3]) / 2 <= label_rect.y1 + 2
+             and w[2] > label_rect.x1 - 2]
+    if not after:
+        return False
+    after.sort(key=lambda w: w[0])
+
+    for w in after[:3]:
+        text = str(w[4]).strip()
+        if not text:
+            continue
+        # A colon, or the label's own trailing colon carried in the same token.
+        if text.startswith(":") or text.endswith(":") or text.endswith(":-"):
+            return True
+        # A leader: a run of dots, underscores or dashes is the line to write
+        # on, not something to write around.
+        if len(text) >= 2 and all(c in "._-–—…·" for c in text):
+            return True
+    line = " ".join(str(w[4]) for w in after)
+    if options and _printed_choice_pair(line, options):
+        return True
+    # Or the whole line ends at a colon, with the answer space beyond it.
+    own = (_line_at(words, label_rect) or "").rstrip()
+    return own.endswith(":") or own.endswith(":-")
+
+
+def _label_is_anchored(cells, words, label_rect, alias: str, options=None) -> bool:
+    """Is this occurrence of the alias a field label, or a word in a sentence?
+
+    Every field label on a printed form is anchored: it begins its line, or
+    begins its cell, or is followed by the mark that says an answer goes here.
+    A word inside a paragraph is none of those, and the same word is often
+    both. The Daman & Diu form carries
+
+        "…that the information given by me is true…"
+        "…thereby reducing gender disparity…"
+
+    and matching "state" and "gender" in them wrote "Haryana" and "Female"
+    into the middle of a declaration the citizen signs. That is not a
+    misplaced value, it is a false statement, and it is the one outcome this
+    filler must never produce.
+
+    Item numbers are stripped before the start test, because "15. Has the
+    applicant…" and "a) Name of the College…" are labels that begin their
+    line as far as a form is concerned.
+    """
+    text = str(alias).strip().lower()
+    if not text:
+        return False
+
+    line = (_line_at(words, label_rect) or "").strip().lower()
+    if line:
+        opening = _ITEM_NUMBER.sub("", line)
+        if opening.startswith(text):
+            return True
+
+    cell = form_geometry.cell_containing(
+        cells, (label_rect.x0 + label_rect.x1) / 2,
+        (label_rect.y0 + label_rect.y1) / 2)
+    if cell is not None:
+        inside = [w for w in words
+                  if cell.x0 - 1 <= w[0] and w[2] <= cell.x1 + 1
+                  and cell.y0 - 1 <= (w[1] + w[3]) / 2 <= cell.y1 + 1
+                  and not form_geometry._is_scan_noise(str(w[4]))]
+        if inside:
+            first = min(inside, key=lambda w: (round(w[1] / 4), w[0]))
+            if label_rect.x0 <= first[0] + 2:
+                return True
+            # Or the cell holds only a heading or two. A ruled cell with a
+            # handful of words in it is a form's own furniture, not a
+            # paragraph — "Session Admission No." is one box carrying two
+            # column headings on the Haryana form, and requiring the label to
+            # come first in the cell lost the second of them. Prose fills a
+            # cell with sentences, and is excluded by the count.
+            if len(inside) <= MAX_WORDS_IN_A_LABEL_CELL:
+                return True
+
+    return _answer_marker_after(words, label_rect, options)
 
 
 def _detect_fill_positions(doc, form_fields: list = None, field_values: dict = None) -> list:
@@ -1527,11 +1969,35 @@ def _detect_fill_positions(doc, form_fields: list = None, field_values: dict = N
                 found_here = True
                 options = next((f.get("options") for f in form_fields
                                 if f.get("fieldName") == name), None)
+                ftype = next((f.get("type", "text") for f in form_fields
+                              if f.get("fieldName") == name), "text")
+                comb_chars = len(_comb_text(
+                    _format_value_for_fill(field_values.get(pk), ftype),
+                    [None] * 10_000,
+                    ftype in ("aadhaar", "phone", "number", "date")))
                 for rect in rects:
                     # This rect's own line, so two occurrences of one label are
                     # judged separately.
                     context = _line_at(words, rect) or alias
-                    if not _looks_like_a_label(context, options):
+                    if not _looks_like_a_label(context, options, alias):
+                        continue
+                    # And it must be anchored as a label, not merely present in
+                    # a sentence. See _label_is_anchored: this is what keeps a
+                    # value out of the middle of a signed declaration.
+                    # Not ours if a longer label for another field starts in
+                    # the same place. "Full Name of Father" outranks the
+                    # applicant's own "full name".
+                    if _alias_is_outranked(context, alias, pk):
+                        logger.info(
+                            "Dropped '%s': %r is outranked on %r by a longer "
+                            "label for another field", pk, alias, context[:60])
+                        continue
+                    if not _label_is_anchored(cells, words, rect, alias,
+                                              options):
+                        logger.info(
+                            "Dropped '%s': %r appears mid-sentence in %r, with "
+                            "nothing marking it as a field",
+                            pk, alias, context[:70])
                         continue
 
                     y = rect.y1 - 1.5
@@ -1543,7 +2009,8 @@ def _detect_fill_positions(doc, form_fields: list = None, field_values: dict = N
                     if cells:
                         spot = _place_in_grid(cells, horizontals, rect, words,
                                               page_width, needed, font_size,
-                                              options=options)
+                                              options=options,
+                                              comb_chars=comb_chars)
                         # A ruled form still carries prose questions in its
                         # margins — item 15 of the Haryana form sits below the
                         # last table with no cell anywhere near it. Falling
@@ -1573,6 +2040,18 @@ def _detect_fill_positions(doc, form_fields: list = None, field_values: dict = N
                                 pk, y - rect.y1)
                             continue
                     else:
+                        # No grid on this page, so there is no cell structure
+                        # to confirm that this is a field at all — and a page
+                        # of prose will happily hand over a match. The Daman &
+                        # Diu scheme note reads "…thereby reducing gender
+                        # disparity", and "Female" was written into the middle
+                        # of that sentence because "gender" is an alias and the
+                        # line was short enough to pass for a label.
+                        #
+                        # Without rules, a form marks its fields the only other
+                        # way it can: a colon, a dotted or underscored leader,
+                        # or its printed choices. One of those must follow the
+                        # label. Prose has none of them.
                         x = rect.x1 + 5
                         available = max(
                             _right_bound(words, rect, page_width) - x, 0)
@@ -1641,6 +2120,15 @@ def _detect_fill_positions(doc, form_fields: list = None, field_values: dict = N
                     if name not in best or candidate["_score"] > best[name]["_score"]:
                         best[name] = candidate
                     placed = True
+                # Stop once this field's label has been located on the page,
+                # placed or not. Falling through to a looser alias writes a
+                # value across the wrong words — on the KCC form "Amount of
+                # loan required" appears in a section heading and again as the
+                # field, and only the second has a box; letting a later alias
+                # match the heading put the amount in the applicant's name box.
+                # The alias list is ordered so the field's primary label comes
+                # first (father before the combined father/husband label), so
+                # the first genuine match is the right one.
                 if placed or found_here:
                     break
 
@@ -1879,7 +2367,12 @@ def verify_filled_pdf(output_path: str, written: list[dict]) -> dict:
             own_normalised = [_normalise_token(ln) for ln in own_text]
 
             for item in items:
-                present = item["text"] in page_text
+                # Line by line, because a value wrapped inside a tall box is
+                # written as two separate lines and the joined string is on the
+                # page nowhere. Every line must be found, so a dropped one is
+                # still caught.
+                item_lines = item.get("lines") or [item["text"]]
+                present = all(ln in page_text for ln in item_lines)
                 # A comb writes one character per square, each its own drawing
                 # operation, so the text layer reads the value back as
                 # "9 8 1 2 3 4 5 6 7 8" — correct on the page, absent from a
@@ -1887,7 +2380,8 @@ def verify_filled_pdf(output_path: str, written: list[dict]) -> dict:
                 # there. Without this every comb field on a form was reported
                 # missing from a page it is plainly written on.
                 if not present and (item.get("comb_boxes") or not native_text):
-                    present = _normalise_token(item["text"]) in normalised_page
+                    present = all(_normalise_token(ln) in normalised_page
+                                  for ln in item_lines)
                 if not present:
                     (missing if native_text else unconfirmed).append(
                         item["profileKey"])

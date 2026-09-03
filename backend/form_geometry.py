@@ -521,7 +521,21 @@ def row_is_blank(cells: list[Cell], row_top: float, row_bottom: float,
 # cells on one row, all blank, all about the same width, and narrow.
 
 # A comb box is at most this wide. Wider and it is an ordinary cell.
-MAX_COMB_BOX_WIDTH = 30.0
+#
+# Thirty points was too tight. The Daman & Diu form prints its date of birth as
+# eight squares of thirty-three points each, unmistakable to the eye and
+# rejected here, so the field went unplaced on a form that draws a box per
+# digit. What makes a comb recognisable is not smallness but *repetition* —
+# many adjacent boxes of the same width — and that is already tested for. The
+# cap is now backed by the shape test below rather than doing the work alone.
+MAX_COMB_BOX_WIDTH = 42.0
+
+# And a comb box is roughly square, or taller than it is wide. This is what
+# separates eight date squares from a row of narrow table columns: a column is
+# a slot for a word and is drawn much wider than the line is tall, while a box
+# meant for one character is not. Loosening the width cap without this would
+# have turned every narrow table into a comb.
+MAX_COMB_ASPECT = 1.8
 
 # Box widths within a comb vary by no more than this fraction of the median.
 # A printed comb is drawn by repetition and is very regular; a row of ordinary
@@ -545,6 +559,8 @@ def find_combs(cells: list[Cell], words, min_boxes: int = MIN_COMB_BOXES
     by_row: dict[tuple, list[Cell]] = {}
     for cell in cells:
         if cell.width > MAX_COMB_BOX_WIDTH or cell.width < 4:
+            continue
+        if cell.height <= 0 or cell.width / cell.height > MAX_COMB_ASPECT:
             continue
         if not is_blank(cell, words):
             continue
@@ -732,6 +748,69 @@ def header_data_cell(cells: list[Cell], label_rect, words,
         current = target
 
     return _synthesised_below(header, horizontals, words)
+
+
+def colon_anchor(cells: list[Cell], label_rect, words,
+                 max_drop: float = MAX_LABEL_TO_BOX_GAP):
+    """The space opened by the colon that ends a label running onto its own line.
+
+    A long label does not always leave room beside itself. The Daman & Diu form
+    prints
+
+        a) Name of the College/Institute where Girl student is pursing Diploma,
+           P.G. Diploma, Graduation, Post-graduation course.
+                                    :-______________________________________
+
+    — three lines of label, and the answer goes on the rule after the ":-",
+    which is on none of them. Reading only the label's own row found no space
+    at all and reported a field unplaced that the form gives half a line for.
+
+    The colon is the form telling you where the answer starts. Only a colon
+    *below* the label counts here: one beside it is already the ordinary case
+    and `writable_gaps` handles it. Returns (x0, x1, baseline) or None.
+    """
+    cell = cell_containing(cells, (label_rect.x0 + label_rect.x1) / 2,
+                           (label_rect.y0 + label_rect.y1) / 2)
+    if cell is None:
+        return None
+
+    best = None
+    for w in words:
+        text = str(w[4]).strip()
+        if not text.endswith(":") and not text.endswith(":-"):
+            continue
+        wx0, wy0, wx1, wy1 = w[0], w[1], w[2], w[3]
+        # Contained by its centre, not its glyph box. A colon's descender
+        # reaches 1.2 points past the rule that closes the cell it sits in, and
+        # requiring the whole box inside rejected the one marker on the page
+        # that mattered.
+        if not (cell.x0 <= wx0 and wx1 <= cell.x1
+                and cell.y0 - 2 <= (wy0 + wy1) / 2 <= cell.y1 + 2):
+            continue
+        drop = wy0 - label_rect.y1
+        if drop <= 1 or drop > max_drop:
+            continue
+        if best is None or drop < best[0]:
+            best = (drop, w)
+    if best is None:
+        return None
+
+    _, marker = best
+    left = marker[2] + 3
+    right = cell.x1 - 3
+    # Never over anything else printed on that line.
+    centre_y = (marker[1] + marker[3]) / 2
+    for w in words:
+        if w[0] <= marker[2] or w[0] >= right:
+            continue
+        if not (marker[1] - 2 <= (w[1] + w[3]) / 2 <= marker[3] + 2):
+            continue
+        if _is_scan_noise(str(w[4])):
+            continue
+        right = min(right, w[0] - 3)
+    if right - left < MIN_DATA_CELL_WIDTH:
+        return None
+    return left, right, marker[3] - 1.5
 
 
 def writable_gaps(cells: list[Cell], label_rect, words, page_width: float,

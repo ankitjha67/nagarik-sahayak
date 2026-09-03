@@ -40,9 +40,16 @@ def _f(name, en, hi, ftype="text", required=True, section="", profile_key=None, 
     return field
 
 
-def identity_fields(section="Applicant Details"):
-    """Name / Aadhaar / DOB / gender / category — present on nearly every form."""
-    return [
+def identity_fields(section="Applicant Details", omit=()):
+    """Name / Aadhaar / DOB / gender / category — present on nearly every form.
+
+    `omit` drops fields a particular form does not ask for. Not every form
+    wants a caste category, and asking for one the form has no box for is
+    both a question the citizen need not answer and a field the filler will
+    always report unplaced. The DPDP principle is the same as the practical
+    one: collect what the form actually asks for.
+    """
+    fields = [
         _f("applicant_name", "Full Name (as per Aadhaar)", "पूरा नाम (आधार के अनुसार)",
            section=section, profile_key="name", maxLength=100),
         _f("father_husband_name", "Father's / Husband's Name", "पिता / पति का नाम",
@@ -58,6 +65,7 @@ def identity_fields(section="Applicant Details"):
         _f("mobile_number", "Mobile Number", "मोबाइल नंबर", "phone",
            section=section, profile_key="mobile_number", pattern=r"^[6-9]\d{9}$"),
     ]
+    return [f for f in fields if f["fieldName"] not in set(omit)]
 
 
 def address_fields(section="Address"):
@@ -448,7 +456,18 @@ GOV_FORM_CATALOG: list[dict] = [
         "description": "Admission to Kendriya Vidyalaya schools. Seats are allotted by priority category and, where applications exceed seats, by lottery.",
         "descriptionHindi": "केंद्रीय विद्यालय में प्रवेश। सीटें प्राथमिकता श्रेणी और लॉटरी द्वारा आवंटित की जाती हैं।",
         "officialWebsite": "https://kvsangathan.nic.in/",
-        "official_pdf_url": "https://cdnbbsr.s3waas.gov.in/s3kv0299485a92a762d96a1b35ca538738/uploads/2025/07/2025072174.pdf",
+        # The PDF held here was not the admission form. It is a *recruitment*
+        # form — "PM SHRI Kendriya Vidyalaya ITBP, Karera", one school, asking
+        # for Post Applied For, Teaching Experience and B.Ed/CTET
+        # qualifications. A parent seeking a Class 1 place would have been
+        # handed a teacher's job application with their child's details
+        # arranged across it.
+        #
+        # Class 1 admission is done online at kvsonlineadmission.kvs.gov.in
+        # and other classes are handled by the individual school, so there is
+        # no single national form to pre-fill. Left empty rather than replaced
+        # with another guess: a wrong form is worse than none.
+        "official_pdf_url": "",
         "source_verified": "2026-09-01",
         "is_scanned": False,
         "eligibilityCriteria": {
@@ -479,23 +498,37 @@ GOV_FORM_CATALOG: list[dict] = [
         ],
     },
     {
+        # Attributed to Goa until the form itself was read: the PDF this entry
+        # links to is published by the UT Administration of Dadra & Nagar
+        # Haveli and Daman & Diu, Directorate of Education, Moti Daman, and
+        # says so on its letterhead. The error cost twice over — a Goa resident
+        # was shown a scheme and handed a form another administration would
+        # reject, and a resident of the UT that actually runs it was never
+        # shown it at all, because the eligibility rule below said "Goa".
+        #
+        # The scheme is for girl students: it reimburses fees, and the form is
+        # headed "To be filled by Girl Student only".
         "schemeName": "Saraswati Vidya Yojana Scholarship",
         "schemeNameHindi": "सरस्वती विद्या योजना छात्रवृत्ति",
         "category": "education",
-        "level": "State", "state": "Goa",
-        "description": "State scholarship for students in higher education, paid directly to the student's bank account on verification of enrolment and academic record.",
-        "descriptionHindi": "उच्च शिक्षा के छात्रों हेतु राज्य छात्रवृत्ति, सत्यापन के बाद सीधे बैंक खाते में भुगतान।",
-        "officialWebsite": "https://www.goa.gov.in/",
+        "level": "State",
+        "state": "Dadra and Nagar Haveli and Daman and Diu",
+        "description": "Reimbursement of course fees for girl students in higher education in Dadra & Nagar Haveli and Daman & Diu, paid to the student's own bank account on verification of enrolment.",
+        "descriptionHindi": "दादरा और नगर हवेली तथा दमन और दीव में उच्च शिक्षा प्राप्त छात्राओं हेतु शुल्क प्रतिपूर्ति, सत्यापन के बाद सीधे छात्रा के बैंक खाते में।",
+        "officialWebsite": "https://dnhdd.gov.in/",
         "official_pdf_url": "https://cdnbbsr.s3waas.gov.in/s371e09b16e21f7b6919bbfc43f6a5b2f0/uploads/2023/10/202310091025593245.pdf",
         "source_verified": "2026-09-01",
         "is_scanned": False,
         "eligibilityCriteria": {
-            "summary": "Student must be enrolled in a recognised institution and provide continuous schooling certificates for the preceding years, along with a domicile certificate.",
-            "summaryHindi": "छात्र मान्यता प्राप्त संस्थान में नामांकित हो और पिछले वर्षों के निरंतर अध्ययन प्रमाण पत्र प्रस्तुत करे।",
+            "summary": "Girl student domiciled in Dadra & Nagar Haveli and Daman & Diu, enrolled in a recognised institution for a Diploma, Graduation or Post-graduation course, with continuous schooling certificates for the preceding years.",
+            "summaryHindi": "दादरा और नगर हवेली तथा दमन और दीव की मूल निवासी छात्रा, जो मान्यता प्राप्त संस्थान में डिप्लोमा, स्नातक या स्नातकोत्तर पाठ्यक्रम में नामांकित हो।",
             "rules": [
-                {"field": "state", "op": "==", "value": "Goa"},
+                {"field": "state", "op": "==",
+                 "value": "Dadra and Nagar Haveli and Daman and Diu"},
+                # The form is headed "To be filled by Girl Student only".
+                {"field": "gender", "op": "==", "value": "Female"},
             ],
-            "benefit": "Scholarship credited to the student's bank account",
+            "benefit": "Course fees reimbursed to the student's bank account",
         },
         "sections": [
             {"name": "Student Details", "nameHindi": "छात्र का विवरण"},
@@ -504,7 +537,23 @@ GOV_FORM_CATALOG: list[dict] = [
             {"name": "Bank Details", "nameHindi": "बैंक विवरण"},
         ],
         "extractedFields": [
-            *identity_fields(section="Student Details"),
+            # No caste category: the form has no box for one, and the scheme
+            # turns on domicile, gender and parental income.
+            #
+            # Gender stays a field but is made optional below, not omitted: the
+            # eligibility rule gates on girl-student status, so the value must
+            # be collectable — the chat profiler asks only name/age/income/
+            # state, so a field dropped here is a field the engine can never
+            # see, and the rule would strand the scheme at INCOMPLETE forever.
+            # The printed form has no gender box (it is headed "To be filled by
+            # Girl Student only"), so it is not required to be written — it is
+            # reported for the citizen, and the engine reads it from the
+            # profile.
+            *identity_fields(section="Student Details",
+                             omit=("category", "gender")),
+            _f("gender", "Gender", "लिंग", "select", section="Student Details",
+               profile_key="gender", options=["Male", "Female", "Transgender"],
+               required=False),
             _f("email", "Email Address", "ईमेल पता", "email",
                section="Student Details", profile_key="email", required=False),
             _f("marital_status", "Marital Status", "वैवाहिक स्थिति", "select",
@@ -519,9 +568,15 @@ GOV_FORM_CATALOG: list[dict] = [
                section="Academic Details", profile_key="course_name"),
             _f("roll_number", "Roll / Enrollment Number", "रोल / नामांकन संख्या",
                section="Academic Details", profile_key="roll_number", required=False),
+            # Optional here, unlike on other forms. This one records marks in
+            # a six-row table — S.S.C.E, H.S.S.C.E, Diploma, Graduation,
+            # Post-Graduation, Doctorate — each with its own board, marks and
+            # percentage. One profile number cannot say which row it belongs
+            # to, so the filler reports it and the citizen completes the table
+            # themselves. Marked required, it read as a failure every run.
             _f("last_exam_percentage", "Percentage in Last Examination",
                "पिछली परीक्षा में प्रतिशत", "number", section="Academic Details",
-               profile_key="last_exam_percentage"),
+               profile_key="last_exam_percentage", required=False),
             *bank_fields(),
         ],
     },
@@ -533,7 +588,17 @@ GOV_FORM_CATALOG: list[dict] = [
         "description": "Monthly pension for widowed or destitute women resident in Haryana, applied for through the Antyodaya-SARAL portal or a CSC centre.",
         "descriptionHindi": "हरियाणा में निवासरत विधवा या निराश्रित महिलाओं के लिए मासिक पेंशन।",
         "officialWebsite": "https://saralharyana.gov.in/",
-        "official_pdf_url": "https://cdnbbsr.s3waas.gov.in/s392bbd31f8e0e43a7da8a6295b251725f/uploads/2021/11/20250423524146662.pdf",
+        # Held as an official *form* until it was read end to end: the PDF is
+        # the Antyodaya-SARAL information sheet — eligibility, the list of
+        # documents to bring, and the fee — with not one field to fill on
+        # either of its two pages. Applying is done on the SARAL portal or at
+        # a CSC counter, so there is no form to pre-fill, and offering one
+        # would send a citizen to a counter with a leaflet.
+        #
+        # Kept as a reference document, which is what it is: the documents
+        # list on it is genuinely useful before travelling.
+        "official_pdf_url": "",
+        "reference_pdf_url": "https://cdnbbsr.s3waas.gov.in/s392bbd31f8e0e43a7da8a6295b251725f/uploads/2021/11/20250423524146662.pdf",
         "source_verified": "2026-09-01",
         "is_scanned": False,
         "eligibilityCriteria": {

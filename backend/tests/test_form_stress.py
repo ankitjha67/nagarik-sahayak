@@ -121,13 +121,39 @@ class TestCombFields:
         _, written = fill(path, profile, self.FIELDS)
         assert " " not in written["aadhaar_number"]["text"]
 
-    def test_a_value_longer_than_the_comb_is_truncated_and_reported(self, comb_form):
-        """Running past the last box writes on whatever is printed beside it."""
+    def test_a_value_longer_than_the_comb_is_never_written_into_it(self, comb_form):
+        """Truncation into a comb is the worst failure this filler can have.
+
+        The characters line up in their squares, the form looks correct, and
+        the number on it is not the citizen's. Nothing on the page shows that
+        anything was dropped. So a comb too short for the value is not this
+        field's box: the filler looks elsewhere and, failing that, reports the
+        field for the citizen to write themselves.
+        """
         path, _ = comb_form
         profile = dict(self.PROFILE, mobile_number="98123456789999")
-        _, written = fill(path, profile, self.FIELDS)
-        assert written["mobile_number"]["truncated"] is True
-        assert len(written["mobile_number"]["text"]) == 10
+        report, written = fill(path, profile, self.FIELDS)
+        item = written.get("mobile_number")
+        if item is not None:
+            # Placed somewhere else on the row — but never cut short.
+            assert not item.get("comb_boxes")
+            assert item["text"] == "98123456789999"
+        else:
+            assert "mobile_number" in {u["profileKey"]
+                                       for u in report["unplaced"]}
+
+    def test_a_name_comb_keeps_the_space_between_the_names(self, comb_form):
+        """A comb for a name leaves an empty box where the space goes.
+
+        Stripping it the way an Aadhaar's separators are stripped wrote
+        "SnehaFernandes" across the Daman & Diu form — one character to a
+        square, perfectly aligned, and not the applicant's name.
+        """
+        path, _ = comb_form
+        fields = [field("name", "Aadhaar Number")]   # the 12-box comb
+        _, written = fill(path, {"name": "Priya Sharma"}, fields)
+        assert written["name"]["comb_boxes"] == 12, "not written into the comb"
+        assert written["name"]["text"] == "Priya Sharma"
 
     def test_a_short_value_leaves_the_rest_of_the_comb_empty(self, comb_form):
         path, _ = comb_form
@@ -287,6 +313,63 @@ class TestLayoutShapes:
 # ── Degradation ─────────────────────────────────────────────────────────
 
 class TestDegradesHonestly:
+    def test_a_devanagari_value_is_written_as_itself(self, tmp_path):
+        """Not as a row of middle dots.
+
+        Everything was written in the base-14 "helv", which is encoded in
+        Latin-1 and has no Devanagari glyph. PyMuPDF does not refuse such a
+        string — it draws a middle dot per character. So a citizen who gave
+        their name in Hindi, in an app built for exactly that, got
+        "······ ·····" on the official form, in the right box, at the right
+        width, with nothing anywhere reporting a problem.
+        """
+        b = FormBuilder()
+        b.labelled_row(100, "Full Name", "name")
+        b.labelled_row(130, "District", "district")
+        path = str(tmp_path / "hi.pdf")
+        b.save(path)
+        b.close()
+
+        out = str(tmp_path / "out.pdf")
+        fields = [field("name", "Full Name"), field("district", "District")]
+        pf.fill_pdf_form(path, out, {"name": "प्रिया शर्मा",
+                                     "district": "झज्जर"}, fields)
+        text = pymupdf.open(out)[0].get_text()
+        assert "प्रिया शर्मा" in text
+        assert "झज्जर" in text
+        assert "·····" not in text, "written as dots, not as the name"
+
+    def test_a_script_no_bundled_font_covers_is_reported_not_dotted(self, tmp_path):
+        """Gurmukhi has no face here. Saying so beats drawing dots."""
+        b = FormBuilder()
+        b.labelled_row(100, "Full Name", "name")
+        path = str(tmp_path / "pa.pdf")
+        b.save(path)
+        b.close()
+        report, written = fill(path, {"name": "ਪ੍ਰਿਆ ਸ਼ਰਮਾ"},
+                               [field("name", "Full Name")])
+        assert "name" not in written
+        assert "name" in {u["profileKey"] for u in report["unplaced"]}
+
+    def test_a_value_too_long_for_its_box_is_reported_not_cut(self, tmp_path):
+        """An ellipsis is three points wide and nobody looks for it.
+
+        "Government College for Women, B…" in a school box reads as an answer,
+        and the citizen signs beneath it.
+        """
+        def build(b):
+            b.cell(40, 100, 200, 120, label="School")
+            b.cell(200, 100, 250, 120, name="tiny")
+        path, _ = TestLayoutShapes()._form(tmp_path, build)
+        long_name = "Government College for Women, Bahadurgarh, Jhajjar"
+        report, written = fill(path, {"institution_name": long_name},
+                               [field("institution_name", "School")])
+        if "institution_name" in written:
+            assert written["institution_name"]["text"] == long_name
+        else:
+            assert "institution_name" in {u["profileKey"]
+                                          for u in report["unplaced"]}
+
     def test_a_page_with_no_text_layer_is_read_by_ocr(self, tmp_path):
         b = FormBuilder()
         b.labelled_row(100, "Full Name", "name")

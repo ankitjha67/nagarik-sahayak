@@ -894,8 +894,16 @@ class TestVerificationOnAScan:
         scheme = get_by_name("Kisan Credit Card (KCC)")
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
             out = tmp.name
+        # branch_name places on this scan; land_holding_acres is the value
+        # whose own ink OCR reads back imperfectly ("2.5" as "25"). The test is
+        # about how the verifier reports that on a text-less page, so it needs
+        # one placement to produce a verification block — the branch name — and
+        # the awkward number alongside it. (bank_name once served this role but
+        # its label survives OCR only as the fragment "Name of", which the
+        # anchor rule now declines to trust — the same caution that keeps a
+        # value out of a signed declaration.)
         report = fill_pdf_form("/tmp/demo_kcc/original.pdf", out,
-                               {"bank_name": "Punjab National Bank",
+                               {"branch_name": "Bahadurgarh Main",
                                 "land_holding_acres": 2.5},
                                scheme["extractedFields"])
         os.unlink(out)
