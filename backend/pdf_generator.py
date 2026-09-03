@@ -200,6 +200,27 @@ def generate_eligibility_pdf(
     return output_path
 
 
+# Width of the label column on a generated form, in millimetres.
+LABEL_COLUMN_MM = 82
+
+
+def _fit_to_width(pdf, text: str, max_mm: float) -> str:
+    """Trim `text` to the column, measuring it rather than counting characters.
+
+    A bilingual label is Devanagari plus English, and Devanagari glyphs are
+    wider than Latin ones — so a character-count cut let "हरियाणा अधिवास प्रमाण
+    पत्र संख्या / Haryana Domicile Certificate Number" run out of its column and
+    under the value box next to it. Measured trimming cannot do that whatever
+    the script.
+    """
+    if pdf.get_string_width(text) <= max_mm:
+        return text
+    trimmed = text
+    while trimmed and pdf.get_string_width(trimmed + "…") > max_mm:
+        trimmed = trimmed[:-1]
+    return (trimmed + "…") if trimmed else text[:1]
+
+
 def _section_header(pdf: FPDF, title: str):
     pdf.set_fill_color(240, 240, 248)
     pdf.set_draw_color(0, 0, 128)
@@ -629,8 +650,9 @@ def generate_real_filled_form_pdf(
                 # Field number + label
                 pdf.set_font("NS", "B", 8)
                 pdf.set_text_color(80, 80, 80)
-                label_display = f"{field_counter}. {label}"
-                pdf.cell(82, 7, label_display[:65])
+                label_display = _fit_to_width(
+                    pdf, f"{field_counter}. {label}", LABEL_COLUMN_MM - 2)
+                pdf.cell(LABEL_COLUMN_MM, 7, label_display)
 
                 # Value in bordered box
                 pdf.set_font("NS", size=9)

@@ -180,3 +180,32 @@ a refusal — rather than an unfinished form. Both are pinned there and in
 `tests/test_gate_integration.py`.
 
 All 88 smoke-test checks pass on the current tree (83 with `--offline`).
+
+---
+
+## 9. Seeing one form actually filled
+
+```bash
+cd backend
+python scripts/demo_fill.py --png
+python scripts/demo_fill.py --scheme "PM-KISAN Samman Nidhi"
+```
+
+Where the smoke test asserts, this narrates. It downloads one scheme's live
+government PDF, prints what was read out of it, shows a synthetic applicant,
+maps every form field to the profile key that supplies it, runs the gate, then
+writes the values onto the real published PDF and generates the app's own
+filled form beside it. `--png` rasterises the pages so the result can be
+looked at rather than taken on trust.
+
+Two outputs, and they are not interchangeable:
+
+- **`filled_official.pdf`** — the department's own PDF with values overlaid
+  beside their printed labels. Partial by nature: a printed form rarely has a
+  labelled slot for every field, so the run reports which values the citizen
+  must write by hand before they travel.
+- **`application_final.pdf`** — the app's own bilingual form carrying every
+  field, which is what a citizen prints and takes to the counter.
+
+Neither carries a full Aadhaar number. Both stop at the last four digits, and
+the citizen writes the rest by hand on the copy they hand over.
