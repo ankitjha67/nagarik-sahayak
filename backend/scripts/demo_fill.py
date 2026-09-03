@@ -35,11 +35,53 @@ def kv(label, value, indent=2):
     print(f"{' ' * indent}{label:<26} {value}")
 
 
-def demo_applicant():
-    """A synthetic applicant for the Haryana sports scholarship."""
+# Plausible demo values for any field a scheme might ask for, so this script
+# works on every form in the catalog rather than only the one it was written
+# against. Keyed by profileKey first, then by field type.
+DEMO_BY_KEY = {
+    "land_holding_acres": 2.5,
+    "land_ownership_type": "Owned",
+    "survey_khasra_number": "142/3",
+    "farmer_category": "Small Farmer",
+    "kcc_request_type": "New KCC",
+    "loan_amount_required": 150000,
+    "existing_loan_outstanding": 0,
+    "kharif_crops": "Paddy, Bajra",
+    "rabi_crops": "Wheat, Mustard",
+    "pmsby_consent": "Yes",
+    "pmjjby_consent": "Yes",
+    "annual_income": 96000,
+    "is_bpl": "Yes",
+    "is_income_tax_payer": "No",
+    "is_govt_employee": "No",
+    "family_members": 5,
+    "marital_status": "Single",
+    "ration_card_number": "HR1519876543",
+    "ration_card_type": "Priority Household (PHH)",
+    "residency_years": 20,
+    "occupation": "Student",
+}
+
+DEMO_BY_TYPE = {
+    "number": 1,
+    "date": "2024-04-01",
+    "email": "demo@example.com",
+    "phone": "9812345678",
+    "textarea": "Not applicable",
+}
+
+
+def demo_applicant(scheme: dict | None = None):
+    """A synthetic applicant, completed for whichever scheme is being filled.
+
+    The base persona is a Haryana student. Any further field the chosen scheme
+    requires is filled from the tables above, or from the field's own options
+    where it is a choice — so the script exercises a whole form rather than
+    stopping at the gate because the persona happens not to be a farmer.
+    """
     from validation import verhoeff_check_digit
 
-    return {
+    profile = {
         "name": "Priya Sharma",
         "father_husband_name": "Rajesh Sharma",
         "mother_name": "Kamla Sharma",
@@ -74,6 +116,22 @@ def demo_applicant():
         "bank_name": "Punjab National Bank",
         "branch_name": "Bahadurgarh Main",
     }
+    if not scheme:
+        return profile
+
+    for field in scheme.get("extractedFields", []):
+        key = field.get("profileKey")
+        if not key or profile.get(key) not in (None, ""):
+            continue
+        if key in DEMO_BY_KEY:
+            profile[key] = DEMO_BY_KEY[key]
+        elif field.get("options"):
+            profile[key] = field["options"][0]
+        elif field.get("type") in DEMO_BY_TYPE:
+            profile[key] = DEMO_BY_TYPE[field["type"]]
+        else:
+            profile[key] = "Not applicable"
+    return profile
 
 
 def download(url: str, dest: Path) -> Path | None:
@@ -181,7 +239,7 @@ async def main() -> int:
 
     # ── 3. The applicant ─────────────────────────────────────────────────
     rule("3  THE APPLICANT (synthetic)")
-    profile = demo_applicant()
+    profile = demo_applicant(scheme)
     from dpdp.aadhaar_policy import mask
     for key, value in profile.items():
         shown = mask(value) if key == "aadhaar_number" else value
@@ -287,6 +345,10 @@ async def main() -> int:
             kv("Re-opened and checked", f"{check.get('checked', 0)} written values")
             if check.get("clean"):
                 kv("Result", "clean — nothing overlaps, nothing crosses a cell border")
+            if check.get("unconfirmed"):
+                kv("Could not read back",
+                   ", ".join(check["unconfirmed"])
+                   + "  (scan has no text layer; OCR misreads our own ink)")
             else:
                 for problem in check.get("problems", []):
                     print(f"      ! {problem['kind']}: {problem['profileKey']} — "

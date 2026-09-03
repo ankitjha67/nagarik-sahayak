@@ -937,7 +937,11 @@ async def stage_form_geometry(offline: bool) -> None:
     profile = {
         "name": "Priya Sharma", "father_husband_name": "Rajesh Sharma",
         "mother_name": "Kamla Sharma", "father_occupation": "Farmer",
-        "mother_occupation": "Homemaker",
+        "mother_occupation": "Homemaker", "state_family_id": "HR-1234567890",
+        "current_class": "B.A. II", "academic_session": "2025-26",
+        "event_name": "Haryana State Senior Kabaddi Championship 2025",
+        "event_date": "2025-11-18", "achievement_position": "First",
+        "domicile_certificate_number": "HR/JHJ/2019/004821",
         "aadhaar_number": make_valid_aadhaar("73629184057"),
         "date_of_birth": "2005-08-14", "gender": "Female", "category": "OBC",
         "mobile_number": "9812345678", "email": "priya@example.com",
@@ -981,6 +985,26 @@ async def stage_form_geometry(offline: bool) -> None:
     check("Values the form has no room for are reported to the citizen",
           bool(report.get("unplaced")),
           f"{len(report.get('unplaced', []))} to be written by hand")
+
+    written_keys = {w["profileKey"] for w in report.get("written", [])}
+    mandatory = {f["profileKey"] for f in scheme["extractedFields"]
+                 if f.get("required") and profile.get(f["profileKey"])}
+    satisfied = {k for w in report.get("written", [])
+                 for k in w.get("satisfies", [w["profileKey"]])}
+    check("Every mandatory field the citizen answered is on the form",
+          mandatory <= satisfied,
+          f"{len(mandatory & satisfied)} of {len(mandatory)}; missing: "
+          f"{sorted(mandatory - satisfied) or 'none'}")
+
+    check("A column heading writes into the box beneath it",
+          "institution_name" in written_keys,
+          "the College/School row has nothing beside its heading")
+    check("A composite box absorbs the parts that belong in it",
+          {"state", "pincode"} <= satisfied,
+          "state and PIN code go into the address block")
+    check("A value recorded by column is placed under the right one",
+          "achievement_position" in written_keys,
+          "\"First\" written under the Gold column, not a tick")
 
 
 async def main() -> int:

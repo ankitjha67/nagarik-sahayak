@@ -192,3 +192,78 @@ class TestAgainstARealScan:
         start, end = fg.writable_span(cells, rect, page.get_text("words"),
                                       page.rect.width)
         assert end - start > 250
+
+
+class TestColumnHeaders:
+    """A column-header row has nothing beside its headings and a blank row
+    under them. That blank row is where a person writes."""
+
+    CELLS = [
+        Cell(20, 100, 200, 120),    # "Name of the College/School"
+        Cell(200, 100, 260, 120),   # "Class"
+        Cell(20, 120, 200, 140),    # blank, under the college heading
+        Cell(200, 120, 260, 140),   # blank, under Class
+        Cell(20, 140, 260, 160),    # a later, occupied row
+    ]
+
+    def test_the_cell_directly_below_is_found(self):
+        below = fg.cell_below(self.CELLS, Cell(20, 100, 200, 120))
+        assert below == Cell(20, 120, 200, 140)
+
+    def test_a_cell_in_another_column_is_not_below(self):
+        below = fg.cell_below(self.CELLS, Cell(200, 100, 260, 120))
+        assert below == Cell(200, 120, 260, 140)
+
+    def test_a_blank_cell_is_recognised_through_scan_noise(self):
+        """An empty data cell on a real scan reads as [":,.!F-'", '..'].
+        Treating that as content hid every writable box on the table."""
+        words = [_word(210, 125, 240, 137, ":,.!F-'"),
+                 _word(242, 125, 250, 137, "..")]
+        assert fg.is_blank(Cell(200, 120, 260, 140), words)
+
+    def test_a_cell_with_real_content_is_not_blank(self):
+        words = [_word(210, 125, 250, 137, "Existing")]
+        assert not fg.is_blank(Cell(200, 120, 260, 140), words)
+
+    def test_a_heading_resolves_to_its_data_cell(self):
+        label = _rect(25, 104, 150, 116)
+        target = fg.header_data_cell(self.CELLS, label, [])
+        assert target == Cell(20, 120, 200, 140)
+
+    def test_an_ordinary_label_over_an_occupied_row_gets_nothing(self):
+        label = _rect(25, 144, 150, 156)
+        assert fg.header_data_cell(self.CELLS, label, []) is None
+
+
+class TestBridgingLostRules:
+    def test_a_gap_between_two_segments_at_one_x_is_closed(self):
+        """A ruled line does not stop for one row and start again below it.
+        The Address row had no detected border on either side, formed no cell,
+        and left the state and PIN code unfillable."""
+        bridged = fg._bridge_segments([(21.5, 100, 209), (21.5, 246, 400)])
+        assert bridged == [(21.5, 100, 400)]
+
+    def test_a_divider_that_genuinely_ends_is_not_extended(self):
+        """The Class and Session columns exist for two rows and no more."""
+        bridged = fg._bridge_segments([(250.0, 319, 344)], max_gap=60)
+        assert bridged == [(250.0, 319, 344)]
+
+    def test_a_gap_too_large_to_be_a_lost_rule_is_left_alone(self):
+        bridged = fg._bridge_segments([(21.5, 100, 120), (21.5, 500, 600)],
+                                      max_gap=60)
+        assert len(bridged) == 2
+
+    def test_segments_at_different_x_never_merge(self):
+        bridged = fg._bridge_segments([(21.5, 100, 200), (250.0, 210, 300)])
+        assert len(bridged) == 2
+
+
+class TestInitialismsSurvive:
+    @pytest.mark.parametrize("token", ["B.A.", "M.A.", "B.Sc"])
+    def test_an_initialism_is_not_scan_noise(self, token):
+        """"B.A." is half punctuation and entirely real."""
+        assert not fg._is_scan_noise(token)
+
+    @pytest.mark.parametrize("token", [":,.!F-'", "--ll.", ".,"])
+    def test_punctuation_smears_still_are(self, token):
+        assert fg._is_scan_noise(token)

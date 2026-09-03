@@ -689,3 +689,218 @@ class TestPostFillVerification:
         assert {"profileKey", "page", "x", "y", "width",
                 "font_size", "text"} <= set(entry)
         assert entry["text"] == "Priya Sharma"
+
+
+class TestCompositeBoxes:
+    """A form has one Address area, not four lines for address, district,
+    state and PIN. Treating them as four fields left State and PIN Code
+    permanently unfillable on a box with three lines of room in it."""
+
+    def test_the_address_parts_are_gathered(self):
+        from pdf_filler import _composite_text
+
+        text, satisfied = _composite_text(
+            "address_line",
+            {"address_line": "House No. 214", "district": "Jhajjar",
+             "state": "Haryana", "pincode": "124507"},
+            [{"profileKey": "address_line", "type": "textarea"}])
+        assert text == "House No. 214, Jhajjar, Haryana - 124507"
+        assert set(satisfied) == {"address_line", "district", "state", "pincode"}
+
+    def test_a_pin_code_reads_the_way_an_address_is_written(self):
+        from pdf_filler import _composite_text
+
+        text, _ = _composite_text(
+            "address_line", {"address_line": "H 1", "pincode": "110001"},
+            [{"profileKey": "address_line", "type": "text"}])
+        assert text.endswith("H 1 - 110001")
+
+    def test_the_tournament_heading_asks_for_the_date_too(self):
+        from pdf_filler import _composite_text
+
+        text, satisfied = _composite_text(
+            "event_name",
+            {"event_name": "State Championship", "event_date": "2025-11-18"},
+            [{"profileKey": "event_name", "type": "text"},
+             {"profileKey": "event_date", "type": "date"}])
+        assert "18/11/2025" in text
+        assert "event_date" in satisfied
+
+    def test_a_part_the_citizen_did_not_supply_is_not_claimed(self):
+        from pdf_filler import _composite_text
+
+        _, satisfied = _composite_text(
+            "address_line", {"address_line": "H 1"},
+            [{"profileKey": "address_line", "type": "text"}])
+        assert satisfied == ["address_line"]
+
+    def test_a_non_composite_field_is_left_alone(self):
+        from pdf_filler import _composite_text
+
+        text, satisfied = _composite_text(
+            "name", {"name": "Priya Sharma"},
+            [{"profileKey": "name", "type": "text"}])
+        assert text == "Priya Sharma" and satisfied == ["name"]
+
+    def test_wrapping_never_breaks_a_word(self):
+        from pdf_filler import _wrap_to_width
+
+        lines = _wrap_to_width(
+            "House No. 214, Sector 7, Model Town, Jhajjar, Haryana - 124507",
+            120, 9.0, 3)
+        assert len(lines) >= 2
+        assert all(len(ln) < 62 for ln in lines)
+        assert " ".join(lines).replace("  ", " ").startswith("House No. 214")
+
+    def test_wrapping_stops_at_the_lines_the_box_has(self):
+        from pdf_filler import _wrap_to_width
+
+        assert len(_wrap_to_width("a b c d e f g h i j k l", 20, 9.0, 2)) == 2
+
+
+class TestOptionGrids:
+    """Some values are recorded by which printed column you write under."""
+
+    def test_the_medal_grid_is_declared_with_its_order(self):
+        from pdf_filler import OPTION_GRIDS
+
+        spec = OPTION_GRIDS["achievement_position"]
+        assert spec["order"] == ("First", "Second", "Third", "Participation")
+        assert spec["anchor"]
+
+    def test_the_citizens_own_word_is_written_not_a_tick(self):
+        """Clause 16 of this form makes false information a criminal matter,
+        so the page must never assert more than the applicant did. "First"
+        under the Gold column says exactly what they said, and a clerk can see
+        the mapping and correct it; a bare tick asserts the medal and is
+        unattributable."""
+        import os
+        pytest.importorskip("numpy")
+        if not os.path.exists("/tmp/demo_fill/original.pdf"):
+            pytest.skip("run scripts/demo_fill.py to fetch the source form")
+
+        import pymupdf
+        import form_geometry as fg
+        from pdf_filler import _option_column_position
+
+        page = pymupdf.open("/tmp/demo_fill/original.pdf")[0]
+        cells = fg.build_cells(page)
+        words = page.get_text("words")
+        horizontals, _ = fg.detect_rules(page)
+
+        spots = {}
+        for value in ("First", "Second", "Third", "Participation"):
+            spot = _option_column_position(page, cells, horizontals, words,
+                                           "achievement_position", value, [], 1)
+            assert spot is not None, value
+            spots[value] = spot["x"]
+
+        # Each option lands in its own column, left to right.
+        ordered = [spots[v] for v in ("First", "Second", "Third", "Participation")]
+        assert ordered == sorted(ordered)
+        assert len(set(ordered)) == 4
+
+    def test_an_unknown_value_is_not_forced_into_a_column(self):
+        from pdf_filler import _option_column_position
+
+        assert _option_column_position(None, [], [], [], "achievement_position",
+                                       "Fourth", [], 1) is None
+
+    def test_a_field_with_no_grid_declared_is_untouched(self):
+        from pdf_filler import _option_column_position
+
+        assert _option_column_position(None, [], [], [], "name",
+                                       "Priya", [], 1) is None
+
+
+class TestOcrFallback:
+    """Many published forms are pure images with no text at all."""
+
+    KCC = "/tmp/demo_kcc/original.pdf"
+
+    def test_a_page_with_text_is_not_put_through_ocr(self):
+        import os
+        if not os.path.exists("/tmp/demo_fill/original.pdf"):
+            pytest.skip("run scripts/demo_fill.py to fetch the source form")
+
+        import pymupdf
+        from pdf_filler import _text_source
+
+        page = pymupdf.open("/tmp/demo_fill/original.pdf")[0]
+        assert _text_source(page) is None, \
+            "OCR over an existing text layer is slower and worse"
+
+    def test_a_page_with_no_text_gets_one(self):
+        import os
+        if not os.path.exists(self.KCC):
+            pytest.skip("run demo_fill.py --scheme 'Kisan Credit Card (KCC)'")
+
+        import pymupdf
+        from pdf_filler import _page_text, _text_source
+
+        page = pymupdf.open(self.KCC)[0]
+        assert page.get_text().strip() == "", "fixture is meant to be a pure scan"
+        assert _text_source(page) is not None
+        assert len(_page_text(page)) > 500
+
+    def test_labels_are_found_on_a_pure_scan(self):
+        import os
+        if not os.path.exists(self.KCC):
+            pytest.skip("run demo_fill.py --scheme 'Kisan Credit Card (KCC)'")
+
+        import pymupdf
+        from pdf_filler import _label_rects
+
+        page = pymupdf.open(self.KCC)[0]
+        assert _label_rects(page, "branch name")
+        assert _label_rects(page, "area in acres")
+
+    def test_the_cache_does_not_leak_between_documents(self):
+        """CPython reuses the address of a collected object, so an id()-keyed
+        cache handed a new document the text page of a closed one — and every
+        lookup then failed, reporting a readable form as having no labels."""
+        import os
+        if not os.path.exists(self.KCC):
+            pytest.skip("run demo_fill.py --scheme 'Kisan Credit Card (KCC)'")
+
+        import pymupdf
+        from pdf_filler import _label_rects
+
+        first = pymupdf.open(self.KCC)
+        assert _label_rects(first[0], "branch name")
+        first.close()
+        del first
+
+        second = pymupdf.open(self.KCC)
+        assert _label_rects(second[0], "branch name"), \
+            "a second document must not inherit a closed one's text page"
+
+
+class TestVerificationOnAScan:
+    def test_unreadable_own_ink_is_reported_separately_from_missing(self):
+        """A pure scan has no text layer, so the verifier re-OCRs the filled
+        page — including our own overlay, which OCR reads back imperfectly
+        ("2.5" comes back as "25"). Calling that a missing value would cry
+        wolf; calling it verified would be a lie."""
+        import os
+        pytest.importorskip("numpy")
+        if not os.path.exists("/tmp/demo_kcc/original.pdf"):
+            pytest.skip("run demo_fill.py --scheme 'Kisan Credit Card (KCC)'")
+
+        import tempfile
+        from data.gov_forms import get_by_name
+        from pdf_filler import fill_pdf_form
+
+        scheme = get_by_name("Kisan Credit Card (KCC)")
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            out = tmp.name
+        report = fill_pdf_form("/tmp/demo_kcc/original.pdf", out,
+                               {"bank_name": "Punjab National Bank",
+                                "land_holding_acres": 2.5},
+                               scheme["extractedFields"])
+        os.unlink(out)
+
+        check = report["verification"]
+        assert "unconfirmed" in check and "textCheckReliable" in check
+        assert not [p for p in check["problems"]
+                    if p["kind"] == "value_not_in_output"]

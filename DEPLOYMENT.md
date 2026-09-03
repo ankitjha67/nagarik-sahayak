@@ -19,7 +19,12 @@ field definitions and silently stops learning anything from a live form.
 `numpy` (already in `requirements.txt`) is what reads the ruled grid off a
 scanned form so a value stays inside its cell. Without it the filler still
 works but falls back to bounding values by the next printed word, which is
-looser — `GET`ting a fill report will show `gridDetected: false`.
+looser — a fill report will then show `gridDetected: false`.
+
+Tesseract earns its place twice over: many published forms carry **no text
+layer at all** (the Kisan Credit Card form has exactly zero extractable
+characters), and without OCR nothing can be located on them, so they come
+back blank. With it the same form fills.
 
 ---
 
@@ -225,6 +230,10 @@ now catch:
   Occupation and Parivar Pehchan Patra were found: they came out blank on every
   application and nothing reported it, because there was no field to be missing.
 - **After writing**, it re-opens the file and checks that every value is present,
-  that no two overlap, and that none crosses the cell border it was placed
-  inside. Placement is computed from the *unfilled* page, so none of that is
-  certain until the file exists.
+  that no two overlap, that none sits on top of the form's own printing, and
+  that none crosses the cell border it was placed inside. Placement is computed
+  from the *unfilled* page, so none of that is certain until the file exists.
+  On a pure scan the verifier has to re-OCR the filled page — including our own
+  ink, which OCR reads back imperfectly — so those values are listed under
+  `unconfirmed` rather than counted as missing, and `textCheckReliable` says
+  which kind of answer you are getting.
