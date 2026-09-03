@@ -16,6 +16,11 @@ Most real government forms are scanned images, not text PDFs. Without the OCR
 engine and the Hindi language pack the extractor falls back to the curated
 field definitions and silently stops learning anything from a live form.
 
+`numpy` (already in `requirements.txt`) is what reads the ruled grid off a
+scanned form so a value stays inside its cell. Without it the filler still
+works but falls back to bounding values by the next printed word, which is
+looser — `GET`ting a fill report will show `gridDetected: false`.
+
 ---
 
 ## 2. Secrets
@@ -166,12 +171,13 @@ python scripts/smoke_test.py            # full run, needs network for stages 1-2
 python scripts/smoke_test.py --offline  # everything else
 ```
 
-Fourteen stages: live-form fetch, OCR extraction, validation, eligibility,
+Fifteen stages: live-form fetch, OCR extraction, validation, eligibility,
 fraud screening, PDF generation, adversarial cases, the combined gate,
 Central/State catalog coverage, demo applicants in four States, KYC, language
-coverage, DPDP notice scope, and the wiring between all of them. Exit code is
-non-zero if any check fails, so it doubles as a CI gate. It needs no database
-and no LLM key.
+coverage, DPDP notice scope, the wiring between all of them, and the form
+geometry that keeps values inside their printed cells. Exit code is non-zero
+if any check fails, so it doubles as a CI gate. It needs no database and no
+LLM key.
 
 Stage 14 exists because two bugs lived in the gaps between layers that every
 unit test passed over: KYC evidence that never reached the decision function
@@ -179,7 +185,7 @@ the API calls, and a missing identity document classified as invalid data —
 a refusal — rather than an unfinished form. Both are pinned there and in
 `tests/test_gate_integration.py`.
 
-All 88 smoke-test checks pass on the current tree (83 with `--offline`).
+All 105 smoke-test checks pass on the current tree.
 
 ---
 
@@ -209,3 +215,16 @@ Two outputs, and they are not interchangeable:
 
 Neither carries a full Aadhaar number. Both stop at the last four digits, and
 the citizen writes the rest by hand on the copy they hand over.
+
+The run prints two checks around the fill, and both exist because of bugs they
+now catch:
+
+- **Before writing**, it audits the form — which catalog fields have a labelled
+  slot, which do not, and which labels are printed on the form that the catalog
+  has no field for at all. That last one is how Father's Occupation, Mother's
+  Occupation and Parivar Pehchan Patra were found: they came out blank on every
+  application and nothing reported it, because there was no field to be missing.
+- **After writing**, it re-opens the file and checks that every value is present,
+  that no two overlap, and that none crosses the cell border it was placed
+  inside. Placement is computed from the *unfilled* page, so none of that is
+  certain until the file exists.

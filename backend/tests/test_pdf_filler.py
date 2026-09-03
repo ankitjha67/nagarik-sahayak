@@ -498,3 +498,194 @@ class TestUnplacedIsReported:
         assert '"unplaced": _unplaced_report(' in source, \
             "a shortfall computed and not returned is a shortfall not reported"
         assert callable(_unplaced_report)
+
+
+# ─── OCR-tolerant label matching ───
+
+class TestOcrTolerance:
+    """Real scans mangle labels in ways invisible until you print the text.
+
+    The Haryana form carries "Mother's·Name:" — a middle dot where the space
+    should be, making it a single token — and "Name ofTournament" with the
+    space missing. Both are perfectly legible on the page and neither is
+    findable with an exact search.
+    """
+
+    def test_normalisation_strips_what_ocr_invents(self):
+        from pdf_filler import _normalise_token
+
+        assert _normalise_token("Mother's·Name:") == "mothersname"
+        assert _normalise_token("Aadhar  No.") == "aadharno"
+
+    def test_close_words_score_high_and_distant_ones_low(self):
+        from pdf_filler import _token_ratio
+
+        assert _token_ratio("institution", "institution") == 1.0
+        assert _token_ratio("mothersname", "fathersname") < 0.86
+        assert _token_ratio("mother", "brother") < 0.86
+
+    def test_father_and_mother_can_never_trade_places(self):
+        """The near-miss that put the mother's name on the father's row.
+        They differ by two characters in eleven and score 0.82, so the floor
+        sits above that — and the first character must survive as well, because
+        anything that changes who a value refers to is worse than no match."""
+        from pdf_filler import OCR_TOKEN_SIMILARITY, _token_ratio
+
+        assert _token_ratio("fathersname", "mothersname") < OCR_TOKEN_SIMILARITY
+
+    def test_a_stray_ocr_letter_does_not_make_a_label_into_prose(self):
+        """This form yields "I Mother's Occupation:". Matching " i " in a
+        23-character label threw the field away."""
+        from pdf_filler import _looks_like_a_label
+
+        assert _looks_like_a_label("I Mother's Occupation: ")
+        assert not _looks_like_a_label(
+            "It is certified that I have not applied for sports scholarship "
+            "from SAI or Central Govt.")
+
+
+class TestPreFlightAudit:
+    """What the form asks for, checked before anything is written to it."""
+
+    FIXTURE = "/tmp/demo_fill/original.pdf"
+
+    @pytest.fixture
+    def scheme(self):
+        from data.gov_forms import get_by_name
+        return get_by_name("Sports Achievement Scholarship (Haryana)")
+
+    @pytest.fixture
+    def audit(self, scheme):
+        import os
+        pytest.importorskip("numpy")
+        if not os.path.exists(self.FIXTURE):
+            pytest.skip("run scripts/demo_fill.py to fetch the source form")
+        from pdf_filler import audit_form
+        return audit_form(self.FIXTURE, scheme["extractedFields"], {})
+
+    def test_the_grid_is_read_before_writing(self, audit):
+        assert audit["available"] and audit["gridDetected"]
+
+    def test_it_reports_which_fields_the_form_can_take(self, audit):
+        assert audit["addressableOnForm"]
+        assert "name" in audit["addressableOnForm"]
+
+    def test_it_reports_which_fields_the_form_cannot_take(self, audit):
+        """A field with no labelled slot comes out blank. Naming it is the
+        difference between a citizen completing the form at home and finding
+        out at the counter."""
+        assert "pincode" in audit["notAddressableOnForm"]
+
+    def test_a_missing_pdf_degrades_instead_of_raising(self, scheme):
+        from pdf_filler import audit_form
+
+        result = audit_form("/nonexistent.pdf", scheme["extractedFields"], {})
+        assert result["available"] is False and result["error"]
+
+    def test_the_catalog_now_models_what_the_form_asks(self, scheme):
+        """Father's Occupation, Mother's Occupation and Parivar Pehchan Patra
+        are printed on this form. The catalog had no fields for them, so they
+        came out blank on every application and nothing reported it — there was
+        no field to be missing. The audit found them."""
+        keys = {f["profileKey"] for f in scheme["extractedFields"]}
+        assert {"father_occupation", "mother_occupation",
+                "state_family_id"} <= keys
+
+
+class TestPostFillVerification:
+    """Placement is computed from the unfilled page, so nothing is certain
+    until the file exists and is read back."""
+
+    def test_two_values_on_one_line_are_reported(self):
+        from pdf_filler import _collides
+
+        a = {"x": 100, "y": 200, "width": 60, "font_size": 10}
+        b = {"x": 130, "y": 200, "width": 60, "font_size": 10}
+        assert _collides(a, b)
+
+    def test_adjacent_table_rows_are_not_a_collision(self):
+        """Rows on this form sit 13 points apart with 9.7-point text. A glyph
+        box a full font-height tall made every vertical neighbour look like a
+        clash, and Mother's Name was refused because Father's Name was above."""
+        from pdf_filler import _collides
+
+        a = {"x": 100, "y": 181.5, "width": 67, "font_size": 9.7}
+        b = {"x": 100, "y": 168.5, "width": 64, "font_size": 9.7}
+        assert not _collides(a, b)
+
+    def test_values_side_by_side_do_not_collide(self):
+        from pdf_filler import _collides
+
+        a = {"x": 100, "y": 200, "width": 40, "font_size": 10}
+        b = {"x": 200, "y": 200, "width": 40, "font_size": 10}
+        assert not _collides(a, b)
+
+    def test_a_missing_output_file_degrades(self):
+        from pdf_filler import verify_filled_pdf
+
+        result = verify_filled_pdf("/nonexistent.pdf", [])
+        assert result["verified"] is False
+
+    def test_a_real_fill_comes_back_clean(self):
+        import os
+        pytest.importorskip("numpy")
+        if not os.path.exists("/tmp/demo_fill/original.pdf"):
+            pytest.skip("run scripts/demo_fill.py to fetch the source form")
+
+        import tempfile
+        from data.gov_forms import get_by_name
+        from pdf_filler import fill_pdf_form
+        from validation import verhoeff_check_digit
+
+        scheme = get_by_name("Sports Achievement Scholarship (Haryana)")
+        profile = {
+            "name": "Priya Sharma", "father_husband_name": "Rajesh Sharma",
+            "mother_name": "Kamla Sharma",
+            "father_occupation": "Farmer", "mother_occupation": "Homemaker",
+            "aadhaar_number": "73629184057" + verhoeff_check_digit("73629184057"),
+            "date_of_birth": "2005-08-14", "gender": "Female", "category": "OBC",
+            "mobile_number": "9812345678", "email": "priya@example.com",
+            "address_line": "House No. 214, Sector 7", "district": "Jhajjar",
+            "state": "Haryana", "pincode": "124507",
+            "institution_name": "Government College for Women",
+            "sport_name": "Kabaddi",
+            "bank_account_number": "39281746503921",
+            "ifsc_code": "PUNB0123456", "bank_name": "Punjab National Bank",
+        }
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            out = tmp.name
+        report = fill_pdf_form("/tmp/demo_fill/original.pdf", out, profile,
+                               scheme["extractedFields"])
+        os.unlink(out)
+
+        assert report["success"]
+        check = report["verification"]
+        assert check["verified"]
+        assert check["clean"], check["problems"]
+        assert check["checked"] == report["filled_count"]
+
+    def test_the_written_record_carries_the_final_text(self):
+        """Font size and text both change during writing — shrink to fit, then
+        truncation — so the check must see the final state, not the plan."""
+        import os
+        pytest.importorskip("numpy")
+        if not os.path.exists("/tmp/demo_fill/original.pdf"):
+            pytest.skip("run scripts/demo_fill.py to fetch the source form")
+
+        import tempfile
+        from data.gov_forms import get_by_name
+        from pdf_filler import fill_pdf_form
+
+        scheme = get_by_name("Sports Achievement Scholarship (Haryana)")
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            out = tmp.name
+        report = fill_pdf_form("/tmp/demo_fill/original.pdf", out,
+                               {"name": "Priya Sharma"},
+                               scheme["extractedFields"])
+        os.unlink(out)
+
+        assert report["written"]
+        entry = report["written"][0]
+        assert {"profileKey", "page", "x", "y", "width",
+                "font_size", "text"} <= set(entry)
+        assert entry["text"] == "Priya Sharma"

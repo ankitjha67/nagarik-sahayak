@@ -21,6 +21,7 @@ Stages
  12. Language coverage across the Eighth Schedule
  13. DPDP: notice scope and the processing register
  14. The wiring between all of the above, as the API traverses it
+ 15. Form geometry: the ruled grid, and values staying inside it
 
 Needs no database and no LLM key. Exit code is non-zero if any stage fails, so
 it doubles as a CI check.
@@ -851,6 +852,137 @@ async def stage_end_to_end_integration() -> None:
           f"({central_total} Central + {len(home) - central_total} State)")
 
 
+async def stage_form_geometry(offline: bool) -> None:
+    """Reading the ruled grid off a scan, and staying inside it."""
+    banner("STAGE 15  Form geometry — placing values without spilling over")
+
+    import form_geometry
+    from form_geometry import Cell
+    from pdf_filler import _collides, _looks_like_a_label, _token_ratio
+
+    # Pure-geometry checks first, so this stage still says something offline.
+    cells = [Cell(20, 100, 400, 120)]
+
+    class _R:
+        x0, y0, x1, y1 = 30, 104, 90, 116
+
+    gaps = form_geometry.writable_gaps(cells, _R(), [], page_width=600)
+    check("A value is bounded by its printed cell", gaps and gaps[0][1] <= 400,
+          f"cell ends at 400, gap ends at {gaps[0][1]:.0f}" if gaps else "")
+
+    words = [(200, 104, 250, 116, "Email", 0, 0, 0),
+             (252, 104, 280, 116, "ID:", 0, 0, 1)]
+    gaps = form_geometry.writable_gaps(cells, _R(), words, page_width=600)
+    check("A value stops at the next field's label",
+          gaps and gaps[0][1] <= 200,
+          "'8. Mobile No: | Email ID:' is two fields on one row")
+
+    hint = [(100, 104, 180, 116, "(Enclose", 0, 0, 0)]
+    gaps = form_geometry.writable_gaps(cells, _R(), hint, page_width=600)
+    widest = max(gaps, key=lambda g: g[1] - g[0]) if gaps else (0, 0)
+    check("A long value may use the space past a printed hint",
+          widest[0] >= 180,
+          "'Date of birth:(Enclose Certificate)' leaves room after the hint")
+
+    check("Adjacent table rows are not a collision",
+          not _collides({"x": 100, "y": 181.5, "width": 67, "font_size": 9.7},
+                        {"x": 100, "y": 168.5, "width": 64, "font_size": 9.7}),
+          "rows sit 13pt apart with 9.7pt text")
+    check("Two values on one line are a collision",
+          _collides({"x": 100, "y": 200, "width": 60, "font_size": 10},
+                    {"x": 130, "y": 200, "width": 60, "font_size": 10}))
+
+    check("Father and mother can never trade places",
+          _token_ratio("fathersname", "mothersname") < 0.86,
+          "they differ by two characters in eleven")
+    check("A stray OCR letter does not make a label into prose",
+          _looks_like_a_label("I Mother's Occupation: "))
+
+    if offline:
+        return
+
+    # And against the real scanned form.
+    from pathlib import Path
+
+    from data.gov_forms import get_by_name
+    from pdf_filler import audit_form, fill_pdf_form
+
+    scheme = get_by_name("Sports Achievement Scholarship (Haryana)")
+    source = Path("/tmp/smoke_source_form.pdf")
+    try:
+        import requests
+
+        response = requests.get(LIVE_FORM_URL, timeout=45,
+                                headers={"User-Agent": "Mozilla/5.0"})
+        source.write_bytes(response.content)
+    except Exception as exc:  # noqa: BLE001
+        check("Fetched the source form for geometry checks", False,
+              f"{type(exc).__name__}")
+        return
+
+    try:
+        import pymupdf
+    except ImportError:
+        import fitz as pymupdf
+
+    page = pymupdf.open(source)[0]
+    check("A scanned form has no vector lines at all", not page.get_drawings(),
+          "borders are pixels — page.get_drawings() returns nothing")
+
+    grid = form_geometry.describe(page)
+    check("The grid is recovered from the image", grid["gridDetected"],
+          f"{grid['cells']} cells from {grid['horizontalRules']} horizontal "
+          f"and {grid['verticalRules']} vertical rules")
+
+    profile = {
+        "name": "Priya Sharma", "father_husband_name": "Rajesh Sharma",
+        "mother_name": "Kamla Sharma", "father_occupation": "Farmer",
+        "mother_occupation": "Homemaker",
+        "aadhaar_number": make_valid_aadhaar("73629184057"),
+        "date_of_birth": "2005-08-14", "gender": "Female", "category": "OBC",
+        "mobile_number": "9812345678", "email": "priya@example.com",
+        "address_line": "House No. 214, Sector 7", "district": "Jhajjar",
+        "state": "Haryana", "pincode": "124507",
+        "institution_name": "Government College for Women",
+        "sport_name": "Kabaddi", "bank_account_number": "39281746503921",
+        "ifsc_code": "PUNB0123456", "bank_name": "Punjab National Bank",
+    }
+
+    audit = audit_form(str(source), scheme["extractedFields"], profile)
+    check("The form is audited before anything is written",
+          audit["available"] and audit["addressableOnForm"],
+          f"{len(audit['addressableOnForm'])} of {audit['totalFields']} fields "
+          f"have a labelled slot on this form")
+    check("Fields the form cannot take are named, not silently dropped",
+          bool(audit["notAddressableOnForm"]),
+          ", ".join(audit["notAddressableOnForm"][:4]))
+
+    out = Path("/tmp/smoke_filled_official.pdf")
+    report = fill_pdf_form(str(source), str(out), profile,
+                           scheme["extractedFields"])
+    check("Values written onto the published PDF", report.get("success"),
+          f"{report.get('filled_count', 0)} of {len(scheme['extractedFields'])}")
+
+    check("Mother's name is found despite the OCR middle dot",
+          any(w["profileKey"] == "mother_name" for w in report.get("written", [])),
+          "the page text reads \"Mother's·Name:\"")
+    check("Father's and Mother's occupation are filled",
+          {"father_occupation", "mother_occupation"} <=
+          {w["profileKey"] for w in report.get("written", [])},
+          "fields the catalog did not model until the audit found them")
+
+    verification = report.get("verification") or {}
+    check("The written file is re-opened and checked",
+          verification.get("verified"), f"{verification.get('checked', 0)} values")
+    check("Nothing overlaps and nothing crosses a cell border",
+          verification.get("clean"),
+          "; ".join(f"{p['kind']}:{p['profileKey']}"
+                    for p in verification.get("problems", [])) or "clean")
+    check("Values the form has no room for are reported to the citizen",
+          bool(report.get("unplaced")),
+          f"{len(report.get('unplaced', []))} to be written by hand")
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -874,6 +1006,7 @@ async def main() -> int:
     stage_languages()
     stage_dpdp_and_notice()
     await stage_end_to_end_integration()
+    await stage_form_geometry(args.offline)
 
     passed = sum(1 for s, _, _ in _results if s == PASS)
     failed = sum(1 for s, _, _ in _results if s == FAIL)

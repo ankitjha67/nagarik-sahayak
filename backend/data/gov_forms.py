@@ -597,6 +597,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "sections": [
             {"name": "Applicant Details", "nameHindi": "आवेदक का विवरण"},
             {"name": "Address", "nameHindi": "पता"},
+            {"name": "Academic Details", "nameHindi": "शैक्षणिक विवरण"},
             {"name": "Sports Achievement", "nameHindi": "खेल उपलब्धि"},
             {"name": "Bank Details", "nameHindi": "बैंक विवरण"},
         ],
@@ -622,6 +623,26 @@ GOV_FORM_CATALOG: list[dict] = [
             _f("domicile_certificate_number", "Haryana Domicile Certificate Number",
                "हरियाणा अधिवास प्रमाण पत्र संख्या", section="Sports Achievement",
                profile_key="domicile_certificate_number", required=False),
+            # The printed form asks for all of these and the catalog did not
+            # model any of them, so they came out blank on every application
+            # and nothing reported the gap. Found by auditing the form's own
+            # labels against the catalog — see scripts/audit_forms.py.
+            _f("father_occupation", "Father's Occupation", "पिता का व्यवसाय",
+               section="Applicant Details", profile_key="father_occupation",
+               required=False),
+            _f("mother_occupation", "Mother's Occupation", "माता का व्यवसाय",
+               section="Applicant Details", profile_key="mother_occupation",
+               required=False),
+            _f("state_family_id", "Parivar Pehchan Patra Number",
+               "परिवार पहचान पत्र संख्या", section="Applicant Details",
+               profile_key="state_family_id", required=False),
+            _f("current_class", "Class", "कक्षा", section="Academic Details",
+               profile_key="current_class", required=False),
+            _f("academic_session", "Session", "सत्र", section="Academic Details",
+               profile_key="academic_session", required=False),
+            _f("admission_number", "Admission Number", "प्रवेश संख्या",
+               section="Academic Details", profile_key="admission_number",
+               required=False),
             *bank_fields(),
         ],
     },

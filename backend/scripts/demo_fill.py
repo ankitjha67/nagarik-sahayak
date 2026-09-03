@@ -61,6 +61,14 @@ def demo_applicant():
         "event_name": "Haryana State Senior Kabaddi Championship 2025",
         "event_date": "2025-11-18",
         "achievement_position": "First",
+        # Fields the printed form asks for that the catalog did not model
+        # until the pre-flight audit reported them missing.
+        "father_occupation": "Farmer",
+        "mother_occupation": "Homemaker",
+        "state_family_id": "HR-1234567890",
+        "current_class": "B.A. II",
+        "academic_session": "2025-26",
+        "admission_number": "GCW/2024/0412",
         "bank_account_number": "39281746503921",
         "ifsc_code": "PUNB0123456",
         "bank_name": "Punjab National Bank",
@@ -222,6 +230,33 @@ async def main() -> int:
         print("\n  The gate refused, so no form is produced. That is the point of it.")
         return 1
 
+    # ── 5b. Pre-flight audit ─────────────────────────────────────────────
+    if source_pdf:
+        rule("5b  BEFORE WRITING — what does this form actually ask for?")
+        from pdf_filler import audit_form
+
+        audit = audit_form(str(source_pdf), fields, profile)
+        grid = audit["grid"][0] if audit.get("grid") else {}
+        kv("Ruled grid read", f"{grid.get('cells', 0)} cells from "
+                              f"{grid.get('horizontalRules', 0)} horizontal and "
+                              f"{grid.get('verticalRules', 0)} vertical rules")
+        kv("Fields the form can take", f"{len(audit['addressableOnForm'])} "
+                                       f"of {audit['totalFields']}")
+        if audit["notAddressableOnForm"]:
+            print("\n  Catalog fields with no labelled slot on this form:")
+            for pk in audit["notAddressableOnForm"]:
+                print(f"      · {pk}")
+        if audit["labelsWithNoCatalogField"]:
+            print("\n  Printed on the form, but the catalog has no field for it.")
+            print("  These come out blank on every application and nothing")
+            print("  would report it, because there is no field to be missing:")
+            for label in audit["labelsWithNoCatalogField"]:
+                print(f"      · {label}")
+        if audit["requiredAndMissing"]:
+            print("\n  Required, and the citizen has not supplied it:")
+            for pk in audit["requiredAndMissing"]:
+                print(f"      · {pk}")
+
     # ── 6. Writing onto the real government PDF ──────────────────────────
     rule("6  WRITING ONTO THE REAL GOVERNMENT PDF")
     overlay_out = out / "filled_official.pdf"
@@ -245,6 +280,17 @@ async def main() -> int:
                 for u in unplaced:
                     flag = "must" if u["required"] else "optional"
                     print(f"      · {u['label'][:44]:<46} ({flag})")
+
+            # ── After writing: did anything land where it should not? ──
+            check = report.get("verification") or {}
+            print()
+            kv("Re-opened and checked", f"{check.get('checked', 0)} written values")
+            if check.get("clean"):
+                kv("Result", "clean — nothing overlaps, nothing crosses a cell border")
+            else:
+                for problem in check.get("problems", []):
+                    print(f"      ! {problem['kind']}: {problem['profileKey']} — "
+                          f"{problem['detail']}")
         else:
             kv("Why not", report.get("error", "")[:66])
             print("      The published PDF is a flat scan with no interactive fields,")
