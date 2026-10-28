@@ -97,6 +97,26 @@ async def form_catalog_detail(scheme_name: str):
     return entry
 
 
+@api_router.get("/forms/catalog/{scheme_name}/documents")
+async def form_document_checklist(scheme_name: str):
+    """What to carry to the counter for one scheme.
+
+    The form-filling engine says what to write; this says what to bring. A
+    missing enclosure is the commonest reason an application is turned away,
+    after the citizen has already spent a day and a fare to reach the office.
+    The list is derived from the form's own fields, bilingually, with the
+    reason for each document and — for identity — the alternatives the law
+    allows, so a citizen without Aadhaar is never told it is compulsory.
+
+    Served from bundled data: no database, network, or model.
+    """
+    entry = get_by_name(scheme_name)
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"'{scheme_name}' not in catalog")
+    from services.document_checklist import checklist_for
+    return checklist_for(entry)
+
+
 @api_router.post("/forms/seed")
 async def seed_catalog(request: Request, req: dict | None = None):
     """Seed FormTemplate + Scheme tables from the curated catalog."""

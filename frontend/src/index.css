@@ -58,6 +58,27 @@
   }
 }
 
+/* Safe-area support for notched phones (iPhone X and later, many Android).
+   The fixed bottom navigation adds the home-indicator inset to its own
+   padding so its background reaches the screen edge while the tap targets sit
+   above the indicator. The value is 0 on devices without an inset, so this is
+   inert there. Pages already reserve pb-20/pb-24 for the ~56px bar; the inset
+   is a small addition on top of that and does not need extra page padding. */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Hide the scrollbar on horizontal card rails (the schemes carousel on the
+   home screen) while keeping them scrollable by touch. The class was used in
+   the markup but never defined, so the rail showed a stray scrollbar. */
+.no-scrollbar {
+  -ms-overflow-style: none;    /* IE and old Edge */
+  scrollbar-width: none;       /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;               /* Chrome, Safari, newer Edge */
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

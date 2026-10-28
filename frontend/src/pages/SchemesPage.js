@@ -7,11 +7,13 @@ import {
   getUserFullProfile, screenAllSchemes, getFormCatalog, getCatalogStates,
 } from "../lib/api";
 import { loadKycOutcomes } from "../lib/kycStore";
+import { DocumentChecklist } from "../components/DocumentChecklist";
 import { Badge } from "../components/ui/badge";
 import {
   Sprout, HeartPulse, Baby, ExternalLink, ChevronDown, ChevronUp,
   Users, IndianRupee, Home, GraduationCap, Rocket, Briefcase,
   Search, Download, Building2, CheckCircle2, XCircle, HelpCircle, Loader2,
+  FileText,
 } from "lucide-react";
 
 // How an eligibility outcome is presented on a scheme card.
@@ -80,6 +82,9 @@ export default function SchemesPage({ userId, language = "hi" }) {
   const [eligibility, setEligibility] = useState({});
   const [checkingEligibility, setCheckingEligibility] = useState(false);
   const [onlyEligible, setOnlyEligible] = useState(false);
+  // The scheme whose "documents to carry" sheet is open, or null. Held as the
+  // catalog name so the sheet can fetch by it.
+  const [docChecklistFor, setDocChecklistFor] = useState(null);
 
   // Screen the citizen's stored profile against every scheme so the list can
   // answer the question people actually have — "what am I entitled to?" —
@@ -505,6 +510,20 @@ export default function SchemesPage({ userId, language = "hi" }) {
 
                     {/* Action Links */}
                     <div className="flex gap-2 mt-4 flex-wrap">
+                      {/* "What to carry to the counter" — only for schemes that
+                          have a real form in the catalog, since the checklist
+                          is derived from that form's fields. catalogMeta holds
+                          exactly those, keyed by scheme title. */}
+                      {catalogMeta[scheme.title] && (
+                        <button
+                          data-testid={`scheme-documents-${scheme.id}`}
+                          onClick={() => setDocChecklistFor(scheme.title)}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#138808] text-white rounded-full text-sm font-semibold hover:brightness-95 transition-all"
+                        >
+                          <FileText size={14} />
+                          {isHindi ? "कौन से दस्तावेज़ ले जाएं" : "Documents to carry"}
+                        </button>
+                      )}
                       {scheme.pdf_url && (
                         <a
                           href={scheme.pdf_url}
@@ -536,6 +555,15 @@ export default function SchemesPage({ userId, language = "hi" }) {
           })}
         </div>
       </div>
+
+      {docChecklistFor && (
+        <DocumentChecklist
+          schemeName={docChecklistFor}
+          schemeTitle={docChecklistFor}
+          isHindi={isHindi}
+          onClose={() => setDocChecklistFor(null)}
+        />
+      )}
 
       <BottomNav />
     </div>

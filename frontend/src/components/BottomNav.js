@@ -21,7 +21,12 @@ export const BottomNav = () => {
   return (
     <nav
       data-testid="bottom-nav"
-      className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-40"
+      // pb uses the iPhone home-indicator inset so the bar's white background
+      // extends to the very bottom of the screen while its buttons stay above
+      // the indicator. On a phone without an inset the env() value is 0, so
+      // this is a no-op there. Defined in index.css as .safe-bottom because
+      // Tailwind cannot express env() in a utility class.
+      className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-40 safe-bottom"
     >
       <div className="max-w-md mx-auto flex items-center justify-around py-2">
         {navItems.map(({ path, icon: Icon, key, id }) => {

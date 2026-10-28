@@ -2,9 +2,16 @@
 <html lang="hi">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#000000" />
-        <meta name="description" content="A product of emergent.sh" />
+        <!-- viewport-fit=cover is what makes the env(safe-area-inset-*) values
+             non-zero on notched phones; without it the fixed bottom navigation
+             renders underneath the iPhone home indicator and its buttons cannot
+             be tapped. maximum-scale is deliberately omitted so a low-vision
+             citizen can still pinch-zoom (WCAG 1.4.4). -->
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <!-- Saffron, so the mobile status bar matches the app rather than
+             showing a black band above a light interface. -->
+        <meta name="theme-color" content="#FF9933" />
+        <meta name="description" content="Nagarik Sahayak — find and apply for Indian government schemes in your language." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet" />

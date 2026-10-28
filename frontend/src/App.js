@@ -12,7 +12,7 @@ import ProfilePage from "@/pages/ProfilePage";
 import ReviewPage from "@/pages/ReviewPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import IdentityPage from "@/pages/IdentityPage";
-import { LanguageProvider } from "@/lib/i18n";
+import { LanguageProvider, useLanguage } from "@/lib/i18n";
 import { FallbackBanner } from "@/components/LanguagePicker";
 
 class ErrorBoundary extends Component {
@@ -51,36 +51,19 @@ class ErrorBoundary extends Component {
   }
 }
 
-function App() {
-  const [userId, setUserId] = useState(() => localStorage.getItem("ns_user_id") || null);
-  const [phone, setPhone] = useState(() => localStorage.getItem("ns_phone") || null);
-  const [language, setLanguage] = useState(() => localStorage.getItem("ns_language") || "hi");
-
-  const handleLogin = (uid, ph) => {
-    setUserId(uid);
-    setPhone(ph);
-    localStorage.setItem("ns_user_id", uid);
-    localStorage.setItem("ns_phone", ph);
-  };
-
-  const handleLogout = () => {
-    setUserId(null);
-    setPhone(null);
-    localStorage.removeItem("ns_user_id");
-    localStorage.removeItem("ns_phone");
-    localStorage.removeItem("ns_language");
-  };
-
+// The routes live in their own component *inside* the LanguageProvider so the
+// `language` each page receives is the provider's live value, not a copy frozen
+// at mount. Before this split, App held its own `language` state that the
+// language picker never updated — the picker changes the provider, not App — so
+// switching language left every page keyed on the prop stuck in the old
+// language until a full reload. Reading it from the provider here fixes every
+// page at once.
+function AppRoutes({ userId, onLogin, onLogout }) {
+  const { code: language } = useLanguage();
   const isLoggedIn = !!userId;
 
   return (
-    <div className="App">
-      {/* The language provider wraps the router, not each page: the chosen
-          language sets document.documentElement.lang and dir, which must hold
-          across navigation or a screen reader re-guesses the language on every
-          route change. */}
-      <LanguageProvider initial={language}>
-      <BrowserRouter>
+    <BrowserRouter>
         {/* WCAG 2.4.1 — lets keyboard and screen-reader users bypass the
             header rather than tabbing through it on every page. */}
         <a href="#main-content" className="skip-to-content">
@@ -93,7 +76,7 @@ function App() {
           <Route
             path="/"
             element={
-              isLoggedIn ? <Navigate to="/home" replace /> : <LoginPage onLogin={handleLogin} />
+              isLoggedIn ? <Navigate to="/home" replace /> : <LoginPage onLogin={onLogin} />
             }
           />
           <Route
@@ -146,7 +129,7 @@ function App() {
             path="/profile"
             element={
               isLoggedIn ? (
-                <ProfilePage userId={userId} onLogout={handleLogout} />
+                <ProfilePage userId={userId} onLogout={onLogout} />
               ) : (
                 <Navigate to="/" replace />
               )
@@ -157,6 +140,37 @@ function App() {
         </main>
         </ErrorBoundary>
       </BrowserRouter>
+  );
+}
+
+function App() {
+  const [userId, setUserId] = useState(() => localStorage.getItem("ns_user_id") || null);
+  // Phone is kept in localStorage for the auth flow; App no longer holds it in
+  // state because nothing rendered here reads it.
+  const initialLanguage = localStorage.getItem("ns_language") || "hi";
+
+  const handleLogin = (uid, ph) => {
+    setUserId(uid);
+    localStorage.setItem("ns_user_id", uid);
+    localStorage.setItem("ns_phone", ph);
+  };
+
+  const handleLogout = () => {
+    setUserId(null);
+    localStorage.removeItem("ns_user_id");
+    localStorage.removeItem("ns_phone");
+    localStorage.removeItem("ns_language");
+  };
+
+  return (
+    <div className="App">
+      {/* The language provider wraps the router, not each page: the chosen
+          language sets document.documentElement.lang and dir, which must hold
+          across navigation or a screen reader re-guesses the language on every
+          route change. AppRoutes lives inside it so each page gets the live
+          language, not a copy frozen at mount. */}
+      <LanguageProvider initial={initialLanguage}>
+        <AppRoutes userId={userId} onLogin={handleLogin} onLogout={handleLogout} />
       </LanguageProvider>
       <Toaster position="top-center" richColors />
     </div>

@@ -155,10 +155,18 @@ export const resetPortalHealth = (portalName) =>
   api.post(`/discovery/portal-health/${encodeURIComponent(portalName)}/reset`);
 
 // ── Real Government Forms ──
+// getFormCatalog is defined once, further down, in its parameterised form
+// (level/state filtering) — it was declared a second time here as well, and two
+// `export const` of one name in a module is a SyntaxError that fails the whole
+// build. The parameterised version is a superset: called with no arguments it
+// behaves exactly as this plain one did.
 
-export const getFormCatalog = () => api.get("/forms/catalog");
 export const getFormCatalogDetail = (schemeName) =>
   api.get(`/forms/catalog/${encodeURIComponent(schemeName)}`);
+// "What to carry to the counter" — the documents a scheme's form implies,
+// bilingual, with the reason for each and the alternatives the law allows.
+export const getSchemeDocuments = (schemeName) =>
+  api.get(`/forms/catalog/${encodeURIComponent(schemeName)}/documents`);
 export const getFormLinkHealth = () => api.get("/forms/link-health", { timeout: 120000 });
 export const seedFormCatalog = (overwrite = false) =>
   api.post("/forms/seed", { overwrite });
