@@ -222,7 +222,7 @@ class TestAuthEndpoints:
         now = time.time()
         _rate_limit_store[key] = [now] * 5
 
-        with patch("server.motor_db") as mock_db:
+        with patch("routes.auth.motor_db") as mock_db:
             mock_db.otp_sessions.update_one = AsyncMock()
             resp = client.post("/api/auth/send-otp", json={"phone": phone})
             assert resp.status_code == 429
@@ -231,7 +231,7 @@ class TestAuthEndpoints:
     async def test_send_otp_success(self, client):
         """Should succeed with valid phone in DEMO_MODE."""
         phone = "9876543210"
-        with patch("server.motor_db") as mock_db:
+        with patch("routes.auth.motor_db") as mock_db:
             mock_db.otp_sessions.update_one = AsyncMock()
             resp = client.post("/api/auth/send-otp", json={"phone": phone})
             assert resp.status_code == 200
@@ -250,8 +250,8 @@ class TestAuthEndpoints:
         mock_user.profile = json.dumps({"name": ""})
         mock_user.createdAt = datetime.now(timezone.utc)
 
-        with patch("server.motor_db") as mock_db, \
-             patch("server.prisma") as mock_prisma:
+        with patch("routes.auth.motor_db") as mock_db, \
+             patch("routes.auth.prisma") as mock_prisma:
             mock_db.otp_sessions.find_one = AsyncMock(return_value={
                 "phone": phone, "otp": "123456", "verified": False,
                 "created_at": datetime.now(timezone.utc).isoformat()
@@ -269,7 +269,7 @@ class TestAuthEndpoints:
     async def test_verify_otp_wrong(self, client):
         """Should reject wrong OTP."""
         phone = "9876543210"
-        with patch("server.motor_db") as mock_db:
+        with patch("routes.auth.motor_db") as mock_db:
             mock_db.otp_sessions.find_one = AsyncMock(return_value={
                 "phone": phone, "otp": "123456", "verified": False,
                 "created_at": datetime.now(timezone.utc).isoformat()
@@ -285,7 +285,7 @@ class TestAuthEndpoints:
         """Should reject expired OTP."""
         phone = "9876543210"
         old_time = "2020-01-01T00:00:00+00:00"
-        with patch("server.motor_db") as mock_db:
+        with patch("routes.auth.motor_db") as mock_db:
             mock_db.otp_sessions.find_one = AsyncMock(return_value={
                 "phone": phone, "otp": "123456", "verified": False,
                 "created_at": old_time
@@ -299,7 +299,7 @@ class TestAuthEndpoints:
     @pytest.mark.asyncio
     async def test_verify_otp_no_session(self, client):
         """Should reject when no OTP session exists."""
-        with patch("server.motor_db") as mock_db:
+        with patch("routes.auth.motor_db") as mock_db:
             mock_db.otp_sessions.find_one = AsyncMock(return_value=None)
             resp = client.post("/api/auth/verify-otp", json={"phone": "9876543210", "otp": "123456"})
             assert resp.status_code == 200
@@ -311,7 +311,7 @@ class TestProfileEndpoints:
     """Test profile endpoints."""
 
     def test_get_profile_not_found(self, client):
-        with patch("server.prisma") as mock_prisma:
+        with patch("routes.profile.prisma") as mock_prisma:
             mock_prisma.user.find_unique = AsyncMock(return_value=None)
             resp = client.get("/api/profile/nonexistent")
             assert resp.status_code == 404
@@ -324,7 +324,7 @@ class TestProfileEndpoints:
         mock_user.profile = json.dumps({"name": "Test", "_complete": True})
         mock_user.createdAt = datetime.now(timezone.utc)
 
-        with patch("server.prisma") as mock_prisma:
+        with patch("routes.profile.prisma") as mock_prisma:
             mock_prisma.user.find_unique = AsyncMock(return_value=mock_user)
             resp = client.get("/api/profile/user123")
             assert resp.status_code == 200
@@ -344,7 +344,7 @@ class TestSchemeEndpoints:
         mock_scheme.eligibilityCriteriaText = "Farmer family"
         mock_scheme.pdfUrl = "https://example.com/kisan.pdf"
 
-        with patch("server.prisma") as mock_prisma:
+        with patch("routes.schemes.prisma") as mock_prisma:
             mock_prisma.scheme.find_many = AsyncMock(return_value=[mock_scheme])
             resp = client.get("/api/schemes")
             assert resp.status_code == 200
@@ -358,19 +358,19 @@ class TestDemoToggle:
 
     def test_demo_toggle_no_auth(self, client):
         """Should reject without admin secret."""
-        with patch("server.ADMIN_SECRET", "test-secret"):
+        with patch("config.ADMIN_SECRET", "test-secret"):
             resp = client.post("/api/demo/toggle")
             assert resp.status_code in (401, 403)
 
     def test_demo_toggle_wrong_secret(self, client):
         """Should reject wrong admin secret."""
-        with patch("server.ADMIN_SECRET", "test-secret"):
+        with patch("config.ADMIN_SECRET", "test-secret"):
             resp = client.post("/api/demo/toggle", headers={"X-Admin-Secret": "wrong"})
             assert resp.status_code in (401, 403)
 
     def test_demo_toggle_correct_secret(self, client):
         """Should succeed with correct admin secret."""
-        with patch("server.ADMIN_SECRET", "test-secret"):
+        with patch("config.ADMIN_SECRET", "test-secret"):
             resp = client.post("/api/demo/toggle", headers={"X-Admin-Secret": "test-secret"})
             assert resp.status_code == 200
             data = resp.json()
@@ -386,14 +386,27 @@ class TestPDFEndpoints:
         assert resp.status_code in (400, 404, 422)
 
     def test_pdf_invalid_uuid(self, client):
-        """Non-UUID PDF IDs should be rejected."""
+        """A PDF ID that is not a real document must not be served.
+
+        401 is a valid rejection here: the route checks ownership (DPDP s8(4))
+        before it checks whether the file exists, so an unauthenticated request
+        is turned away without an existence oracle. Any of these is 'not
+        served', which is what this test is really asserting."""
         resp = client.get("/api/pdf/not-a-uuid")
-        assert resp.status_code in (400, 404, 422)
+        assert resp.status_code in (400, 401, 404, 422)
 
     def test_pdf_valid_uuid_not_found(self, client):
-        """Valid UUID but file doesn't exist should return 404."""
+        """A valid UUID whose file does not exist returns 404 — to its owner.
+
+        The ownership gate runs first and 401s an unauthenticated caller, so to
+        reach the missing-file path at all the caller must be authorised. The
+        gate is mocked to allow, which is what exercises the 404 this test is
+        about; the gate itself is covered by the DPDP ownership tests."""
+        from unittest.mock import AsyncMock, patch
         test_uuid = str(__import__("uuid").uuid4())
-        resp = client.get(f"/api/pdf/{test_uuid}")
+        with patch("dpdp.ownership.assert_access", new_callable=AsyncMock):
+            resp = client.get(f"/api/pdf/{test_uuid}",
+                              headers={"X-User-Id": "user123"})
         assert resp.status_code == 404
 
     def test_audio_path_traversal_blocked(self, client):
@@ -413,9 +426,9 @@ class TestChatEndpoint:
             "type": "profiler",
             "profiler_field": "name",
         }
-        with patch("server.save_chat_prisma", new_callable=AsyncMock), \
-             patch("server.get_chat_history_prisma", new_callable=AsyncMock, return_value=[]), \
-             patch("server.profiler_agent_respond", new_callable=AsyncMock, return_value=profiler_result):
+        with patch("routes.chat.save_chat_prisma", new_callable=AsyncMock), \
+             patch("routes.chat.get_chat_history_prisma", new_callable=AsyncMock, return_value=[]), \
+             patch("routes.chat.profiler_agent_respond", new_callable=AsyncMock, return_value=profiler_result):
             resp = client.post("/api/chat", json={
                 "user_id": "user123",
                 "content": "namaste",
@@ -434,9 +447,9 @@ class TestChatEndpoint:
             "type": "profiler",
             "profiler_field": "name",
         }
-        with patch("server.save_chat_prisma", new_callable=AsyncMock), \
-             patch("server.get_chat_history_prisma", new_callable=AsyncMock, return_value=[]), \
-             patch("server.profiler_agent_respond", new_callable=AsyncMock, return_value=profiler_result):
+        with patch("routes.chat.save_chat_prisma", new_callable=AsyncMock), \
+             patch("routes.chat.get_chat_history_prisma", new_callable=AsyncMock, return_value=[]), \
+             patch("routes.chat.profiler_agent_respond", new_callable=AsyncMock, return_value=profiler_result):
             resp = client.post("/api/chat", json={
                 "user_id": "user123",
                 "content": "<script>alert('xss')</script>hello",
@@ -455,7 +468,7 @@ class TestV2Endpoints:
         mock_scheme.eligibilityCriteriaText = "Farmers"
         mock_scheme.pdfUrl = "https://example.com/kisan.pdf"
 
-        with patch("server.prisma") as mock_prisma:
+        with patch("routes.v2.prisma") as mock_prisma:
             mock_prisma.scheme.find_many = AsyncMock(return_value=[mock_scheme])
             resp = client.get("/api/v2/schemes")
             assert resp.status_code == 200
@@ -468,7 +481,7 @@ class TestV2Endpoints:
         mock_template.formTitle = "PM-KISAN Application"
         mock_template.extractedFields = json.dumps({"sections": [{"fields": [{"key": "name"}]}]})
 
-        with patch("server.prisma") as mock_prisma:
+        with patch("routes.v2.prisma") as mock_prisma:
             mock_prisma.formtemplate.find_many = AsyncMock(return_value=[mock_template])
             resp = client.get("/api/v2/form-templates")
             assert resp.status_code == 200
