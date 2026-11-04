@@ -99,3 +99,5 @@ output/
 # Generated/encrypted PDF artefacts (per-run output, never source)
 backend/pdf_reports/*.pdf
 backend/pdf_reports/*.zip
+# Cache of blank official forms downloaded for filling (public docs, re-fetchable)
+backend/pdf_reports/_form_cache/
