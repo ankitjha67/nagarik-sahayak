@@ -238,14 +238,25 @@ class TestUploadedPdfDownload:
             'file': ('downloadable.pdf', io.BytesIO(pdf_content), 'application/pdf')
         }
         
-        upload_resp = requests.post(f"{BASE_URL}/api/upload-pdf", files=files, data={'user_id': 'test'})
+        # A real user: ownership is recorded against the user id (an ObjectId),
+        # so a placeholder like 'test' records no owner and the document is then
+        # unreachable by design.
+        phone = f"997{int(time.time()) % 10000000:07d}"
+        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
+        owner = requests.post(
+            f"{BASE_URL}/api/auth/verify-otp",
+            json={"phone": phone, "otp": "123456"}).json()["user_id"]
+
+        upload_resp = requests.post(f"{BASE_URL}/api/upload-pdf", files=files, data={'user_id': owner})
         assert upload_resp.status_code == 200
-        
+
         pdf_id = upload_resp.json()['pdf_id']
         pdf_url = upload_resp.json()['pdf_url']
-        
-        # Download the PDF
-        download_resp = requests.get(f"{BASE_URL}{pdf_url}")
+
+        # Download the PDF as its owner — upload records ownership, and the
+        # download route enforces it (DPDP s8(4)).
+        download_resp = requests.get(f"{BASE_URL}{pdf_url}",
+                                     headers={"X-User-Id": owner})
         assert download_resp.status_code == 200
         assert download_resp.headers.get('content-type') == 'application/pdf'
         assert download_resp.content.startswith(b'%PDF')

@@ -136,8 +136,11 @@ class TestDemoFlowBackend:
         assert pdf_url, "pdf_url should not be empty"
         assert pdf_url.startswith("/api/pdf/"), f"pdf_url should start with /api/pdf/, got {pdf_url}"
         
-        # Test PDF download
-        pdf_resp = requests.get(f"{BASE_URL}{pdf_url}")
+        # Test PDF download as its owner. The route enforces ownership
+        # (DPDP s8(4)), so the X-User-Id header the real app always sends is
+        # required; without it the download is correctly refused.
+        pdf_resp = requests.get(f"{BASE_URL}{pdf_url}",
+                                headers={"X-User-Id": self.user_id})
         assert pdf_resp.status_code == 200, f"PDF download failed: {pdf_resp.status_code}"
         assert pdf_resp.headers.get("content-type") == "application/pdf"
         assert len(pdf_resp.content) > 1000, "PDF should have substantial content"

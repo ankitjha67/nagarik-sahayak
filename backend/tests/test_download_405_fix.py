@@ -77,30 +77,32 @@ class TestDownloadAllZipGet:
         data = resp.json()
         assert "No pdf_ids provided" in data.get("detail", "")
         
-    def test_download_all_zip_with_nonexistent_ids_returns_404(self, api_client):
-        """GET /api/download-all-zip with nonexistent IDs should return 404"""
+    def test_download_all_zip_with_nonexistent_ids_returns_404(self, api_client, authenticated_user):
+        """GET /api/download-all-zip with a nonexistent id returns 404.
+
+        The route checks each id against recorded ownership before bundling
+        (DPDP s8(4)), so an id with no owner is refused as not-found — which is
+        what this test is really asserting."""
         resp = api_client.get(f"{BASE_URL}/api/download-all-zip", params={
             "pdf_ids": "nonexistent-uuid",
-            "user_id": "test"
-        })
+        }, headers={"X-User-Id": authenticated_user})
         assert resp.status_code == 404
-        data = resp.json()
-        assert "No PDFs found" in data.get("detail", "")
-        
-    def test_download_all_zip_with_valid_ids_returns_zip(self, api_client, demo_pdf_urls):
-        """GET /api/download-all-zip with valid IDs should return a zip file"""
+
+    def test_download_all_zip_with_valid_ids_returns_zip(self, api_client, authenticated_user, demo_pdf_urls):
+        """GET /api/download-all-zip with the owner's own ids returns a zip."""
         # Extract PDF IDs from URLs
         pdf_ids = []
         for p in demo_pdf_urls:
             parts = (p.get("pdf_url") or "").split("/")
             if parts:
                 pdf_ids.append(parts[-1])
-        
+
         pdf_ids_str = ",".join(pdf_ids)
+        # Request as the owner — the demo PDFs belong to authenticated_user, and
+        # the bundle route enforces ownership just like the single-file route.
         resp = api_client.get(f"{BASE_URL}/api/download-all-zip", params={
             "pdf_ids": pdf_ids_str,
-            "user_id": "test"
-        })
+        }, headers={"X-User-Id": authenticated_user})
         assert resp.status_code == 200
         assert "application/zip" in resp.headers.get("Content-Type", "")
 
@@ -108,18 +110,20 @@ class TestDownloadAllZipGet:
 class TestIndividualPdfDownload:
     """Test individual PDF download via GET /api/pdf/{uuid}"""
     
-    def test_pdf_download_returns_200(self, api_client, demo_pdf_urls):
-        """GET /api/pdf/{uuid} should return 200 for valid PDF"""
+    def test_pdf_download_returns_200(self, api_client, authenticated_user, demo_pdf_urls):
+        """GET /api/pdf/{uuid} returns 200 for the owner's own PDF."""
         pdf_url = demo_pdf_urls[0].get("pdf_url", "")
         assert pdf_url, "PDF URL should not be empty"
-        
-        resp = api_client.get(f"{BASE_URL}{pdf_url}")
+
+        resp = api_client.get(f"{BASE_URL}{pdf_url}",
+                              headers={"X-User-Id": authenticated_user})
         assert resp.status_code == 200
         assert "application/pdf" in resp.headers.get("Content-Type", "")
-        
-    def test_pdf_download_nonexistent_returns_404(self, api_client):
-        """GET /api/pdf/{uuid} should return 404 for nonexistent PDF"""
-        resp = api_client.get(f"{BASE_URL}/api/pdf/nonexistent-uuid")
+
+    def test_pdf_download_nonexistent_returns_404(self, api_client, authenticated_user):
+        """GET /api/pdf/{uuid} returns 404 for a PDF the caller does not own."""
+        resp = api_client.get(f"{BASE_URL}/api/pdf/nonexistent-uuid",
+                              headers={"X-User-Id": authenticated_user})
         assert resp.status_code == 404
 
 

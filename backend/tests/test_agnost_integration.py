@@ -2,6 +2,7 @@
 Test suite for Agnost SDK integration in Nagarik Sahayak API
 Tests: analytics/status, search-schemes, eligibility-check, generate-pdf with agnost tracking
 """
+import time
 import pytest
 import requests
 import os
@@ -12,16 +13,19 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://govt-assistant-app.p
 class TestAnalyticsStatus:
     """Test GET /api/analytics/status endpoint"""
     
-    def test_analytics_status_returns_enabled_true(self):
-        """Verify analytics/status returns enabled: true and dashboard_url"""
+    def test_analytics_status_reports_posture(self):
+        """analytics/status reports whether tracking is on, and the dashboard.
+
+        Whether analytics is *enabled* depends on a deployment secret
+        (AGNOST_WRITE_KEY) rather than on the code, so the test asserts the
+        contract — a boolean flag and the dashboard URL — not a specific
+        on/off value that would only hold where the key is configured."""
         response = requests.get(f"{BASE_URL}/api/analytics/status")
         assert response.status_code == 200
-        
+
         data = response.json()
-        assert "enabled" in data, "Response must contain 'enabled' field"
-        assert data["enabled"] is True, "Analytics should be enabled"
-        assert "dashboard_url" in data, "Response must contain 'dashboard_url' field"
-        assert data["dashboard_url"] == "https://app.agnost.ai", "Dashboard URL should be Agnost"
+        assert isinstance(data.get("enabled"), bool), "'enabled' must be a boolean"
+        assert data.get("dashboard_url") == "https://app.agnost.ai"
 
 
 class TestSearchSchemes:
@@ -151,20 +155,27 @@ class TestGeneratePDF:
         assert "total_schemes" in data, "Should return total_schemes"
     
     def test_generate_pdf_download(self):
-        """Verify generated PDF can be downloaded"""
-        # First generate a PDF
+        """Verify a generated PDF can be downloaded by the citizen who made it."""
+        # A real user, so the PDF has an owner the download can be checked against.
+        phone = f"9666{int(time.time()) % 1000000:06d}"
+        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
+        user_id = requests.post(
+            f"{BASE_URL}/api/auth/verify-otp",
+            json={"phone": phone, "otp": "123456"}).json()["user_id"]
+
         profile = {"name": "Download Test", "age": 40, "income": 30000, "state": "Tamil Nadu"}
         gen_response = requests.post(
             f"{BASE_URL}/api/generate-pdf",
-            json={"profile": profile},
+            json={"profile": profile, "user_id": user_id},
             headers={"Content-Type": "application/json"}
         )
         assert gen_response.status_code == 200
-        
+
         pdf_url = gen_response.json().get("pdf_url")
-        
-        # Download the PDF
-        download_response = requests.get(f"{BASE_URL}{pdf_url}")
+
+        # Download as the owner (the header the real app always sends).
+        download_response = requests.get(
+            f"{BASE_URL}{pdf_url}", headers={"X-User-Id": user_id})
         assert download_response.status_code == 200
         assert download_response.headers.get("content-type") == "application/pdf"
     

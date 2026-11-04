@@ -247,7 +247,9 @@ class TestDemoMode:
             requests.post(f"{BASE_URL}/api/demo/toggle", headers={"X-Admin-Secret": os.environ.get("ADMIN_SECRET", "test-secret")})
         
         # Create user with unique phone
-        phone = f"5555{int(time.time()) % 1000000:06d}"
+        # Indian mobile numbers begin 6-9; the server validates this, so a
+        # test phone must too (the old "5555…" is rejected at send-otp).
+        phone = f"9555{int(time.time()) % 1000000:06d}"
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
         response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
         user_id = response.json()["user_id"]
