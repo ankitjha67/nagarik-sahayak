@@ -27,14 +27,6 @@
 export const PAGE_COPY = {
   // ── Shared / common ───────────────────────────────────────────────────
   "common.viewAll": { en: "View all", hi: "सभी देखें" },
-  "common.retry": { en: "Try again", hi: "फिर से कोशिश करें" },
-  "common.loading": { en: "Loading…", hi: "लोड हो रहा है…" },
-  "common.close": { en: "Close", hi: "बंद करें" },
-  "common.cancel": { en: "Cancel", hi: "रद्द करें" },
-  "common.somethingWrong": {
-    en: "Something went wrong. Please try again.",
-    hi: "कुछ गलत हो गया। कृपया फिर से कोशिश करें।",
-  },
 
   // ── Home screen ───────────────────────────────────────────────────────
   "home.greeting": { en: "Hello! How can we help?", hi: "नमस्ते! कैसे मदद करें?" },
@@ -108,4 +100,119 @@ export const PAGE_COPY = {
   "privacy.nomineeRecorded": { en: "Nominee recorded", hi: "नामित व्यक्ति दर्ज किया गया" },
   "privacy.nomineeRemoved": { en: "Nomination removed", hi: "नामांकन हटा दिया गया" },
   "privacy.grievanceLodged": { en: "Your grievance has been lodged", hi: "आपकी शिकायत दर्ज कर ली गई है" },
+
+  // ── Eligibility (short badges) ────────────────────────────────────────
+  "status.eligibleShort": { en: "Eligible", hi: "पात्र" },
+  "status.notEligibleShort": { en: "Not eligible", hi: "अपात्र" },
+
+  // ── Downloads (chat forms, profiler) ──────────────────────────────────
+  "download.failed": { en: "Download failed. Please try again.", hi: "डाउनलोड विफल हुआ। कृपया पुनः प्रयास करें।" },
+  "download.networkError": { en: "Network error. Please check your internet and try again.", hi: "नेटवर्क त्रुटि। कृपया इंटरनेट जांचें और पुनः प्रयास करें।" },
+  "download.done": { en: "Download complete!", hi: "डाउनलोड पूर्ण!" },
+  "download.inProgress": { en: "Downloading…", hi: "डाउनलोड हो रहा है…" },
+  "download.allPrefix": { en: "Download all", hi: "सभी" },
+  "download.allSuffix": { en: "forms", hi: "फॉर्म डाउनलोड करें" },
+
+  // ── Smart profiler ────────────────────────────────────────────────────
+  "profiler.loadFailed": { en: "Could not load the profiler. Please try again.", hi: "प्रोफाइलर लोड नहीं हो सका। पुनः प्रयास करें।" },
+  "profiler.saveError": { en: "Error while saving. Please try again.", hi: "सहेजने में त्रुटि। पुनः प्रयास करें।" },
+  "profiler.formsReady": { en: "Application forms are ready!", hi: "आवेदन फॉर्म तैयार हैं!" },
+  "profiler.noForms": { en: "No forms could be prepared", hi: "कोई फॉर्म तैयार नहीं हुआ" },
+  "profiler.seeReasons": { en: "See the reasons below", hi: "नीचे दिए गए कारण देखें" },
+
+  // ── Chat input ────────────────────────────────────────────────────────
+  "chat.noFormPrepared": { en: "No form could be prepared. See the reasons below.", hi: "कोई फॉर्म तैयार नहीं हो सका। कारण नीचे देखें।" },
+  "chat.stopRecording": { en: "Stop recording", hi: "रिकॉर्डिंग बंद करें" },
+  "chat.welcome": { en: "Hello! Welcome to Nagarik Sahayak", hi: "नमस्ते! नागरिक सहायक में आपका स्वागत है" },
+  "chat.welcomeSub": { en: "Help filling application forms for government schemes", hi: "सरकारी योजनाओं के लिए आवेदन फॉर्म भरने में सहायता" },
+  "chat.startConversation": { en: "Start a conversation", hi: "बातचीत शुरू करें" },
+  "chat.orStartTalking": { en: "Or start by talking", hi: "या बातचीत से शुरू करें" },
+  "chat.uploadPdf": { en: "Upload PDF", hi: "PDF अपलोड करें" },
+  "chat.selectedSchemes": {
+    en: "You have selected {n} scheme(s):",
+    hi: "आपने {n} योजना(एं) चुनी हैं:",
+  },
+  "chat.nowCompleteProfile": {
+    en: "Now we'll complete your profile. Please answer the questions below.",
+    hi: "अब हम आपकी प्रोफ़ाइल पूरी करेंगे। कृपया नीचे दिए गए सवालों का जवाब दें।",
+  },
+  "chat.formRefusedCount": {
+    en: "A form could not be generated for {n} scheme(s) — see the reasons below.",
+    hi: "{n} योजना के लिए फॉर्म नहीं बन सका — कारण नीचे देखें।",
+  },
+  "chat.flaggedCount": {
+    en: "{n} application(s) sent for verification.",
+    hi: "{n} आवेदन सत्यापन हेतु भेजा गया है।",
+  },
+  "chat.inputPlaceholder": { en: "Type your question here…", hi: "अपना सवाल यहाँ लिखें…" },
+  "chat.formsReadyCount": {
+    en: "{n} application forms are ready! Use the download button above.",
+    hi: "{n} आवेदन फॉर्म तैयार हो गए! ऊपर डाउनलोड बटन से डाउनलोड करें।",
+  },
+
+  // ── Scheme selector ───────────────────────────────────────────────────
+  "selector.chooseToApply": { en: "Choose one or more schemes to apply for", hi: "एक या अधिक योजनाएं चुनें जिनके लिए आवेदन करना है" },
+  "selector.startApplication": { en: "Start application", hi: "आवेदन शुरू करें" },
+  "selector.applyForN": { en: "Apply for {n} schemes", hi: "{n} योजनाओं के लिए आवेदन करें" },
+
+  // ── Privacy screen chrome (headings & buttons, not the legal notice) ──
+  "privacy.whatGrievance": { en: "What is your grievance?", hi: "आपकी शिकायत क्या है?" },
+  "privacy.sending": { en: "Sending…", hi: "भेजा जा रहा है…" },
+  "privacy.sendGrievance": { en: "Send grievance", hi: "शिकायत भेजें" },
+  "privacy.nomineeActive": { en: "Active — this person can use your rights now", hi: "सक्रिय — यह व्यक्ति अभी आपके अधिकारों का उपयोग कर सकता है" },
+  "privacy.saving": { en: "Saving…", hi: "सहेजा जा रहा है…" },
+  "privacy.nominate": { en: "Nominate", hi: "नामित करें" },
+  "privacy.eraseMyData": { en: "Erase my data", hi: "मेरा डेटा मिटाएं" },
+  "privacy.decisionHelp": {
+    en: "Details marked “Decision” are used to decide your eligibility.",
+    hi: "“निर्णय” वाले विवरण आपकी पात्रता तय करने में उपयोग होते हैं।",
+  },
+  "privacy.consentNeeded": { en: "We need your permission", hi: "आपकी अनुमति चाहिए" },
+  "privacy.consentExplain": {
+    en: "To apply for schemes we need some of your details. You can",
+    hi: "योजनाओं के लिए आवेदन करने हेतु हमें आपके कुछ विवरण चाहिए। आप कभी भी",
+  },
+  "privacy.canWithdraw": { en: "withdraw this permission at any time.", hi: "यह अनुमति वापस ले सकते हैं।" },
+  "privacy.chooseEachPurpose": { en: "You can choose each purpose separately below.", hi: "नीचे प्रत्येक उद्देश्य अलग से चुन सकते हैं।" },
+  "privacy.separatePermission": { en: "A separate permission for each purpose. Change it any time.", hi: "प्रत्येक उद्देश्य के लिए अलग अनुमति। कभी भी बदल सकते हैं।" },
+  "privacy.required": { en: "Required", hi: "आवश्यक" },
+  "privacy.storedFields": { en: "details stored", hi: "विवरण संग्रहीत" },
+  "privacy.applications": { en: "applications", hi: "आवेदन" },
+  "privacy.messages": { en: "messages", hi: "संदेश" },
+  "privacy.decisionBadge": { en: "Decision", hi: "निर्णय" },
+  "privacy.showMyData": { en: "Show my data", hi: "मेरा डेटा दिखाएं" },
+  "privacy.versionAccepted": { en: "accepted", hi: "स्वीकृत" },
+  "privacy.versionPrefix": { en: "Version", hi: "संस्करण" },
+  "privacy.nomineeExplain": {
+    en: "You can nominate someone to use your rights if you die or become incapacitated.",
+    hi: "आप किसी को नामित कर सकते हैं जो आपकी मृत्यु या अक्षमता की स्थिति में आपके अधिकारों का उपयोग कर सके।",
+  },
+  "privacy.eraseWarning": {
+    en: "All your details, application forms and conversations will be deleted. This cannot be undone.",
+    hi: "आपके सभी विवरण, आवेदन फॉर्म और बातचीत मिटा दिए जाएंगे। यह वापस नहीं किया जा सकता।",
+  },
+  "privacy.areYouSure": { en: "Are you sure?", hi: "क्या आप निश्चित हैं?" },
+  "privacy.phoneRetained": {
+    en: "Your phone number will be kept for legal reasons. Everything else will be erased.",
+    hi: "आपका फोन नंबर कानूनी कारणों से रखा जाएगा। बाकी सब मिट जाएगा।",
+  },
+  "privacy.keepIt": { en: "Keep it", hi: "रहने दें" },
+  "privacy.yesErase": { en: "Yes, erase", hi: "हाँ, मिटाएं" },
+
+  // ── Chat message chrome ───────────────────────────────────────────────
+  "app.name": { en: "Nagarik Sahayak", hi: "नागरिक सहायक" },
+  "chat.listen": { en: "Listen", hi: "सुनें" },
+  "chat.copiedPaste": { en: "Copied! Paste it in WhatsApp", hi: "कॉपी हो गया! WhatsApp में पेस्ट करें" },
+  "chat.shareWhatsApp": { en: "Share on WhatsApp", hi: "WhatsApp पर शेयर करें" },
+  "download.pdf": { en: "Download PDF", hi: "PDF डाउनलोड करें" },
+
+  // ── Smart profiler (continued) ────────────────────────────────────────
+  "profiler.pdfError": { en: "Error while generating the PDF. Please try again.", hi: "PDF बनाने में त्रुटि। पुनः प्रयास करें।" },
+  "profiler.allFieldsFilled": { en: "All {n} fields filled", hi: "सभी {n} फ़ील्ड भरे गए" },
+  "profiler.generatingPdf": { en: "Generating PDF…", hi: "PDF बना रहे हैं…" },
+  "profiler.generateDownload": { en: "Generate & download forms", hi: "फॉर्म बनाएं और डाउनलोड करें" },
+  "profiler.progress": { en: "Profile progress", hi: "प्रोफ़ाइल प्रगति" },
+  "common.edit": { en: "Edit", hi: "संपादित करें" },
+  "common.saving": { en: "Saving…", hi: "सहेज रहे हैं…" },
+  "common.continue": { en: "Continue", hi: "आगे बढ़ें" },
 };

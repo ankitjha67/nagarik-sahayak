@@ -231,7 +231,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
 
   return (
     <div data-testid="schemes-page" className="min-h-screen bg-gray-50 pb-20">
-      <AppHeader title={isHindi ? "सरकारी योजनाएं" : "Government Schemes"} onMenuClick={() => setSidebarOpen(true)} />
+      <AppHeader onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="max-w-md mx-auto px-4 pt-4">

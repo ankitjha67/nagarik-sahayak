@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { CheckCheck, Check as CheckIcon, FileSearch, FileText, Check, X, Languages, Play, Pause, ShieldCheck, ShieldX, Download, FileDown, Loader2, Search, ClipboardCheck, FileOutput, Volume2, VolumeX, Share2, XCircle } from "lucide-react";
 import api from "../lib/api";
+import { useLanguage } from "../lib/i18n";
 
 function escapeHtml(str) {
   if (typeof str !== "string") return str;
@@ -13,6 +14,7 @@ function escapeHtml(str) {
 }
 
 const EligibilityCard = ({ result }) => {
+  const { tx } = useLanguage();
   const isEligible = result.eligible;
   return (
     <div
@@ -33,7 +35,7 @@ const EligibilityCard = ({ result }) => {
         <span className={`ml-auto text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
           isEligible ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
         }`}>
-          {isEligible ? "पात्र" : "अपात्र"}
+          {isEligible ? tx("status.eligibleShort") : tx("status.notEligibleShort")}
         </span>
       </div>
       <p className="text-[11px] text-gray-600 font-['Nunito'] leading-relaxed">{result.reason}</p>
@@ -165,6 +167,7 @@ const TranscriptionBlock = ({ message }) => {
 
 /* Hindi Voice Reply — uses browser SpeechSynthesis (works offline) */
 const HindiVoiceBtn = ({ text }) => {
+  const { tx } = useLanguage();
   const [speaking, setSpeaking] = useState(false);
   const utterRef = useRef(null);
 
@@ -204,7 +207,7 @@ const HindiVoiceBtn = ({ text }) => {
           ? "bg-[#000080] text-white voice-pulse"
           : "bg-[#F0F0F8] text-[#000080] hover:bg-[#E6E6F2]"
       }`}
-      title={speaking ? "Stop" : "सुनें (Hindi)"}
+      title={speaking ? "Stop" : tx("chat.listen")}
     >
       {speaking ? <VolumeX size={13} /> : <Volume2 size={13} />}
     </button>
@@ -237,6 +240,7 @@ const TickStatus = ({ status }) => {
 
 /* WhatsApp Share Button — copies share text to clipboard */
 const WhatsAppShareBtn = ({ pdfUrl, schemeName }) => {
+  const { tx } = useLanguage();
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
@@ -274,7 +278,7 @@ const WhatsAppShareBtn = ({ pdfUrl, schemeName }) => {
         <path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.612l4.458-1.495A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.37 0-4.567-.702-6.413-1.907l-.446-.28-3.092 1.036 1.036-3.092-.28-.446A9.955 9.955 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z" />
       </svg>
       <div>
-        <span className="text-xs font-bold font-['Mukta'] block">{copied ? "कॉपी हो गया! WhatsApp में पेस्ट करें" : "WhatsApp पर शेयर करें"}</span>
+        <span className="text-xs font-bold font-['Mukta'] block">{copied ? tx("chat.copiedPaste") : tx("chat.shareWhatsApp")}</span>
         <span className="text-[10px] opacity-75 font-['Nunito']">{copied ? "Copied! Paste in WhatsApp" : "Copy share text to clipboard"}</span>
       </div>
       {copied ? <CheckCheck size={14} className="ml-auto" /> : <Share2 size={14} className="ml-auto" />}
@@ -335,6 +339,7 @@ const FlaggedBlock = ({ flagged }) => {
 };
 
 const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
+  const { tx } = useLanguage();
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
@@ -406,7 +411,7 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
           URL.revokeObjectURL(blobUrl);
           setDone(true);
         } catch {
-          setError("डाउनलोड विफल हुआ। कृपया पुनः प्रयास करें।");
+          setError(tx("download.failed"));
           // Track error
           try {
             await api.get(`/download-all?user_id=${userId || ""}&count=0`);
@@ -414,7 +419,7 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
         }
       }
     } catch {
-      setError("नेटवर्क त्रुटि। कृपया इंटरनेट जांचें और पुनः प्रयास करें।");
+      setError(tx("download.networkError"));
     } finally {
       setDownloading(false);
     }
@@ -445,7 +450,7 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
         </div>
         <div className="flex-1 text-left">
           <span className="text-sm font-bold font-['Mukta'] block">
-            {done ? "डाउनलोड पूर्ण!" : downloading ? "डाउनलोड हो रहा है..." : `सभी ${pdfUrls.length} फॉर्म डाउनलोड करें`}
+            {done ? tx("download.done") : downloading ? tx("download.inProgress") : `${tx("download.allPrefix")} ${pdfUrls.length} ${tx("download.allSuffix")}`}
           </span>
           <ul className="mt-0.5">
             {pdfUrls.map((p, i) => (
@@ -468,6 +473,7 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
 };
 
 export const ChatBubble = ({ message }) => {
+  const { tx } = useLanguage();
   const isUser = message.role === "user";
   const hasToolCalls = message.tool_calls && message.tool_calls.length > 0;
   const isTranscription = message.type === "transcription";
@@ -490,7 +496,7 @@ export const ChatBubble = ({ message }) => {
         {!isUser && (
           <div className="flex items-center gap-1.5 mb-1">
             <div className="w-1.5 h-1.5 rounded-full bg-[#FF9933]" />
-            <span className="text-[11px] font-semibold text-[#000080] font-['Mukta']">नागरिक सहायक</span>
+            <span className="text-[11px] font-semibold text-[#000080] font-['Mukta']">{tx("app.name")}</span>
             <div className="ml-auto">
               <HindiVoiceBtn text={message.content} />
             </div>
@@ -524,7 +530,7 @@ export const ChatBubble = ({ message }) => {
                 <FileDown size={18} />
               </div>
               <div>
-                <span className="text-sm font-bold font-['Mukta'] block">PDF डाउनलोड करें</span>
+                <span className="text-sm font-bold font-['Mukta'] block">{tx("download.pdf")}</span>
                 <span className="text-[10px] opacity-90 font-['Nunito']">Pre-filled Application Form</span>
               </div>
               <Download size={16} className="ml-auto opacity-80" />
@@ -550,12 +556,14 @@ function formatTime(isoString) {
   return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
 }
 
-export const TypingIndicator = () => (
+export const TypingIndicator = () => {
+  const { tx } = useLanguage();
+  return (
   <div data-testid="typing-indicator" className="flex justify-start animate-fade-in-up">
     <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 border border-gray-100 shadow-sm">
       <div className="flex items-center gap-1.5 mb-1">
         <div className="w-1.5 h-1.5 rounded-full bg-[#FF9933]" />
-        <span className="text-[11px] font-semibold text-[#000080] font-['Mukta']">नागरिक सहायक</span>
+        <span className="text-[11px] font-semibold text-[#000080] font-['Mukta']">{tx("app.name")}</span>
       </div>
       <div className="flex gap-1.5 py-1">
         <div className="w-2 h-2 rounded-full bg-gray-400 typing-dot" />
@@ -572,7 +580,10 @@ const TOOL_STEPS = [
   { icon: FileOutput, text: "Generating filled application form...", textHi: "भरा हुआ आवेदन फॉर्म तैयार कर रहे हैं..." },
 ];
 
+};
+
 export const ToolProgressIndicator = () => {
+  const { tx } = useLanguage();
   const [visibleCount, setVisibleCount] = useState(0);
 
   useEffect(() => {
@@ -588,7 +599,7 @@ export const ToolProgressIndicator = () => {
         <div className="absolute inset-x-0 top-0 h-[2px] tool-shimmer-bar" />
         <div className="flex items-center gap-1.5 mb-2.5">
           <div className="w-1.5 h-1.5 rounded-full bg-[#FF9933]" />
-          <span className="text-[11px] font-semibold text-[#000080] font-['Mukta']">नागरिक सहायक</span>
+          <span className="text-[11px] font-semibold text-[#000080] font-['Mukta']">{tx("app.name")}</span>
           <Loader2 size={12} className="ml-1 text-[#FF9933] animate-spin" />
           <span data-testid="agent-thinking-text" className="text-[10px] text-[#FF9933] font-semibold font-['Mukta'] ml-0.5">Agent is thinking...</span>
         </div>

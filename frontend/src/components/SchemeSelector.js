@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { getV2Schemes, uploadAndExtract, extractLiveForm } from "../lib/api";
 import { Home, GraduationCap, Rocket, Wheat, ChevronRight, Check, Upload, FileText, Loader2, Link2, Heart, Landmark, IndianRupee } from "lucide-react";
 import { toast } from "sonner";
+import { useLanguage } from "../lib/i18n";
 
 const CATEGORY_CONFIG = {
   housing: { icon: Home, color: "#FF6B35", bg: "#FFF3ED" },
@@ -14,6 +15,7 @@ const CATEGORY_CONFIG = {
 };
 
 export const SchemeSelector = ({ onSchemesSelected, userId }) => {
+  const { tx } = useLanguage();
   const [schemes, setSchemes] = useState([]);
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -140,7 +142,7 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
           योजना चुनें / Select Scheme(s)
         </h2>
         <p className="text-xs text-gray-500 font-['Nunito'] mt-0.5">
-          एक या अधिक योजनाएं चुनें जिनके लिए आवेदन करना है
+          {tx("selector.chooseToApply")}
         </p>
       </div>
 
@@ -300,8 +302,8 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
           className="w-full py-3 bg-[#000080] hover:bg-[#000060] text-white rounded-xl font-bold font-['Mukta'] text-sm transition-all hover:-translate-y-0.5 shadow-md"
         >
           {selected.length === 1
-            ? "आवेदन शुरू करें"
-            : `${selected.length} योजनाओं के लिए आवेदन शुरू करें`}
+            ? tx("selector.startApplication")
+            : tx("selector.applyForN").replace("{n}", selected.length)}
           <ChevronRight size={16} className="inline ml-1" />
         </button>
       )}

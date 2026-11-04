@@ -831,7 +831,7 @@ export default function ReviewPage() {
 
   return (
     <div data-testid="review-page" className="min-h-screen bg-gray-50 pb-10">
-      <AppHeader title="समीक्षा / Review" />
+      <AppHeader />
 
       <div className="max-w-md mx-auto px-4 pt-4">
         <div className="flex items-center justify-between mb-3">

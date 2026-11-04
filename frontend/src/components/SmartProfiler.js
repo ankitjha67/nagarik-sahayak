@@ -3,12 +3,14 @@ import {
   smartProfiler, updateUserFullProfile, generateRealFilledForms, verifyFields,
 } from "../lib/api";
 import api from "../lib/api";
+import { useLanguage } from "../lib/i18n";
 import {
   AlertTriangle, Check, ChevronRight, FileDown, Loader2, Download, RotateCcw,
   ShieldCheck, XCircle,
 } from "lucide-react";
 
 export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) => {
+  const { tx } = useLanguage();
   const [profilerState, setProfilerState] = useState(null);
   const [answer, setAnswer] = useState("");
   const [saving, setSaving] = useState(false);
@@ -26,7 +28,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
         setShowReview(true);
       }
     } catch (e) {
-      setError("प्रोफाइलर लोड नहीं हो सका। पुनः प्रयास करें।");
+      setError(tx("profiler.loadFailed"));
     }
   }, [userId, schemeNames]);
 
@@ -85,7 +87,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
       setAnswer("");
       await fetchProfilerState();
     } catch {
-      setError("सहेजने में त्रुटि। पुनः प्रयास करें।");
+      setError(tx("profiler.saveError"));
     } finally {
       setSaving(false);
     }
@@ -99,7 +101,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
       setPdfResults(res.data);
       if (onComplete) onComplete(res.data);
     } catch {
-      setError("PDF बनाने में त्रुटि। पुनः प्रयास करें।");
+      setError(tx("profiler.pdfError"));
     } finally {
       setGenerating(false);
     }
@@ -136,12 +138,12 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
             )}
           </div>
           <h3 className="text-sm font-bold text-[#000080] font-['Mukta']">
-            {issuedAny ? "आवेदन फॉर्म तैयार हैं!" : "कोई फॉर्म तैयार नहीं हुआ"}
+            {issuedAny ? tx("profiler.formsReady") : tx("profiler.noForms")}
           </h3>
           <p className="text-xs text-gray-500 font-['Nunito']">
             {issuedAny
               ? `${pdfResults.count} फॉर्म - ${pdfResults.profile_fields_used} फ़ील्ड भरे गए`
-              : "नीचे दिए गए कारण देखें"}
+              : tx("profiler.seeReasons")}
           </p>
         </div>
         {pdfResults.pdf_urls.map((p, i) => (
@@ -241,7 +243,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
             समीक्षा और पुष्टि करें / Review & Confirm
           </h3>
           <p className="text-xs text-gray-500 font-['Nunito']">
-            सभी {profilerState.totalFields} फ़ील्ड भरे गए
+            {tx("profiler.allFieldsFilled").replace("{n}", profilerState.totalFields)}
           </p>
         </div>
         <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
@@ -263,7 +265,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
             onClick={() => setShowReview(false)}
             className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold font-['Mukta'] flex items-center justify-center gap-1"
           >
-            <RotateCcw size={12} /> संपादित करें
+            <RotateCcw size={12} /> {tx("common.edit")}
           </button>
           <button
             data-testid="generate-forms-btn"
@@ -272,9 +274,9 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
             className="flex-[2] py-2.5 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl text-xs font-bold font-['Mukta'] flex items-center justify-center gap-1 transition-all disabled:bg-gray-400"
           >
             {generating ? (
-              <><Loader2 size={14} className="animate-spin" /> PDF बना रहे हैं...</>
+              <><Loader2 size={14} className="animate-spin" /> {tx("profiler.generatingPdf")}</>
             ) : (
-              <><FileDown size={14} /> फॉर्म बनाएं और डाउनलोड करें</>
+              <><FileDown size={14} /> {tx("profiler.generateDownload")}</>
             )}
           </button>
         </div>
@@ -301,7 +303,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
       <div className="space-y-1">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold text-[#000080] font-['Mukta'] uppercase tracking-wider">
-            प्रोफ़ाइल प्रगति
+            {tx("profiler.progress")}
           </span>
           <span className="text-[10px] font-bold text-[#FF9933] font-['Nunito']">
             {profilerState.filledCount}/{profilerState.totalFields} ({progress}%)
@@ -366,9 +368,9 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
             className="w-full mt-2 py-2.5 bg-[#000080] hover:bg-[#000060] disabled:bg-gray-300 text-white rounded-lg text-xs font-bold font-['Mukta'] flex items-center justify-center gap-1 transition-all"
           >
             {saving ? (
-              <><Loader2 size={12} className="animate-spin" /> सहेज रहे हैं...</>
+              <><Loader2 size={12} className="animate-spin" /> {tx("common.saving")}</>
             ) : (
-              <>आगे बढ़ें <ChevronRight size={14} /></>
+              <>{tx("common.continue")} <ChevronRight size={14} /></>
             )}
           </button>
         </div>
@@ -393,6 +395,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
 
 // Download All button (reused from ChatBubble concept)
 const DownloadAllButton = ({ pdfUrls, backendUrl, userId }) => {
+  const { tx } = useLanguage();
   const [downloading, setDownloading] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -436,7 +439,7 @@ const DownloadAllButton = ({ pdfUrls, backendUrl, userId }) => {
       </div>
       <div className="flex-1 text-left">
         <span className="text-sm font-bold font-['Mukta'] block">
-          {done ? "डाउनलोड पूर्ण!" : downloading ? "डाउनलोड हो रहा है..." : `सभी ${pdfUrls.length} फॉर्म डाउनलोड करें`}
+          {done ? tx("download.done") : downloading ? tx("download.inProgress") : `${tx("download.allPrefix")} ${pdfUrls.length} ${tx("download.allSuffix")}`}
         </span>
       </div>
     </button>

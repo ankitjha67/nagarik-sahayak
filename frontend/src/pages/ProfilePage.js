@@ -112,7 +112,7 @@ export default function ProfilePage({ userId, onLogout }) {
 
   return (
     <div data-testid="profile-page" className="min-h-screen bg-gray-50 pb-20">
-      <AppHeader title="प्रोफाइल" onMenuClick={() => setSidebarOpen(true)} />
+      <AppHeader onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="max-w-md mx-auto px-4 pt-6">

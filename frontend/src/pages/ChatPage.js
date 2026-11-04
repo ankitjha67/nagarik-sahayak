@@ -235,7 +235,7 @@ export default function ChatPage({ userId, language = "hi" }) {
 
   return (
     <div data-testid="chat-page" className="min-h-screen bg-gray-50 flex flex-col">
-      <AppHeader title="नागरिक सहायक" onMenuClick={() => setSidebarOpen(true)} onNewChat={handleNewChat} />
+      <AppHeader onMenuClick={() => setSidebarOpen(true)} onNewChat={handleNewChat} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Messages Area */}
@@ -251,10 +251,10 @@ export default function ChatPage({ userId, language = "hi" }) {
                 onError={(e) => { e.target.style.display = "none"; }}
               />
               <h3 className="text-base font-bold text-[#000080] font-['Mukta']">
-                नमस्ते! नागरिक सहायक में आपका स्वागत है
+                {tx("chat.welcome")}
               </h3>
               <p className="text-xs text-gray-400 font-['Nunito'] mt-1">
-                सरकारी योजनाओं के लिए आवेदन फॉर्म भरने में सहायता
+                {tx("chat.welcomeSub")}
               </p>
             </div>
             <SchemeSelector
@@ -268,7 +268,7 @@ export default function ChatPage({ userId, language = "hi" }) {
                   {
                     id: `sys-${Date.now()}`,
                     role: "assistant",
-                    content: `आपने ${schemes.length} योजना(एं) चुनी हैं:\n${schemes.map((s, i) => `${i + 1}. ${s}`).join("\n")}\n\nअब हम आपकी प्रोफ़ाइल पूरी करेंगे। कृपया नीचे दिए गए सवालों का जवाब दें।`,
+                    content: `${tx("chat.selectedSchemes").replace("{n}", schemes.length)}\n${schemes.map((s, i) => `${i + 1}. ${s}`).join("\n")}\n\n${tx("chat.nowCompleteProfile")}`,
                     created_at: new Date().toISOString(),
                   },
                 ]);
@@ -276,7 +276,7 @@ export default function ChatPage({ userId, language = "hi" }) {
             />
             {/* Legacy chat option */}
             <div className="text-center mt-4 pt-3 border-t border-gray-100">
-              <p className="text-[10px] text-gray-400 font-['Nunito'] mb-1">या बातचीत से शुरू करें</p>
+              <p className="text-[10px] text-gray-400 font-['Nunito'] mb-1">{tx("chat.orStartTalking")}</p>
               <button
                 data-testid="start-chat-btn"
                 onClick={async () => {
@@ -290,7 +290,7 @@ export default function ChatPage({ userId, language = "hi" }) {
                 }}
                 className="text-xs text-[#000080] font-bold font-['Mukta'] hover:underline"
               >
-                बातचीत शुरू करें
+                {tx("chat.startConversation")}
               </button>
             </div>
           </div>
@@ -319,14 +319,14 @@ export default function ChatPage({ userId, language = "hi" }) {
                   // absurdly ("0 forms ready!") when everything was refused.
                   let content;
                   if (data.count === 0) {
-                    content = "कोई फॉर्म तैयार नहीं हो सका। कारण नीचे देखें।";
+                    content = tx("chat.noFormPrepared");
                   } else {
-                    content = `${data.count} आवेदन फॉर्म तैयार हो गए! ऊपर डाउनलोड बटन से डाउनलोड करें।`;
+                    content = tx("chat.formsReadyCount").replace("{n}", data.count);
                     if (refused.length) {
-                      content += `\n${refused.length} योजना के लिए फॉर्म नहीं बन सका — कारण नीचे देखें।`;
+                      content += `\n${tx("chat.formRefusedCount").replace("{n}", refused.length)}`;
                     }
                     if (flagged.length) {
-                      content += `\n${flagged.length} आवेदन सत्यापन हेतु भेजा गया है।`;
+                      content += `\n${tx("chat.flaggedCount").replace("{n}", flagged.length)}`;
                     }
                   }
                   setMessages((prev) => [
@@ -379,7 +379,7 @@ export default function ChatPage({ userId, language = "hi" }) {
             data-testid="chat-attach-btn"
             onClick={() => fileInputRef.current?.click()}
             disabled={loading || isRecording}
-            title="PDF अपलोड करें"
+            title={tx("chat.uploadPdf")}
             aria-label="Upload PDF file"
             className="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 bg-gray-100 text-gray-500 hover:bg-[#FFF0E0] hover:text-[#FF9933]"
           >
@@ -408,7 +408,7 @@ export default function ChatPage({ userId, language = "hi" }) {
             data-testid="chat-mic-btn"
             onClick={isRecording ? stopRecording : startRecording}
             disabled={loading && !isRecording}
-            title={isRecording ? "रिकॉर्डिंग बंद करें" : "बोलकर पूछें"}
+            title={isRecording ? tx("chat.stopRecording") : tx("home.askByVoice")}
             aria-label={isRecording ? "Stop recording" : "Start voice recording"}
             className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
               isRecording
@@ -434,7 +434,7 @@ export default function ChatPage({ userId, language = "hi" }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="अपना सवाल यहाँ लिखें..."
+            placeholder={tx("chat.inputPlaceholder")}
             disabled={loading || isRecording}
             className="flex-1 h-10 rounded-full bg-gray-50 border border-gray-200 px-4 text-sm font-['Nunito'] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FF9933] focus:border-transparent transition-all"
           />

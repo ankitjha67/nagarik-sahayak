@@ -241,7 +241,7 @@ export default function PrivacyPage({ userId }) {
 
   return (
     <div data-testid="privacy-page" className="min-h-screen bg-gray-50 pb-20">
-      <AppHeader title="गोपनीयता / Privacy" />
+      <AppHeader />
 
       <div className="max-w-md mx-auto px-4 pt-4">
         {/* Terms not yet accepted. Placed above consent because a person
@@ -302,12 +302,12 @@ export default function PrivacyPage({ userId }) {
             <div className="flex items-center gap-2 mb-2">
               <ShieldCheck size={18} className="text-[#FF9933]" />
               <h2 className="text-sm font-bold text-[#000080] font-['Mukta']">
-                आपकी अनुमति चाहिए
+                {tx("privacy.consentNeeded")}
               </h2>
             </div>
             <p className="text-xs text-gray-700 font-['Nunito'] leading-relaxed mb-3">
-              योजनाओं के लिए आवेदन करने हेतु हमें आपके कुछ विवरण चाहिए। आप कभी भी
-              यह अनुमति वापस ले सकते हैं।
+              {tx("privacy.consentExplain")}{" "}
+              {tx("privacy.canWithdraw")}
               <span className="block text-[11px] text-gray-500 mt-1">
                 We need some details to apply for schemes on your behalf. You can
                 withdraw this permission at any time.
@@ -323,7 +323,7 @@ export default function PrivacyPage({ userId }) {
               मैं सहमत हूँ / I agree
             </button>
             <p className="text-[10px] text-gray-500 font-['Nunito'] text-center mt-2">
-              नीचे प्रत्येक उद्देश्य अलग से चुन सकते हैं।
+              {tx("privacy.chooseEachPurpose")}
             </p>
           </div>
         )}
@@ -332,7 +332,7 @@ export default function PrivacyPage({ userId }) {
         <Section icon={Lock} titleHi="आपकी अनुमतियाँ" title="Your permissions"
                  defaultOpen>
           <p className="text-[11px] text-gray-500 font-['Nunito'] mb-3">
-            प्रत्येक उद्देश्य के लिए अलग अनुमति। कभी भी बदल सकते हैं।
+            {tx("privacy.separatePermission")}
           </p>
           {(consent?.available_purposes || []).map((p) => {
             const text = PURPOSE_TEXT[p.purpose] || {};
@@ -346,7 +346,7 @@ export default function PrivacyPage({ userId }) {
                       {text.hi || p.purpose}
                       {essential && (
                         <span className="ml-1.5 text-[9px] text-[#FF9933] font-normal">
-                          आवश्यक
+                          {tx("privacy.required")}
                         </span>
                       )}
                     </p>
@@ -397,9 +397,9 @@ export default function PrivacyPage({ userId }) {
           {myData ? (
             <div>
               <p className="text-xs text-gray-700 font-['Nunito'] mb-2">
-                <strong>{myData.field_count}</strong> विवरण संग्रहीत ·{" "}
-                <strong>{myData.applications_count}</strong> आवेदन ·{" "}
-                <strong>{myData.chat_messages_count}</strong> संदेश
+                <strong>{myData.field_count}</strong> {tx("privacy.storedFields")} ·{" "}
+                <strong>{myData.applications_count}</strong> {tx("privacy.applications")} ·{" "}
+                <strong>{myData.chat_messages_count}</strong> {tx("privacy.messages")}
               </p>
               <div className="max-h-56 overflow-y-auto space-y-1 pr-1">
                 {(myData.personal_data_held || []).map((f, i) => (
@@ -410,7 +410,7 @@ export default function PrivacyPage({ userId }) {
                     </span>
                     {f.used_for_decisions && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700">
-                        निर्णय
+                        {tx("privacy.decisionBadge")}
                       </span>
                     )}
                     <span className="text-[9px] text-gray-400">{f.retention_days}d</span>
@@ -418,7 +418,7 @@ export default function PrivacyPage({ userId }) {
                 ))}
               </div>
               <p className="text-[10px] text-gray-500 font-['Nunito'] mt-2">
-                "निर्णय" वाले विवरण आपकी पात्रता तय करने में उपयोग होते हैं।
+                {tx("privacy.decisionHelp")}
               </p>
             </div>
           ) : (
@@ -429,7 +429,7 @@ export default function PrivacyPage({ userId }) {
               className="w-full py-2.5 rounded-xl bg-[#000080] text-white text-xs font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {busy === "mydata" ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
-              मेरा डेटा दिखाएं
+              {tx("privacy.showMyData")}
             </button>
           )}
         </Section>
@@ -469,7 +469,7 @@ export default function PrivacyPage({ userId }) {
             onChange={(e) => setGrievance(e.target.value)}
             rows={3}
             data-testid="grievance-input"
-            placeholder="आपकी शिकायत क्या है?"
+            placeholder={tx("privacy.whatGrievance")}
             className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-['Nunito'] focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none resize-none"
           />
           <button
@@ -477,7 +477,7 @@ export default function PrivacyPage({ userId }) {
             disabled={busy === "grievance" || !grievance.trim()}
             className="w-full mt-2 py-2.5 rounded-xl bg-[#000080] text-white text-xs font-semibold disabled:opacity-40"
           >
-            {busy === "grievance" ? "भेजा जा रहा है…" : "शिकायत भेजें"}
+            {busy === "grievance" ? tx("privacy.sending") : tx("privacy.sendGrievance")}
           </button>
           <p className="text-[10px] text-gray-500 font-['Nunito'] mt-2">
             {notice?.grievance?.escalation}
@@ -491,7 +491,7 @@ export default function PrivacyPage({ userId }) {
               {termsStatus?.accepted && (
                 <p className="text-[11px] text-green-700 font-['Nunito'] flex items-center gap-1">
                   <CheckCircle2 size={12} />
-                  संस्करण {termsStatus.accepted_version} स्वीकृत
+                  {tx("privacy.versionPrefix")} {termsStatus.accepted_version} {tx("privacy.versionAccepted")}
                 </p>
               )}
               <p className="text-xs text-gray-700 font-['Nunito'] leading-relaxed">
@@ -542,8 +542,8 @@ export default function PrivacyPage({ userId }) {
         <Section icon={UserPlus} titleHi="नामित व्यक्ति"
                  title="Nominate someone to act for you">
           <p className="text-[11px] text-gray-600 font-['Nunito'] mb-3 leading-relaxed">
-            आप किसी को नामित कर सकते हैं जो आपकी मृत्यु या अक्षमता की स्थिति में
-            आपके अधिकारों का उपयोग कर सके।
+            {tx("privacy.nomineeExplain")}
+            
             <span className="block text-[10px] text-gray-500 mt-0.5">
               They gain access only after death or incapacity is verified —
               never on their own say-so.
@@ -561,7 +561,7 @@ export default function PrivacyPage({ userId }) {
               </p>
               <p className={`text-[10px] mt-1 ${nominee.active ? "text-amber-700" : "text-gray-500"}`}>
                 {nominee.active
-                  ? "सक्रिय — यह व्यक्ति अभी आपके अधिकारों का उपयोग कर सकता है"
+                  ? tx("privacy.nomineeActive")
                   : nominee.note_hi}
               </p>
               <button
@@ -603,7 +603,7 @@ export default function PrivacyPage({ userId }) {
                 data-testid="save-nominee-btn"
                 className="w-full py-2.5 rounded-xl bg-[#000080] text-white text-xs font-semibold disabled:opacity-40"
               >
-                {busy === "nominee" ? "सहेजा जा रहा है…" : "नामित करें"}
+                {busy === "nominee" ? tx("privacy.saving") : tx("privacy.nominate")}
               </button>
             </div>
           )}
@@ -615,8 +615,8 @@ export default function PrivacyPage({ userId }) {
           {!confirmErase ? (
             <>
               <p className="text-xs text-gray-700 font-['Nunito'] leading-relaxed mb-3">
-                आपके सभी विवरण, आवेदन फॉर्म और बातचीत मिटा दिए जाएंगे। यह वापस
-                नहीं किया जा सकता।
+                {tx("privacy.eraseWarning")}
+
                 <span className="block text-[11px] text-gray-500 mt-1">
                   Your details, generated forms and conversations will be deleted.
                   This cannot be undone.
@@ -627,7 +627,7 @@ export default function PrivacyPage({ userId }) {
                 data-testid="erase-start-btn"
                 className="w-full py-2.5 rounded-xl border border-red-300 text-red-600 text-xs font-bold"
               >
-                मेरा डेटा मिटाएं
+                {tx("privacy.eraseMyData")}
               </button>
             </>
           ) : (
@@ -635,11 +635,11 @@ export default function PrivacyPage({ userId }) {
               <div className="flex items-center gap-1.5 mb-2">
                 <AlertTriangle size={14} className="text-red-600" />
                 <span className="text-xs font-bold text-red-800 font-['Mukta']">
-                  क्या आप निश्चित हैं?
+                  {tx("privacy.areYouSure")}
                 </span>
               </div>
               <p className="text-[11px] text-red-700 font-['Nunito'] mb-3">
-                आपका फोन नंबर कानूनी कारणों से रखा जाएगा। बाकी सब मिट जाएगा।
+                {tx("privacy.phoneRetained")}
                 <span className="block opacity-80">
                   Your phone number is retained for legal reasons. Everything
                   else is removed.
@@ -650,7 +650,7 @@ export default function PrivacyPage({ userId }) {
                   onClick={() => setConfirmErase(false)}
                   className="flex-1 py-2 rounded-xl border border-gray-300 text-gray-700 text-xs font-semibold"
                 >
-                  रहने दें
+                  {tx("privacy.keepIt")}
                 </button>
                 <button
                   onClick={doErase}
@@ -659,7 +659,7 @@ export default function PrivacyPage({ userId }) {
                   className="flex-1 py-2 rounded-xl bg-red-600 text-white text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
                   {busy === "erase" ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
-                  हाँ, मिटाएं
+                  {tx("privacy.yesErase")}
                 </button>
               </div>
             </div>
