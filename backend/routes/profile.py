@@ -1,6 +1,7 @@
 """Profile management routes."""
 import json
 from fastapi import HTTPException
+from prisma import Json
 from database import prisma
 from models import ProfileUpdate
 from routes import api_router
@@ -44,7 +45,15 @@ async def update_profile(user_id: str, update: ProfileUpdate):
 
         # Fingerprints are derived above from the full values; what is written
         # has the Aadhaar stripped and is encrypted at rest.
-        data["profile"], _ = profile_store.prepare_basic_profile(update.profile_data)
+        #
+        # profile is a Json column, so the prepared value — a ciphertext string
+        # when encryption is on, a JSON string otherwise — must be wrapped in
+        # Json(). Passing the raw ciphertext string unwrapped makes Prisma's
+        # engine try to parse it as JSON and 500 every save once encryption is
+        # enabled. The read path (profile_store) decodes a dict, a ciphertext
+        # string or a plain JSON string alike, so Json() round-trips either way.
+        prepared, _ = profile_store.prepare_basic_profile(update.profile_data)
+        data["profile"] = Json(prepared)
     if data:
         user = await prisma.user.update(where={"id": user_id}, data=data)
     profile = profile_store.load_basic(user)

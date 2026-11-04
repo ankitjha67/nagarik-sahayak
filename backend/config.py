@@ -27,9 +27,13 @@ PDF_DIR = ROOT_DIR / "pdf_reports"
 PDF_DIR.mkdir(exist_ok=True)
 
 # --- Rate Limiting ---
+# The OTP throttle. Defaults match the product rule (five requests a minute per
+# phone) and are read from the environment so a deployment can tune them — and
+# so an automated test run against a live instance can raise the ceiling for
+# one session instead of each test having to invent a fresh phone number.
 _rate_limit_store: Dict[str, list] = defaultdict(list)
-RATE_LIMIT_MAX = 5
-RATE_LIMIT_WINDOW = 60
+RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "5"))
+RATE_LIMIT_WINDOW = int(os.environ.get("RATE_LIMIT_WINDOW", "60"))
 
 
 def check_rate_limit(key: str) -> bool:

@@ -95,3 +95,7 @@ android-sdk/
 output/
 *.db
 *.sqlite3
+
+# Generated/encrypted PDF artefacts (per-run output, never source)
+backend/pdf_reports/*.pdf
+backend/pdf_reports/*.zip

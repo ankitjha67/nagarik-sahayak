@@ -95,6 +95,18 @@ async def send_chat_message(req: ChatMessageRequest):
 
     if DEMO_MODE and is_demo_trigger(req.content):
         demo = demo_stage_response(req.user_id)
+        # Record the citizen as the owner of each demo PDF. Every other
+        # generation path does this; the demo flow did not, so its forms were
+        # generated on disk but unreachable — the download route denies access
+        # to an artefact with no ownership record (it returns 404, so an
+        # unowned document is indistinguishable from a missing one). Without
+        # this the headline demo — "your filled form is ready, download it" —
+        # always 404s.
+        from dpdp import ownership
+        for item in demo.get("pdf_urls", []):
+            pid = str(item.get("pdf_url", "")).rsplit("/", 1)[-1]
+            if pid and req.user_id:
+                await ownership.record_owner(pid, req.user_id, ownership.ArtefactKind.PDF)
         bot_msg = {
             "id": str(uuid.uuid4()), "user_id": req.user_id, "role": "assistant",
             "content": demo["content"], "status": "delivered",

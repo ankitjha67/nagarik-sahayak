@@ -104,8 +104,15 @@ async def update_user_full_profile(user_id: str, req: dict = {}):
     fingerprint_source = dict(existing)
     stored_value, storable = profile_store.prepare_full_profile(existing)
 
+    # fullProfile is a Json column. Prisma's query engine validates whatever is
+    # sent to it as JSON, so the ciphertext string must be wrapped in Json()
+    # exactly like the plaintext dict — storing it as a JSON string value.
+    # Passing the raw `enc:v1:...` string unwrapped makes the engine try to
+    # parse it as JSON and fail, 500-ing every profile save while encryption is
+    # on. The read path (profile_store._coerce) already accepts both a dict and
+    # a ciphertext string, so Json(stored_value) round-trips either way.
     await prisma.user.update(where={"id": user_id}, data=identity_index.merge_into_update({
-        "fullProfile": stored_value if crypto.is_enabled() else Json(stored_value),
+        "fullProfile": Json(stored_value),
         "profileLastUpdated": datetime.now(timezone.utc),
     }, fingerprint_source))
     existing = storable
