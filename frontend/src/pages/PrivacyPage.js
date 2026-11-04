@@ -7,6 +7,7 @@ import {
   getTerms, getTermsStatus, acceptTerms, getNominee, setNominee, removeNominee,
 } from "../lib/api";
 import { toast } from "sonner";
+import { useLanguage } from "../lib/i18n";
 import {
   AlertTriangle, CheckCircle2, ChevronDown, Database, Eye,
   FileText, Loader2, Lock, MessageSquareWarning, ScrollText, ShieldCheck,
@@ -79,6 +80,7 @@ function Section({ icon: Icon, title, titleHi, children, defaultOpen = false }) 
 }
 
 export default function PrivacyPage({ userId }) {
+  const { tx } = useLanguage();
   const [notice, setNotice] = useState(null);
   const [consent, setConsent] = useState(null);
   const [myData, setMyData] = useState(null);
@@ -117,10 +119,10 @@ export default function PrivacyPage({ userId }) {
     try {
       if (on) {
         await grantConsent(userId, [purpose]);
-        toast.success("सहमति दर्ज की गई");
+        toast.success(tx("privacy.consentRecorded"));
       } else {
         await withdrawConsent(userId, [purpose]);
-        toast.success("सहमति वापस ले ली गई");
+        toast.success(tx("privacy.consentWithdrawn"));
       }
       const c = await getConsent(userId);
       setConsent(c.data);
@@ -137,7 +139,7 @@ export default function PrivacyPage({ userId }) {
       await grantConsent(userId, ESSENTIAL);
       const c = await getConsent(userId);
       setConsent(c.data);
-      toast.success("धन्यवाद! अब आप योजनाओं के लिए आवेदन कर सकते हैं।");
+      toast.success(tx("privacy.thanksCanApply"));
     } catch (e) {
       toast.error(e.response?.data?.detail || "Could not record consent");
     } finally {
@@ -161,7 +163,7 @@ export default function PrivacyPage({ userId }) {
     setBusy("erase");
     try {
       const r = await eraseMyData(userId, { all: true });
-      toast.success(`${r.data.profile_fields || 0} विवरण मिटा दिए गए`);
+      toast.success(`${r.data.profile_fields || 0} ${tx("privacy.detailsErased")}`);
       setConfirmErase(false);
       setMyData(null);
       await load();
@@ -177,7 +179,7 @@ export default function PrivacyPage({ userId }) {
     try {
       await acceptTerms(userId, terms.version);
       setTermsStatus((await getTermsStatus(userId)).data);
-      toast.success("शर्तें स्वीकार की गईं");
+      toast.success(tx("privacy.termsAccepted"));
     } catch (e) {
       toast.error(e.response?.data?.detail || "Could not record acceptance");
     } finally {
@@ -192,7 +194,7 @@ export default function PrivacyPage({ userId }) {
       await setNominee(userId, nomineeForm);
       setNomineeState((await getNominee(userId)).data);
       setNomineeForm({ name: "", relation: "", contact: "" });
-      toast.success("नामित व्यक्ति दर्ज किया गया");
+      toast.success(tx("privacy.nomineeRecorded"));
     } catch (e) {
       toast.error(e.response?.data?.detail || "Could not record nominee");
     } finally {
@@ -205,7 +207,7 @@ export default function PrivacyPage({ userId }) {
     try {
       await removeNominee(userId);
       setNomineeState((await getNominee(userId)).data);
-      toast.success("नामांकन हटा दिया गया");
+      toast.success(tx("privacy.nomineeRemoved"));
     } catch (e) {
       toast.error("Could not remove nominee");
     } finally {
@@ -218,7 +220,7 @@ export default function PrivacyPage({ userId }) {
     setBusy("grievance");
     try {
       await lodgeRightsRequest(userId, "grievance", { message: grievance.trim() });
-      toast.success("आपकी शिकायत दर्ज कर ली गई है");
+      toast.success(tx("privacy.grievanceLodged"));
       setGrievance("");
     } catch (e) {
       toast.error(e.response?.data?.detail || "Could not lodge grievance");
@@ -380,7 +382,7 @@ export default function PrivacyPage({ userId }) {
           {hasAnyConsent && (
             <button
               onClick={() => withdrawConsent(userId).then(async () => {
-                toast.success("सभी अनुमतियाँ वापस ले ली गईं");
+                toast.success(tx("privacy.allConsentWithdrawn"));
                 setConsent((await getConsent(userId)).data);
               }).catch(() => toast.error("Could not withdraw"))}
               className="w-full mt-3 py-2 rounded-xl border border-gray-300 text-gray-600 text-xs font-semibold"

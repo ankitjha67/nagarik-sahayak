@@ -9,8 +9,10 @@ import {
 import { sendOTP, verifyOTP } from "../lib/api";
 import { toast } from "sonner";
 import { Phone, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { useLanguage } from "../lib/i18n";
 
 export default function LoginPage({ onLogin }) {
+  const { tx } = useLanguage();
   const [step, setStep] = useState("phone"); // phone | otp
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -18,18 +20,18 @@ export default function LoginPage({ onLogin }) {
 
   const handleSendOTP = async () => {
     if (phone.length < 10) {
-      toast.error("Please enter a valid 10-digit phone number");
+      toast.error(tx("login.invalidPhone"));
       return;
     }
     setLoading(true);
     try {
       const res = await sendOTP(phone);
       if (res.data.success) {
-        toast.success("OTP भेजा गया!");
+        toast.success(tx("login.otpSent"));
         setStep("otp");
       }
     } catch {
-      toast.error("Failed to send OTP");
+      toast.error(tx("login.sendFailed"));
     } finally {
       setLoading(false);
     }
@@ -41,13 +43,13 @@ export default function LoginPage({ onLogin }) {
     try {
       const res = await verifyOTP(phone, otp);
       if (res.data.success) {
-        toast.success("सत्यापित! Welcome");
+        toast.success(tx("login.verified"));
         onLogin(res.data.user_id, res.data.phone);
       } else {
-        toast.error(res.data.message || "Invalid OTP");
+        toast.error(res.data.message || tx("login.invalidOtp"));
       }
     } catch {
-      toast.error("Verification failed");
+      toast.error(tx("login.verifyFailed"));
     } finally {
       setLoading(false);
     }
@@ -72,7 +74,7 @@ export default function LoginPage({ onLogin }) {
               <div className="flex items-center gap-2 mb-4">
                 <Phone size={18} className="text-[#FF9933]" />
                 <span className="text-sm font-semibold text-gray-700 font-['Mukta']">
-                  मोबाइल नंबर दर्ज करें
+                  {tx("login.enterMobile")}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -101,7 +103,7 @@ export default function LoginPage({ onLogin }) {
                 <Loader2 className="animate-spin" size={20} />
               ) : (
                 <>
-                  OTP भेजें
+                  {tx("login.sendOtp")}
                   <ArrowRight size={18} />
                 </>
               )}
@@ -114,11 +116,11 @@ export default function LoginPage({ onLogin }) {
               <div className="flex items-center gap-2 mb-2">
                 <ShieldCheck size={18} className="text-[#138808]" />
                 <span className="text-sm font-semibold text-gray-700 font-['Mukta']">
-                  OTP सत्यापित करें
+                  {tx("login.enterOtp")}
                 </span>
               </div>
               <p className="text-xs text-gray-400 mb-5 font-['Nunito']">
-                +91 {phone} पर भेजा गया
+                {tx("login.sentTo")} +91 {phone}
               </p>
               <div className="flex justify-center">
                 <InputOTP
@@ -167,7 +169,7 @@ export default function LoginPage({ onLogin }) {
                 <Loader2 className="animate-spin" size={20} />
               ) : (
                 <>
-                  सत्यापित करें
+                  {tx("login.verify")}
                   <ShieldCheck size={18} />
                 </>
               )}
@@ -181,7 +183,7 @@ export default function LoginPage({ onLogin }) {
               }}
               className="block mx-auto text-sm text-[#000080] font-medium hover:underline font-['Nunito']"
             >
-              नंबर बदलें
+              {tx("login.changeNumber")}
             </button>
           </div>
         )}

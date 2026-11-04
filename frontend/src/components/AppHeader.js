@@ -1,7 +1,10 @@
 import { Menu, RotateCcw } from "lucide-react";
 import { LanguagePicker } from "./LanguagePicker";
+import { useLanguage } from "../lib/i18n";
 
-export const AppHeader = ({ title = "नागरिक सहायक", showBack, onBack, onMenuClick, onNewChat }) => (
+export const AppHeader = ({ showBack, onBack, onMenuClick, onNewChat }) => {
+  const { tx } = useLanguage();
+  return (
   <header
     data-testid="app-header"
     className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-2"
@@ -11,7 +14,7 @@ export const AppHeader = ({ title = "नागरिक सहायक", showBa
         <button
           data-testid="header-back-btn"
           onClick={onBack}
-          aria-label="Go back"
+          aria-label={tx("header.goBack")}
           className="p-1 -ml-1 text-[#000080] hover:bg-gray-50 rounded-full transition-colors"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -22,7 +25,7 @@ export const AppHeader = ({ title = "नागरिक सहायक", showBa
         <button
           data-testid="header-menu-btn"
           onClick={onMenuClick}
-          aria-label="Open menu"
+          aria-label={tx("header.openMenu")}
           className="p-1.5 -ml-1 text-[#000080] hover:bg-gray-50 rounded-lg transition-colors"
         >
           <Menu size={20} />
@@ -38,8 +41,8 @@ export const AppHeader = ({ title = "नागरिक सहायक", showBa
         <button
           data-testid="new-chat-btn"
           onClick={onNewChat}
-          title="नई चैट शुरू करें"
-          aria-label="Start new chat"
+          title={tx("header.newChat")}
+          aria-label={tx("header.newChat")}
           className="p-2 text-[#000080] hover:bg-[#FFF0E0] hover:text-[#FF9933] rounded-lg transition-all"
         >
           <RotateCcw size={18} />
@@ -47,4 +50,5 @@ export const AppHeader = ({ title = "नागरिक सहायक", showBa
       )}
     </div>
   </header>
-);
+  );
+};

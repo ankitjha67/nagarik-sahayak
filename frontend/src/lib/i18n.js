@@ -1,5 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getLanguageBundle, getLanguages } from "./api";
+import { PAGE_COPY } from "./pageCopy";
+
+// Resolve a page-copy key against a language, falling back to English and then
+// to the key itself. English is the deliberate fallback: a reader whose
+// language the app cannot yet write sees readable English, not Hindi they may
+// not read. Kept outside the component so it is a plain, testable function.
+export function resolvePageCopy(key, code) {
+  const entry = PAGE_COPY[key];
+  if (!entry) return key;
+  return entry[code] ?? entry.en ?? key;
+}
 
 // English strings, bundled. The app must render in a usable language before the
 // first network round-trip completes and must keep rendering if that round-trip
@@ -125,6 +136,11 @@ export function LanguageProvider({ children, initial }) {
       qualityWarningHindi: bundle.qualityWarningHindi || "",
       t: (key) => strings[key] ?? FALLBACK[key] ?? key,
       isFallback: (key) => fallbacks.has(key),
+      // Page copy — the interface text that lives in the screens. Resolves
+      // against the live language (en/hi today, extensible to more as data),
+      // so a non-Hindi reader gets English rather than the hardcoded Hindi
+      // these strings used to be. See lib/pageCopy.js.
+      tx: (key) => resolvePageCopy(key, code),
     };
   }, [bundle, code, change, languages, loading]);
 
@@ -149,6 +165,7 @@ export function useLanguage() {
       qualityWarningHindi: "",
       t: (key) => FALLBACK[key] ?? key,
       isFallback: () => false,
+      tx: (key) => resolvePageCopy(key, "en"),
     };
   }
   return ctx;

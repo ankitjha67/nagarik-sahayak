@@ -8,11 +8,13 @@ import { SchemeSelector } from "../components/SchemeSelector";
 import { SmartProfiler } from "../components/SmartProfiler";
 import { sendMessage, getChatHistory, transcribeAudio, uploadPdf, resetChat } from "../lib/api";
 import { toast } from "sonner";
+import { useLanguage } from "../lib/i18n";
 import { SendHorizontal, Mic, MicOff, Loader2, Paperclip } from "lucide-react";
 
 const RECORD_DURATION = 5; // seconds
 
 export default function ChatPage({ userId, language = "hi" }) {
+  const { tx } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
@@ -120,7 +122,7 @@ export default function ChatPage({ userId, language = "hi" }) {
       mediaRecorder.start();
       setIsRecording(true);
       setRecordCountdown(RECORD_DURATION);
-      toast.info(`${RECORD_DURATION}s रिकॉर्डिंग शुरू... बोलें`);
+      toast.info(`${RECORD_DURATION}${tx("chat.recordingStarted")}`);
 
       // Countdown ticker
       let remaining = RECORD_DURATION;
@@ -139,7 +141,7 @@ export default function ChatPage({ userId, language = "hi" }) {
         }
       }, RECORD_DURATION * 1000);
     } catch (err) {
-      toast.error("माइक्रोफोन एक्सेस दें — ब्राउज़र सेटिंग्स में अनुमति चालू करें", { duration: 5000 });
+      toast.error(tx("chat.micDenied"), { duration: 5000 });
     }
   }, [isRecording, loading]);
 
@@ -218,7 +220,7 @@ export default function ChatPage({ userId, language = "hi" }) {
       setInput("");
       setV2Mode("idle");
       setSelectedSchemes([]);
-      toast.success("नई चैट शुरू हो गई!");
+      toast.success(tx("chat.newChatStarted"));
     } catch {
       toast.error("Chat reset failed");
     }

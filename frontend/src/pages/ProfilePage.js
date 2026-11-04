@@ -10,6 +10,7 @@ import {
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
+import { useLanguage } from "../lib/i18n";
 import { useNavigate } from "react-router-dom";
 import {
   UserCircle2, Phone, Globe, LogOut, Save, Loader2, Bell, Mail,
@@ -44,6 +45,7 @@ export default function ProfilePage({ userId, onLogout }) {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [name, setName] = useState("");
+  const { tx } = useLanguage();
   const [language, setLanguage] = useState("hi");
   const [saving, setSaving] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -86,7 +88,7 @@ export default function ProfilePage({ userId, onLogout }) {
     setSavingPrefs(true);
     try {
       await updateNotificationPreferences(userId, prefs);
-      toast.success("नोटिफिकेशन सेटिंग सेव हो गई!");
+      toast.success(tx("profile.notifSaved"));
     } catch (e) {
       toast.error(e.response?.data?.detail || "Failed to save preferences");
     } finally {
@@ -100,7 +102,7 @@ export default function ProfilePage({ userId, onLogout }) {
     try {
       const res = await updateProfile(userId, { name, language });
       setProfile(res.data);
-      toast.success("प्रोफाइल अपडेट हो गया!");
+      toast.success(tx("profile.saved"));
     } catch {
       toast.error("Failed to update profile");
     } finally {
@@ -137,7 +139,7 @@ export default function ProfilePage({ userId, onLogout }) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="अपना नाम दर्ज करें"
+              placeholder={tx("profile.namePlaceholder")}
               className="h-11 rounded-xl border-gray-200 font-['Nunito']"
             />
           </div>
@@ -201,7 +203,7 @@ export default function ProfilePage({ userId, onLogout }) {
             ) : (
               <>
                 <Save size={16} />
-                सेव करें
+                {tx("profile.save")}
               </>
             )}
           </Button>
@@ -306,7 +308,7 @@ export default function ProfilePage({ userId, onLogout }) {
             ) : (
               <>
                 <Save size={14} />
-                अलर्ट सेव करें
+                {tx("profile.saveAlerts")}
               </>
             )}
           </Button>
