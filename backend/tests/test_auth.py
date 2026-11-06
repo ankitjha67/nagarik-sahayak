@@ -220,7 +220,9 @@ def test_named_user_must_match_token(client, bearer):
     assert client.get("/api/schemes", headers={**bearer, "X-User-Id": OTHER}).status_code == 403
 
 
-def test_admin_secret_is_an_admin_principal(client):
+def test_admin_secret_is_an_admin_principal(client, monkeypatch):
+    import config
+    monkeypatch.setattr(config, "ADMIN_SECRET", "test-secret")   # whatever the shell's .env says
     r = client.get(f"/api/profile/{OTHER}", headers={"X-Admin-Secret": "test-secret"})
     assert r.status_code == 200
     assert client.get(f"/api/profile/{OTHER}", headers={"X-Admin-Secret": "wrong"}).status_code == 401

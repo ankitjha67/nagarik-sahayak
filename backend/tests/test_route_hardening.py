@@ -35,18 +35,33 @@ MALFORMED_IDS = ["not-an-objectid", "'; drop", "x" * 24, 12345, ["x"], "00000000
     ("/api/v2/answer-field", {"profileKey": "name", "value": "A"}),
     ("/api/v2/generate-filled-forms", {}),
 ])
-def test_v2_endpoints_reject_malformed_user_id_cleanly(path, extra, bad):
-    r = requests.post(f"{BASE_URL}{path}",
-                      json={"user_id": bad, "scheme_names": [SCHEME], **extra})
-    assert r.status_code in (400, 404, 422), f"{path} {bad!r} -> {r.status_code}"
+def test_v2_endpoints_reject_malformed_user_id_cleanly(path, extra, bad, user_id):
+    """A malformed or foreign id is refused with a 4xx, never a 500.
+
+    Anonymous: 401 (the request names a user and carries no identity).
+    Signed in as someone else: 403 (not yours), or 400/422 for an id that
+    is not even a string."""
+    body = {"user_id": bad, "scheme_names": [SCHEME], **extra}
+    r = requests.post(f"{BASE_URL}{path}", json=body)
+    assert r.status_code in (400, 401, 422), f"anonymous {path} {bad!r} -> {r.status_code}"
+    r = requests.post(f"{BASE_URL}{path}", json=body, headers={"X-User-Id": user_id})
+    # 403 for a string that is not this caller; 400/422 for an id that is not
+    # a string at all; 404 when a non-string slips past binding to the lookup.
+    assert r.status_code in (400, 403, 404, 422), f"signed-in {path} {bad!r} -> {r.status_code}"
 
 
 @pytest.mark.parametrize("bad", ["not-an-objectid", "'; drop", "000000000000000000000000"])
-def test_profile_routes_reject_malformed_user_id_cleanly(bad):
-    assert requests.get(f"{BASE_URL}/api/profile/{bad}").status_code == 404
-    assert requests.get(f"{BASE_URL}/api/v2/user-profile/{bad}").status_code == 404
+def test_profile_routes_reject_malformed_user_id_cleanly(bad, user_id):
+    # Anonymous callers are refused before the id is even looked at.
+    assert requests.get(f"{BASE_URL}/api/profile/{bad}").status_code == 401
+    assert requests.get(f"{BASE_URL}/api/v2/user-profile/{bad}").status_code == 401
+    # A signed-in citizen asking about any id but their own is refused too:
+    # the malformed id is never a path to a 500 or to another person's data.
+    h = {"X-User-Id": user_id}
+    assert requests.get(f"{BASE_URL}/api/profile/{bad}", headers=h).status_code == 403
+    assert requests.get(f"{BASE_URL}/api/v2/user-profile/{bad}", headers=h).status_code == 403
     assert requests.post(f"{BASE_URL}/api/v2/user-profile/{bad}",
-                         json={"fields": {"name": "A"}}).status_code == 404
+                         json={"fields": {"name": "A"}}, headers=h).status_code == 403
 
 
 def test_chat_with_malformed_user_id_does_not_crash():

@@ -304,11 +304,17 @@ class TestV2UserProfile:
         assert data["fullProfile"]["gender"] == "Male"       # new
         print(f"✓ Profile merged correctly: {len(data['fullProfile'])} fields")
     
-    def test_invalid_user_returns_404(self):
-        """Invalid user_id returns 404"""
+    def test_invalid_user_is_refused(self):
+        """An unknown or malformed user id never leaks anything: anonymous
+        callers get 401, a signed-in citizen asking about any id but their
+        own gets 403. Only an admin would ever see the 404."""
         response = requests.get(f"{BASE_URL}/api/v2/user-profile/invalid_user_id_123")
-        assert response.status_code == 404
-        print(f"✓ 404 for invalid user_id")
+        assert response.status_code == 401
+        if TEST_USER_ID:
+            response = requests.get(f"{BASE_URL}/api/v2/user-profile/invalid_user_id_123",
+                                    headers=auth_headers())
+            assert response.status_code == 403
+        print("✓ invalid user_id is refused, not resolved")
 
 
 class TestV2SmartProfiler:

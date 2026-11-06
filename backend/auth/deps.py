@@ -103,15 +103,19 @@ def _ct_equal(a: str, b: str) -> bool:
     return hmac.compare_digest(a.encode(), b.encode())
 
 
-async def named_user(request: Request) -> Optional[str]:
-    """The user the request is about, if it says."""
+async def named_users(request: Request) -> list[str]:
+    """Every user the request is about: path, header and body alike.
+
+    All of them are checked, so a client cannot name itself in a header and
+    someone else in the body.
+    """
+    found: list[str] = []
     pp = request.path_params or {}
-    for key in ("user_id",):
-        if key in pp and pp[key]:
-            return str(pp[key])
+    if pp.get("user_id"):
+        found.append(str(pp["user_id"]))
     header = request.headers.get("x-user-id", "").strip()
     if header:
-        return header
+        found.append(header)
     ctype = request.headers.get("content-type", "")
     if request.method in ("POST", "PUT", "PATCH", "DELETE") and ctype.startswith("application/json"):
         try:
@@ -121,10 +125,16 @@ async def named_user(request: Request) -> Optional[str]:
                 if isinstance(data, dict):
                     uid = data.get("user_id")
                     if isinstance(uid, str) and uid.strip():
-                        return uid.strip()
+                        found.append(uid.strip())
         except (ValueError, UnicodeDecodeError):
             pass
-    return None
+    return list(dict.fromkeys(found))
+
+
+async def named_user(request: Request) -> Optional[str]:
+    """The first user the request names, if any (kept for callers that want one)."""
+    users = await named_users(request)
+    return users[0] if users else None
 
 
 async def operator_may_act(operator_id: str, citizen_id: str) -> bool:
@@ -148,14 +158,15 @@ async def enforce(request: Request) -> Optional[Principal]:
     principal = await principal_from_request(request)
     request.state.principal = principal
 
-    named = await named_user(request)
+    named = await named_users(request)
     if named:
         if principal is None:
             from database import is_object_id
-            if _demo_anon(path) and not is_object_id(named):
+            if _demo_anon(path) and not any(is_object_id(n) for n in named):
                 return None
             raise HTTPException(status_code=401, detail="Sign in to continue.")
-        await authorize_subject(principal, named)
+        for user_id in named:
+            await authorize_subject(principal, user_id)
         return principal
 
     if is_public(path):
