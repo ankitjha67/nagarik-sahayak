@@ -56,9 +56,12 @@ export IDENTITY_HASH_SALT="dev-salt-change-me"
 export ADMIN_SECRET="dev-admin"
 
 python -m prisma db push --skip-generate
+python scripts/seed_demo.py                        # a complete demo citizen (optional)
 python -m uvicorn server:app --host 127.0.0.1 --port 8001
 ```
-Leave this running. (See `backend/.env.example` for every variable, including
+Leave this running. With the demo citizen seeded you can sign in on the phone
+with **9000000001 / OTP 123456** and every feature already has data to work
+with — no need to type a profile. (See `backend/.env.example` for every variable, including
 real SMS providers and the 14 speech engines.)
 
 ## 3. Bridge the phone to the backend
