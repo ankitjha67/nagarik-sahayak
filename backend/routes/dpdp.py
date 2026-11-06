@@ -9,6 +9,7 @@ Split by audience, because the two have opposite access rules:
   the whole estate, which is operational security information.
 """
 import logging
+from database import find_user
 
 from fastapi import HTTPException, Request
 
@@ -219,7 +220,7 @@ async def compliance_row(user_id: str, request: Request):
     import json
     from database import prisma
 
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 

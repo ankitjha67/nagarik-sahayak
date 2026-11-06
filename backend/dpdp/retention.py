@@ -20,6 +20,7 @@ engine and *executed* by an explicit operation — a scheduled job or the
 citizen's own section 12 request.
 """
 from __future__ import annotations
+from database import find_user
 
 import json
 import logging
@@ -92,7 +93,7 @@ async def erase_fields(user_id: str, fields: list[str], *, reason: str = "") -> 
     if not fields:
         return {"erased": [], "skipped": []}
 
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         return {"error": "User not found"}
 
@@ -147,7 +148,7 @@ async def erase_all(user_id: str, *, reason: str = "s12 erasure request") -> dic
 
     result = {"profile_fields": 0, "chat_logs": 0, "artefacts": 0, "errors": []}
 
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         return {"error": "User not found"}
 

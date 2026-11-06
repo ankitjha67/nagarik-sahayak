@@ -136,6 +136,72 @@ def test_transient_aadhaar_still_validates():
     assert fi.validate_answer(_field("aadhaar_number"), "123456789012")[0] is None
 
 
+# ── Regressions from the adversarial battery ───────────────────────────────
+# Each of these was a real gap: the answer was accepted and would have been
+# stored, and then printed wrongly on a government form.
+
+def test_mobile_with_country_code_stores_bare_ten_digits():
+    assert fi.validate_answer(_field("mobile_number"), "+91 98250 11223")[0] == "9825011223"
+    assert fi.validate_answer(_field("mobile_number"), "09825011223")[0] == "9825011223"
+
+
+def test_indian_script_digits_are_stored_as_ascii():
+    # A PIN typed in Devanagari numerals is right for the citizen and
+    # unreadable for the bank's machine.
+    assert fi.validate_answer(_field("pincode"), "३९६२३०")[0] == "396230"
+    assert fi.validate_answer(_field("mobile_number"), "९८२५०११२२३")[0] == "9825011223"
+
+
+def test_percentage_is_bounded_and_keeps_decimals():
+    f = _field("last_exam_percentage")
+    assert fi.validate_answer(f, "78.5")[0] == 78.5
+    assert fi.validate_answer(f, "150")[0] is None
+    assert fi.validate_answer(f, "-5")[0] is None
+
+
+def test_email_is_checked():
+    assert fi.validate_answer(_field("email"), "not-an-email")[0] is None
+    assert fi.validate_answer(_field("email"), "Nisha.Patel@Example.com")[0] == "nisha.patel@example.com"
+
+
+def test_overlong_value_rejected_even_on_a_keyed_validator():
+    # `name` has its own validator, which used to short-circuit the length cap.
+    value, en, hi = fi.validate_answer(_field("name"), "x" * 5000)
+    assert value is None and "100" in en and hi
+
+
+def test_markup_and_control_characters_rejected():
+    assert fi.validate_answer(_field("name"), "<script>alert(1)</script>")[0] is None
+    assert fi.validate_answer(_field("address_line"), "House 1\x00Road")[0] is None
+
+
+def test_required_in_any_selected_form_wins():
+    optional = {"extractedFields": [{"profileKey": "mobile_number", "required": False, "type": "phone"}]}
+    required = {"extractedFields": [{"profileKey": "mobile_number", "required": True, "type": "phone"}]}
+    fields = fi.collect_fields([optional, required])
+    assert fields[0]["required"] is True
+    assert fi.intake_state({}, fields)["missingRequiredCount"] == 1
+
+
+def test_collect_fields_backfills_options_from_a_later_form():
+    bare = {"extractedFields": [{"profileKey": "gender", "type": "select"}]}
+    full = {"extractedFields": [{"profileKey": "gender", "type": "select", "options": ["Male", "Female"]}]}
+    assert fi.collect_fields([bare, full])[0]["options"] == ["Male", "Female"]
+
+
+def test_transient_only_form_reads_as_complete_not_zero_percent():
+    state = fi.intake_state({}, [{"profileKey": "aadhaar_number", "required": True, "type": "aadhaar"}])
+    assert state["allComplete"] and state["progress"] == 100.0
+
+
+def test_no_input_type_crashes_validation():
+    for raw in (None, 0, 3.5, True, [], {}, ["a"], b"bytes"):
+        for key in ("name", "mobile_number", "date_of_birth", "gender", "last_exam_percentage"):
+            value, en, hi = fi.validate_answer(_field(key), raw)
+            assert (value is None) == bool(en)      # rejected iff an error is given
+            assert not en or hi                      # every error is bilingual
+
+
 # ── helpers ────────────────────────────────────────────────────────────────
 
 def _plausible(key):

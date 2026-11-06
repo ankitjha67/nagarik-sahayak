@@ -22,6 +22,7 @@ the record (s11), erase it (s12), and raise a grievance (s13). They cannot
 modify the profile or submit new applications in the deceased's name.
 """
 from __future__ import annotations
+from database import find_user
 
 import logging
 from datetime import datetime, timezone
@@ -88,7 +89,7 @@ async def status(user_id: str) -> dict:
     """The citizen's own view of their nomination."""
     from database import prisma
 
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         return {"error": "User not found"}
 
@@ -138,7 +139,7 @@ async def activate(user_id: str, *, reviewer_id: str, evidence: str) -> dict:
     if not reviewer_id:
         raise ValueError("Activation must be attributable to a reviewer.")
 
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         raise LookupError("User not found")
     if not getattr(user, "nomineeName", None):
@@ -185,7 +186,7 @@ async def is_active(user_id: str) -> bool:
     """Whether a nominee may currently act for this citizen."""
     from database import prisma
     try:
-        user = await prisma.user.find_unique(where={"id": user_id})
+        user = await find_user(user_id)
         return bool(user and getattr(user, "nomineeActivatedAt", None))
     except Exception as e:
         logger.error(f"Nomination check failed for {user_id}: {e}")
@@ -217,7 +218,7 @@ async def terms_status(user_id: str) -> dict:
     from dpdp.terms import TERMS_VERSION
 
     try:
-        user = await prisma.user.find_unique(where={"id": user_id})
+        user = await find_user(user_id)
     except Exception:
         user = None
 

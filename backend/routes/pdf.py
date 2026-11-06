@@ -7,7 +7,7 @@ import logging
 import time as _time
 from fastapi import UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import FileResponse
-from database import prisma
+from database import prisma, find_user
 from config import PDF_DIR, AGNOST_WRITE_KEY, validate_path_within, validate_pdf_content, AUDIO_DIR
 from models import GeneratePDFRequest, FilledFormRequest
 from services.eligibility import eligibility_matcher_sync
@@ -30,7 +30,7 @@ async def generate_pdf_endpoint(req: GeneratePDFRequest):
     from pdf_generator import generate_eligibility_pdf
     profile = req.profile
     if req.user_id and not profile:
-        user = await prisma.user.find_unique(where={"id": req.user_id})
+        user = await find_user(req.user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})

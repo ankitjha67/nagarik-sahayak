@@ -33,6 +33,8 @@ test and safe to call from a request handler.
 """
 from __future__ import annotations
 
+import re
+import unicodedata
 from typing import Any, Optional
 
 import validation
@@ -56,16 +58,30 @@ def collect_fields(schemes: list[dict]) -> list[dict]:
     `extractedFields` list. A field is kept once, under its profile key, the
     first time it is seen — so choosing two schemes that both want a mobile
     number asks for it once, not twice.
+
+    When two forms disagree about the same field, the stricter view wins: a
+    field that any selected form marks required is required (or the citizen
+    would be allowed to skip it and then be refused by the form that needed
+    it), and labels or options a later form supplies fill gaps in the first.
     """
-    seen: set[str] = set()
+    by_key: dict[str, dict] = {}
     fields: list[dict] = []
-    for scheme in schemes:
-        for f in scheme.get("extractedFields", []) or []:
+    for scheme in schemes or []:
+        for f in (scheme or {}).get("extractedFields") or []:
             key = field_key(f)
-            if not key or key in seen:
+            if not key:
                 continue
-            seen.add(key)
-            fields.append(f)
+            kept = by_key.get(key)
+            if kept is None:
+                kept = dict(f)
+                by_key[key] = kept
+                fields.append(kept)
+                continue
+            if f.get("required") and not kept.get("required"):
+                kept["required"] = True
+            for extra in ("options", "labelHindi", "labelEnglish", "maxLength"):
+                if not kept.get(extra) and f.get(extra):
+                    kept[extra] = f[extra]
     return fields
 
 
@@ -114,6 +130,33 @@ def question_for(field: dict) -> dict:
     return q
 
 
+# Fields whose value is a number the machine reads back (an account, a phone,
+# a PIN): these must be stored as ASCII digits whatever script they were typed
+# in. A PIN code typed in Devanagari numerals is a correct answer from the
+# citizen's side and an unreadable one from the bank's.
+_NUMERIC_TYPES = frozenset({"aadhaar", "phone", "number"})
+_NUMERIC_KEYS = frozenset({
+    "aadhaar_number", "guardian_aadhaar", "mobile_number", "pincode",
+    "bank_account_number", "annual_income",
+})
+# The longest any free-text answer may be when the form itself sets no limit.
+# Government form boxes are short; a value this long is a paste error, and it
+# would be truncated or overflow on the page.
+_DEFAULT_MAX_LENGTH = 500
+
+_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+
+
+def _ascii_digits(text: str) -> str:
+    """Rewrite every Unicode decimal digit (Devanagari, Bengali, Tamil, …) as
+    its ASCII equivalent, leaving everything else untouched."""
+    out = []
+    for ch in text:
+        d = unicodedata.decimal(ch, None)
+        out.append(str(d) if d is not None else ch)
+    return "".join(out)
+
+
 def validate_answer(field: dict, raw: Any) -> tuple[Optional[Any], str, str]:
     """Validate and normalise one typed answer.
 
@@ -136,6 +179,32 @@ def validate_answer(field: dict, raw: Any) -> tuple[Optional[Any], str, str]:
         # An optional field left blank is a valid answer: skip it.
         return ("", "", "")
 
+    # Numbers typed in an Indian script are read as numbers, not rejected.
+    if ftype in _NUMERIC_TYPES or key in _NUMERIC_KEYS:
+        text = _ascii_digits(text)
+
+    # "0 98250 11223" is how many people write a mobile number. The shared
+    # validator tolerates +91 but not the trunk 0; strip it here so the same
+    # citizen is not refused for one habit and accepted for the other.
+    if key == "mobile_number" or ftype == "phone":
+        digits = validation.normalize_digits(text)
+        if len(digits) == 11 and digits.startswith("0"):
+            text = digits[1:]
+
+    # Length first, before any keyed validator can accept an overlong value:
+    # the form has a box of a known size and the PDF filler cannot grow it.
+    max_len = field.get("maxLength") or _DEFAULT_MAX_LENGTH
+    if len(text) > max_len:
+        return (None, f"Please keep this under {max_len} characters.",
+                f"कृपया {max_len} अक्षरों से कम रखें।")
+
+    # No government form value contains angle brackets or control characters.
+    # Refusing them keeps a pasted fragment of markup out of the stored profile
+    # and off the printed form.
+    if "<" in text or ">" in text or any(ord(c) < 32 for c in text):
+        return (None, "Please remove the < > or special characters.",
+                "कृपया < > या विशेष अक्षर हटाएं।")
+
     # Select: accept the canonical option, case-insensitively, and store it in
     # the form's own spelling so it prints exactly as the form expects.
     if ftype == "select" and field.get("options"):
@@ -145,6 +214,12 @@ def validate_answer(field: dict, raw: Any) -> tuple[Optional[Any], str, str]:
         options = ", ".join(str(o) for o in field["options"])
         return (None, f"Please choose one of: {options}.",
                 f"इनमें से चुनें: {options}।")
+
+    if ftype == "email":
+        if not _EMAIL_RE.match(text):
+            return (None, "Please enter a valid email address.",
+                    "कृपया सही ईमेल पता दें।")
+        return (text.lower(), "", "")
 
     # Typed validators (Aadhaar, phone, date, pincode, IFSC, income, name, …).
     validator = (validation._VALIDATORS_BY_KEY.get(key)
@@ -158,19 +233,26 @@ def validate_answer(field: dict, raw: Any) -> tuple[Optional[Any], str, str]:
                     first.message_hi or first.message_en)
         return (_normalise(key, ftype, text), "", "")
 
-    # Free text / number with no dedicated validator.
     if ftype == "number":
-        import re
-        nums = re.findall(r"-?\d+", text.replace(",", ""))
-        if not nums:
-            return (None, "Please enter a number.", "कृपया संख्या में बताएं।")
-        return (int(nums[0]), "", "")
+        return _parse_number(key, text)
 
-    max_len = field.get("maxLength")
-    if max_len and len(text) > max_len:
-        return (None, f"Please keep this under {max_len} characters.",
-                f"कृपया {max_len} अक्षरों से कम रखें।")
     return (text, "", "")
+
+
+def _parse_number(key: str, text: str) -> tuple[Optional[Any], str, str]:
+    """A plain number field: whole or decimal, never negative, and a
+    percentage stays between 0 and 100."""
+    m = re.search(r"-?\d+(?:\.\d+)?", text.replace(",", ""))
+    if not m:
+        return (None, "Please enter a number.", "कृपया संख्या में बताएं।")
+    value: Any = float(m.group()) if "." in m.group() else int(m.group())
+    if value < 0:
+        return (None, "This cannot be a negative number.",
+                "यह ऋणात्मक संख्या नहीं हो सकती।")
+    if "percent" in key and value > 100:
+        return (None, "A percentage cannot be more than 100.",
+                "प्रतिशत 100 से अधिक नहीं हो सकता।")
+    return (value, "", "")
 
 
 def _normalise(key: str, ftype: str, text: str) -> Any:
@@ -178,11 +260,19 @@ def _normalise(key: str, ftype: str, text: str) -> Any:
     if key in ("date_of_birth", "girl_child_dob") or ftype == "date":
         d = validation.parse_date(text)
         return d.isoformat() if d else text
-    if key in ("aadhaar_number", "guardian_aadhaar", "mobile_number", "pincode") \
-            or ftype in ("aadhaar", "phone"):
+    if key == "mobile_number" or ftype == "phone":
+        digits = validation.normalize_digits(text)
+        # validate_mobile tolerates a +91 or leading 0; store the bare 10
+        # digits the form box has room for.
+        if len(digits) == 12 and digits.startswith("91"):
+            digits = digits[2:]
+        elif len(digits) == 11 and digits.startswith("0"):
+            digits = digits[1:]
+        return digits
+    if key in ("aadhaar_number", "guardian_aadhaar", "pincode",
+               "bank_account_number") or ftype == "aadhaar":
         return validation.normalize_digits(text)
     if key == "annual_income":
-        import re
         nums = re.findall(r"\d+", text.replace(",", ""))
         return int(nums[0]) if nums else text
     if key == "ifsc_code":
@@ -234,7 +324,10 @@ def intake_state(profile: dict, fields: list[dict]) -> dict:
         "missingRequiredCount": len(missing_required),
         "missingOptionalCount": len(missing_optional),
         "storableTotal": storable_total,
-        "progress": round(len(known) / max(storable_total, 1) * 100, 1),
+        # A form that asks for nothing storable (only a transient Aadhaar, say)
+        # is complete, and must not read as 0% done.
+        "progress": (100.0 if storable_total == 0
+                     else round(len(known) / storable_total * 100, 1)),
         "requiredComplete": not missing_required,
         "allComplete": not missing_required and not missing_optional,
         "nextQuestion": question_for(next_field) if next_field else None,

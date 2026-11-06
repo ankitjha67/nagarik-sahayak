@@ -324,8 +324,10 @@ class TestProfileEndpoints:
         mock_user.profile = json.dumps({"name": "Test", "_complete": True})
         mock_user.createdAt = datetime.now(timezone.utc)
 
-        with patch("routes.profile.prisma") as mock_prisma:
-            mock_prisma.user.find_unique = AsyncMock(return_value=mock_user)
+        # The lookup goes through database.find_user, which rejects a malformed
+        # id ("user123" is not an ObjectId) before Prisma is consulted — so the
+        # seam to mock is find_user itself, not prisma.
+        with patch("routes.profile.find_user", AsyncMock(return_value=mock_user)):
             resp = client.get("/api/profile/user123")
             assert resp.status_code == 200
             data = resp.json()

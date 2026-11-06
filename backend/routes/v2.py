@@ -4,7 +4,7 @@ import logging
 import time as _time
 from datetime import datetime, timezone
 from fastapi import HTTPException
-from database import prisma
+from database import prisma, find_user
 from config import PDF_DIR, AGNOST_WRITE_KEY
 from routes import api_router
 
@@ -22,6 +22,22 @@ def _fields_from_template(ft) -> list:
         except json.JSONDecodeError:
             return []
     return []
+
+
+def _require_scheme_names(req: dict) -> list[str]:
+    """The scheme names a request selects, or a 400.
+
+    A string where a list was meant iterates as its characters and resolved
+    to whichever schemes those letters happened to prefix; a None or a number
+    inside the list raised. Both answered 200 or 500 where 400 was due.
+    """
+    names = req.get("scheme_names")
+    if (not isinstance(names, list) or not names
+            or not all(isinstance(n, str) and n.strip() for n in names)):
+        raise HTTPException(
+            status_code=400,
+            detail="scheme_names must be a non-empty list of scheme names")
+    return [n.strip() for n in names]
 
 
 async def _fields_for_scheme(scheme_name: str) -> list:
@@ -170,7 +186,7 @@ async def get_all_form_templates():
 async def get_user_full_profile(user_id: str):
     """Return persistent full profile for a user."""
     try:
-        user = await prisma.user.find_unique(where={"id": user_id})
+        user = await find_user(user_id)
     except Exception:
         raise HTTPException(status_code=404, detail="User not found")
     if not user:
@@ -188,10 +204,11 @@ async def get_user_full_profile(user_id: str):
 async def update_user_full_profile(user_id: str, req: dict = {}):
     """Update persistent full profile with new field values. Merges, never overwrites."""
     fields = req.get("fields", {})
-    if not fields:
+    if not isinstance(fields, dict) or not fields:
+        # A string or list here used to reach dict.update() and raise a 500.
         raise HTTPException(status_code=400, detail="No fields provided")
     try:
-        user = await prisma.user.find_unique(where={"id": user_id})
+        user = await find_user(user_id)
     except Exception:
         raise HTTPException(status_code=404, detail="User not found")
     if not user:
@@ -218,11 +235,11 @@ async def smart_profiler(req: dict = {}):
     treating them as profile gaps would ask for them on every turn forever.
     """
     user_id = req.get("user_id", "")
-    scheme_names = req.get("scheme_names", [])
-    if not user_id or not scheme_names:
+    if not user_id:
         raise HTTPException(status_code=400, detail="user_id and scheme_names required")
+    scheme_names = _require_scheme_names(req)
 
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     from dpdp import profile_store
@@ -269,14 +286,14 @@ async def answer_field(req: dict = {}):
     deliberately not persisted.
     """
     user_id = req.get("user_id", "")
-    profile_key = (req.get("profileKey") or req.get("field") or "").strip()
-    scheme_names = req.get("scheme_names", [])
-    if not user_id or not profile_key or not scheme_names:
+    profile_key = str(req.get("profileKey") or req.get("field") or "").strip()
+    if not user_id or not profile_key:
         raise HTTPException(
             status_code=400,
             detail="user_id, profileKey and scheme_names are required")
+    scheme_names = _require_scheme_names(req)
 
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -314,7 +331,7 @@ async def answer_field(req: dict = {}):
         await _store_full_profile(user, {profile_key: value})
         stored = True
 
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     full_profile = profile_store.load(user)
     state = form_intake.intake_state(full_profile, all_fields)
 
@@ -348,11 +365,11 @@ async def generate_real_filled_forms(req: dict = {}):
     from prisma import Json
 
     user_id = req.get("user_id", "")
-    scheme_names = req.get("scheme_names", [])
-    if not user_id or not scheme_names:
+    if not user_id:
         raise HTTPException(status_code=400, detail="user_id and scheme_names required")
+    scheme_names = _require_scheme_names(req)
 
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     from dpdp import profile_store

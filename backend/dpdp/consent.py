@@ -15,6 +15,7 @@ consented and then withdrawn is itself the evidence a Data Fiduciary must be
 able to produce, and destroying it would defeat the audit the Act contemplates.
 """
 from __future__ import annotations
+from database import find_user
 
 import logging
 from datetime import datetime, timezone
@@ -170,7 +171,7 @@ async def access_summary(user_id: str) -> dict:
     import json
     from database import prisma
 
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         return {"error": "No record found for this user."}
 

@@ -17,6 +17,7 @@ whether two applicants share it — both of which last-four digits answer — no
 read the full number.
 """
 from __future__ import annotations
+from database import find_user
 
 import json
 import logging
@@ -301,7 +302,7 @@ async def enrich_case(case: dict) -> dict:
     try:
         from database import prisma
 
-        user = await prisma.user.find_unique(where={"id": case["userId"]})
+        user = await find_user(case["userId"])
         if user:
             profile = _load_profile(user)
             enriched["applicant"] = build_applicant_context(user, profile)

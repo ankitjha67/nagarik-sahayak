@@ -3,7 +3,7 @@ import re
 import json
 import logging
 import time as _time
-from database import prisma
+from database import prisma, find_user
 from config import AGNOST_WRITE_KEY
 from services.search import search_schemes_prisma, SCHEMES_SEED
 
@@ -28,7 +28,7 @@ async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dic
     """MCP Tool 2: Fetch User profile + Schemes from Prisma, compare eligibility.
     Income in profile is YEARLY (सालाना). Defaults to Vidyasiri Scholarship."""
     t0 = _time.time()
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         return {"match_found": False, "results": [], "summary": "User not found"}
     profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})

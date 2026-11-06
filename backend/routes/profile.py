@@ -2,14 +2,14 @@
 import json
 from fastapi import HTTPException
 from prisma import Json
-from database import prisma
+from database import prisma, find_user
 from models import ProfileUpdate
 from routes import api_router
 
 
 @api_router.get("/profile/{user_id}")
 async def get_profile(user_id: str):
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     from dpdp import profile_store
@@ -24,7 +24,7 @@ async def get_profile(user_id: str):
 
 @api_router.put("/profile/{user_id}")
 async def update_profile(user_id: str, update: ProfileUpdate):
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     data = {}

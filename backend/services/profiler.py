@@ -4,7 +4,7 @@ import json
 import logging
 import traceback
 from typing import Optional
-from database import prisma
+from database import prisma, find_user
 from services.chat import save_chat_prisma
 from services.search import search_schemes_prisma
 from services.eligibility import eligibility_matcher_prisma
@@ -66,7 +66,7 @@ async def generate_filled_form(user_id: str, scheme_id: str) -> dict:
     from config import PDF_DIR, AGNOST_WRITE_KEY
 
     t0 = _time.time()
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     scheme = await prisma.scheme.find_unique(where={"id": scheme_id})
     if not user or not scheme:
         return {"success": False, "error": "User or Scheme not found"}
@@ -118,7 +118,7 @@ async def generate_filled_form(user_id: str, scheme_id: str) -> dict:
 async def profiler_agent_respond(user_id: str, content: str) -> Optional[dict]:
     """Profiler Agent via Prisma: checks User.profile, asks ONE question at a time.
     Returns None if profile is complete."""
-    user = await prisma.user.find_unique(where={"id": user_id})
+    user = await find_user(user_id)
     if not user:
         return None
 

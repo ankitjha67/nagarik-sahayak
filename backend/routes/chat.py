@@ -85,6 +85,9 @@ async def send_chat_message(req: ChatMessageRequest):
     req.content = sanitize_input(req.content, max_length=5000)
     if not req.content:
         raise HTTPException(status_code=400, detail="Message content is required")
+    if not (req.user_id or "").strip():
+        # An empty id would file the conversation under nobody.
+        raise HTTPException(status_code=400, detail="user_id is required")
 
     now = datetime.now(timezone.utc).isoformat()
     user_msg = {
