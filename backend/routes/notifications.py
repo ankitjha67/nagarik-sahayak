@@ -3,7 +3,7 @@ import json
 import logging
 from fastapi import HTTPException
 from routes import api_router
-from database import prisma
+from database import prisma, find_user
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ VALID_ALERT_TYPES = {"deadline", "admit_card", "result", "new"}
 async def get_notification_preferences(user_id: str):
     """Return the user's notification preferences (stored in profile JSON)."""
     try:
-        user = await prisma.user.find_unique(where={"id": user_id})
+        user = await find_user(user_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid user id: {e}")
     if not user:
@@ -42,7 +42,7 @@ async def update_notification_preferences(user_id: str, req: dict):
     """Update notification preferences. Accepts any of:
     scheme_deadline_alerts, exam_deadline_alerts, new_scheme_alerts (bool), email (str)."""
     try:
-        user = await prisma.user.find_unique(where={"id": user_id})
+        user = await find_user(user_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid user id: {e}")
     if not user:

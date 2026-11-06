@@ -1,0 +1,602 @@
+"""DPDP Act routes — citizen rights, consent, and compliance reporting.
+
+Split by audience, because the two have opposite access rules:
+
+* Citizen-facing (consent, my-data, erasure, grievance) is authenticated as the
+  data principal and never admin-gated. Making a person ask an administrator to
+  exercise a statutory right would defeat it.
+* Compliance reporting is admin-gated: it names fields and rows at risk across
+  the whole estate, which is operational security information.
+"""
+import logging
+from database import find_user
+
+from fastapi import HTTPException, Request
+
+from routes import api_router
+from config import ADMIN_SECRET
+from dpdp import consent as consent_service
+from dpdp import engine, grievance, identity_documents, incident, nomination, registry, retention, statutes, terms as terms_service
+from dpdp.registry import Purpose
+
+logger = logging.getLogger(__name__)
+
+
+def _require_admin(request: Request) -> None:
+    if not ADMIN_SECRET or request.headers.get("X-Admin-Secret", "") != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Admin credentials required")
+
+
+def _require_self(request: Request, user_id: str) -> None:
+    """A citizen may act only on their own data.
+
+    Without this, every rights endpoint becomes a way to read or erase another
+    person's record simply by changing the id in the path.
+    """
+    caller = request.headers.get("X-User-Id", "").strip()
+    if not caller:
+        raise HTTPException(status_code=401, detail="Sign in to continue.")
+    if caller != user_id:
+        raise HTTPException(status_code=403, detail="You may only access your own data.")
+
+
+# ── Section 5: notice ────────────────────────────────────────────────────
+
+@api_router.get("/dpdp/notice")
+async def privacy_notice():
+    """The section 5 notice: what is collected, why, and how to exercise rights.
+
+    Public and unauthenticated — a person is entitled to read this *before*
+    deciding whether to hand over anything.
+    """
+    return {
+        "notice_version": consent_service.NOTICE_VERSION,
+        "data_fiduciary": "Nagarik Sahayak",
+        "purposes": registry.notice_summary(),
+        "summary_en": (
+            "We collect the details government schemes require, use them to "
+            "check what you qualify for and to fill your application forms, and "
+            "keep them only while your application can still be processed or "
+            "contested. You can withdraw consent, see what we hold, correct it, "
+            "or have it erased at any time."
+        ),
+        "summary_hi": (
+            "हम वही विवरण एकत्र करते हैं जो सरकारी योजनाओं हेतु आवश्यक हैं, उनका "
+            "उपयोग आपकी पात्रता जाँचने और आवेदन फॉर्म भरने के लिए करते हैं, और उन्हें "
+            "केवल तब तक रखते हैं जब तक आपका आवेदन संसाधित या चुनौती दिया जा सके। "
+            "आप कभी भी सहमति वापस ले सकते हैं, अपना डेटा देख सकते हैं, सुधार सकते हैं, "
+            "या मिटवा सकते हैं।"
+        ),
+        "shared_with": consent_service._disclosure_register(),
+        "your_rights": consent_service._rights_summary(),
+        "grievance": {
+            "how": "POST /api/dpdp/request with request_type=grievance",
+            "escalation": "If unresolved, you may complain to the Data "
+                          "Protection Board of India.",
+        },
+    }
+
+
+# ── Section 6: consent ───────────────────────────────────────────────────
+
+@api_router.get("/dpdp/consent/{user_id}")
+async def get_consent(user_id: str, request: Request):
+    _require_self(request, user_id)
+    return await consent_service.consent_status(user_id)
+
+
+@api_router.post("/dpdp/consent/{user_id}")
+async def grant_consent(user_id: str, request: Request, req: dict):
+    """Record consent for named purposes (s6).
+
+    Body: {"purposes": [...], "language": "hi", "parental_consent": false}
+    """
+    _require_self(request, user_id)
+    purposes = req.get("purposes") or []
+    if not purposes:
+        raise HTTPException(status_code=400, detail="At least one purpose is required")
+    try:
+        return await consent_service.grant(
+            user_id, purposes,
+            language=req.get("language", "hi"),
+            parental=bool(req.get("parental_consent", False)),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Consent grant failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.post("/dpdp/consent/{user_id}/withdraw")
+async def withdraw_consent(user_id: str, request: Request, req: dict | None = None):
+    """Withdraw consent (s6(4)) — no reason required, all purposes by default."""
+    _require_self(request, user_id)
+    try:
+        return await consent_service.withdraw(user_id, (req or {}).get("purposes"))
+    except Exception as e:
+        logger.error(f"Consent withdrawal failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+# ── Sections 11-14: rights ───────────────────────────────────────────────
+
+@api_router.get("/dpdp/my-data/{user_id}")
+async def my_data(user_id: str, request: Request):
+    """Section 11: summary of data held, processing, and recipients."""
+    _require_self(request, user_id)
+    try:
+        summary = await consent_service.access_summary(user_id)
+        await consent_service.log_request(user_id, consent_service.RequestType.ACCESS)
+        return summary
+    except Exception as e:
+        logger.error(f"Access request failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.post("/dpdp/request/{user_id}")
+async def rights_request(user_id: str, request: Request, req: dict):
+    """Lodge a correction, grievance or nomination request (s12–s14)."""
+    _require_self(request, user_id)
+    rt = (req.get("request_type") or "").strip()
+    allowed = {consent_service.RequestType.CORRECTION,
+               consent_service.RequestType.GRIEVANCE,
+               consent_service.RequestType.NOMINATION}
+    if rt not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"request_type must be one of: {', '.join(sorted(allowed))}")
+    try:
+        out = await consent_service.log_request(user_id, rt, req.get("details"))
+        out["message_en"] = "Your request has been recorded and will be actioned."
+        out["message_hi"] = "आपका अनुरोध दर्ज कर लिया गया है और उस पर कार्रवाई की जाएगी।"
+        return out
+    except Exception as e:
+        logger.error(f"Rights request failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.post("/dpdp/erase/{user_id}")
+async def erase(user_id: str, request: Request, req: dict | None = None):
+    """Section 12 erasure.
+
+    Body: {"fields": [...]} to erase specific fields, or {"all": true}.
+    Erasing everything is deliberately explicit — it is irreversible, and a
+    citizen who meant to remove one wrong value should not lose their whole
+    record to a default.
+    """
+    _require_self(request, user_id)
+    req = req or {}
+    try:
+        if req.get("all"):
+            result = await retention.erase_all(user_id)
+        else:
+            fields = req.get("fields") or []
+            if not fields:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Provide 'fields' to erase, or 'all': true to erase everything.")
+            result = await retention.erase_fields(
+                user_id, fields, reason="s12 erasure request")
+        await consent_service.log_request(
+            user_id, consent_service.RequestType.ERASURE, {"scope": "all" if req.get("all") else "fields"})
+        result["message_hi"] = "आपका डेटा मिटा दिया गया है।"
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erasure failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+# ── Compliance reporting (admin) ─────────────────────────────────────────
+
+@api_router.get("/dpdp/compliance/registry")
+async def compliance_registry(request: Request):
+    """The record of processing — every declared field and its basis."""
+    _require_admin(request)
+    return {
+        "notice_version": consent_service.NOTICE_VERSION,
+        "field_count": len(registry.REGISTRY),
+        "decisional_fields": [r.field for r in registry.decisional_fields()],
+        "child_data_fields": [r.field for r in registry.child_data_fields()],
+        "fields": [r.as_dict() for r in registry.REGISTRY],
+    }
+
+
+@api_router.get("/dpdp/compliance/source-scan")
+async def compliance_source_scan(request: Request):
+    """Scan the running codebase for paths that would disclose personal data."""
+    _require_admin(request)
+    from pathlib import Path
+    report = engine.scan_source(Path(__file__).resolve().parent.parent)
+    return report.as_dict()
+
+
+@api_router.get("/dpdp/compliance/row/{user_id}")
+async def compliance_row(user_id: str, request: Request):
+    """Check one citizen's stored row against every applicable obligation."""
+    _require_admin(request)
+    import json
+    from database import prisma
+
+    user = await find_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    from dpdp import profile_store
+    profile = profile_store.load(user)
+
+    report = engine.check_row(
+        profile, row_id=user_id, created_at=getattr(user, "createdAt", None),
+        consented_purposes=await consent_service.consented_purposes(user_id),
+        has_parental_consent=await consent_service.has_parental_consent(user_id),
+    )
+    return report.as_dict()
+
+
+@api_router.get("/dpdp/compliance/audit")
+async def compliance_audit(request: Request, limit: int = 200):
+    """Estate-wide compliance position: every row, plus the source scan."""
+    _require_admin(request)
+    import json
+    from pathlib import Path
+    from database import prisma
+
+    reports = [engine.scan_source(Path(__file__).resolve().parent.parent)]
+    rows_checked = non_compliant = 0
+
+    try:
+        users = await prisma.user.find_many()
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Could not read users: {e}")
+
+    for user in users[:limit]:
+        from dpdp import profile_store
+        profile = profile_store.load(user)
+        if not profile:
+            continue
+        rows_checked += 1
+        r = engine.check_row(
+            profile, row_id=user.id, created_at=getattr(user, "createdAt", None),
+            consented_purposes=await consent_service.consented_purposes(user.id),
+            has_parental_consent=await consent_service.has_parental_consent(user.id),
+        )
+        if not r.compliant:
+            non_compliant += 1
+            reports.append(r)
+
+    combined = engine.merge(*reports)
+    out = combined.as_dict()
+    out["rows_checked"] = rows_checked
+    out["rows_non_compliant"] = non_compliant
+    return out
+
+
+@api_router.post("/dpdp/compliance/retention-sweep")
+async def retention_sweep(request: Request, req: dict | None = None):
+    """Report, and optionally erase, data past its retention period (s8(6)).
+
+    Defaults to a dry run: the first thing an operator should see is what would
+    be deleted, not a confirmation that it already was.
+    """
+    _require_admin(request)
+    dry_run = bool((req or {}).get("dry_run", True))
+    try:
+        return await retention.sweep(dry_run=dry_run)
+    except Exception as e:
+        logger.error(f"Retention sweep failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+# ── Published contacts and statements ────────────────────────────────────
+
+# The 22 languages of the Eighth Schedule. DPDP s5(3) entitles a Data Principal
+# to the notice in any of these; declaring which are actually translated is
+# honest, whereas silently serving English would not be.
+# The notice itself is served only in English and Hindi. That is narrower than
+# the interface, and deliberately so: a machine translation of a consent notice
+# produces a defective consent, and the person giving it believes they
+# understood what they agreed to. The interface catalogue (i18n/) is a separate,
+# lower-stakes surface and reaches 14 languages.
+NOTICE_LANGUAGES = {"hi", "en"}
+
+
+@api_router.get("/dpdp/languages")
+async def notice_languages():
+    """Which languages the s5(3) notice can be served in, and which exist.
+
+    Reports the notice and the interface separately. Collapsing them would let
+    "the app speaks Tamil" be read as "the consent notice is valid in Tamil",
+    which it is not.
+    """
+    from i18n import languages as lang_registry
+    from i18n import resolve as i18n_resolve
+
+    return {
+        "available_now": sorted(NOTICE_LANGUAGES),
+        "entitlement": "DPDP Act 2023 s5(3): the notice must be available in "
+                       "English or any language in the Eighth Schedule.",
+        "eighth_schedule": [
+            {
+                "code": l.code,
+                "language": l.name_en,
+                "endonym": l.endonym,
+                "script": l.script,
+                "direction": "rtl" if l.rtl else "ltr",
+                "notice_translated": l.code in NOTICE_LANGUAGES,
+                "interface_translated":
+                    i18n_resolve.coverage(l.code)["quality"] != "missing",
+            }
+            for l in lang_registry.LANGUAGES if l.eighth_schedule
+        ],
+        "interface_coverage": i18n_resolve.summary(),
+        "why_the_notice_is_narrower":
+            "A notice a person cannot rely on is not a notice. Interface text "
+            "generated without a native reviewer is usable; a consent notice "
+            "in the same state would produce a consent that is defective under "
+            "s6, and the person giving it would not know.",
+        "request_translation": "POST /api/dpdp/request with "
+                               "request_type=grievance names the language you need.",
+    }
+
+
+@api_router.get("/dpdp/grievance-officer")
+async def grievance_officer():
+    """Published Grievance Officer contact (IT Rules 3(2), DPDP s8(7))."""
+    return grievance.officer()
+
+
+@api_router.get("/dpdp/accessibility")
+async def accessibility_statement():
+    """Accessibility statement (GIGW 3.0; RPwD Act s40-s46).
+
+    Conformance is stated as partial because that is what it is. Claiming full
+    WCAG 2.1 AA without an assistive-technology audit would mislead exactly the
+    people the statement exists to serve.
+    """
+    return {
+        "standard": "WCAG 2.1 Level AA, as required by GIGW 3.0 and the RPwD "
+                    "Act 2016 (s40, s42, s46)",
+        "conformance": "partial",
+        "measures_taken": [
+            "Document language declared so screen readers pronounce Hindi and "
+            "English correctly.",
+            "Semantic landmarks and a skip link to the main content.",
+            "Every icon-only control carries an accessible name.",
+            "Status is never conveyed by colour alone — an icon and text "
+            "accompany every colour cue.",
+            "Visible keyboard focus on all interactive elements.",
+            "Minimum body text size raised for legibility.",
+        ],
+        "known_limitations": [
+            "A full audit with screen readers and magnifiers has not been "
+            "carried out.",
+            "Some secondary text may fall below the 4.5:1 contrast ratio.",
+            "The notice is available in Hindi and English only, not all 22 "
+            "Eighth Schedule languages.",
+        ],
+        "feedback": "Report an accessibility barrier via "
+                    "POST /api/dpdp/request with request_type=grievance. "
+                    "Barriers are treated as grievances under IT Rules 3(2), "
+                    "with the same 24-hour and 15-day deadlines.",
+        "contact": grievance.officer(),
+    }
+
+
+# ── Grievance handling (IT Rules 3(2)) ───────────────────────────────────
+
+@api_router.get("/dpdp/grievances")
+async def grievance_queue(request: Request, include_resolved: bool = False):
+    """Open grievances with their statutory deadlines."""
+    _require_admin(request)
+    return await grievance.queue(include_resolved=include_resolved)
+
+
+@api_router.post("/dpdp/grievances/{request_id}/resolve")
+async def resolve_grievance(request_id: str, request: Request, req: dict):
+    """Close a grievance, recording what was actually done."""
+    _require_admin(request)
+    resolution = (req.get("resolution") or "").strip()
+    if not resolution:
+        raise HTTPException(
+            status_code=400,
+            detail="A resolution must state what was done for the citizen.")
+    try:
+        return await grievance.resolve(
+            request_id, resolution, req.get("officer_id", ""))
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Grievance resolution failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+# ── Incident register (CERT-In 2022, DPDP s8(5)) ─────────────────────────
+
+@api_router.get("/dpdp/incidents")
+async def incident_register(request: Request, include_resolved: bool = False):
+    """Incidents with their CERT-In 6-hour clock and DPDP notification state."""
+    _require_admin(request)
+    return await incident.register(include_resolved=include_resolved)
+
+
+@api_router.post("/dpdp/incidents")
+async def record_incident(request: Request, req: dict):
+    """Record a cyber incident or personal data breach.
+
+    Recording starts the 6-hour CERT-In clock, so this should be called on
+    first awareness rather than after investigation.
+    """
+    _require_admin(request)
+    required = ("category", "severity", "description")
+    missing = [f for f in required if not (req.get(f) or "").strip()]
+    if missing:
+        raise HTTPException(
+            status_code=400, detail=f"Required: {', '.join(missing)}")
+    try:
+        return await incident.record(
+            category=req["category"], severity=req["severity"],
+            description=req["description"],
+            affected_count=int(req.get("affected_count", 0)),
+        )
+    except Exception as e:
+        logger.error(f"Incident recording failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.post("/dpdp/incidents/{incident_id}/notified")
+async def mark_incident_notified(incident_id: str, request: Request, req: dict):
+    """Record that CERT-In/the Board, or affected principals, were notified."""
+    _require_admin(request)
+    try:
+        return await incident.mark_notified(
+            incident_id,
+            board=req.get("board"), principals=req.get("principals"))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+# ── Statutory register ───────────────────────────────────────────────────
+
+@api_router.get("/dpdp/compliance/statutes")
+async def statutory_register(request: Request):
+    """Every statute and guideline this app is subject to, with its status."""
+    _require_admin(request)
+    out = statutes.summary()
+    out["outstanding"] = [o.as_dict() for o in statutes.outstanding()]
+    out["log_policy"] = incident.log_policy()
+    out["grievance_officer"] = grievance.officer()
+
+    from dpdp import profile_store
+    out["data_at_rest"] = profile_store.status()
+    return out
+
+
+# ── Terms of service (IT Rules 3(1)(a)) ──────────────────────────────────
+
+@api_router.get("/dpdp/terms")
+async def terms_of_service():
+    """The user agreement. Public, like the privacy notice.
+
+    Leads with the four disclosures that protect the citizen: this is not the
+    government, nothing is guaranteed, no fee is ever payable, and downloading
+    a form is not an application. Those exist because the failure mode this app
+    invites is someone believing they have applied when they have not, or
+    paying a middleman who claims otherwise.
+    """
+    return terms_service.terms()
+
+
+# ── Terms acceptance ─────────────────────────────────────────────────────
+
+@api_router.get("/dpdp/terms/status/{user_id}")
+async def terms_acceptance_status(user_id: str, request: Request):
+    """Whether this citizen has accepted the current terms."""
+    _require_self(request, user_id)
+    return await nomination.terms_status(user_id)
+
+
+@api_router.post("/dpdp/terms/accept/{user_id}")
+async def accept_terms(user_id: str, request: Request, req: dict | None = None):
+    """Record acceptance of a specific version of the user agreement.
+
+    The version is required and must match the current one: accepting "the
+    terms" without saying which is not evidence of anything, and a stale
+    version would let a client acknowledge text the citizen never saw.
+    """
+    _require_self(request, user_id)
+    version = ((req or {}).get("version") or "").strip()
+    if version != terms_service.TERMS_VERSION:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Accept the current version ({terms_service.TERMS_VERSION}); "
+                   f"got {version or 'none'}.")
+    try:
+        return await nomination.accept_terms(user_id, version)
+    except Exception as e:
+        logger.error(f"Terms acceptance failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+# ── Section 14: nomination ───────────────────────────────────────────────
+
+@api_router.get("/dpdp/nominee/{user_id}")
+async def get_nominee(user_id: str, request: Request):
+    """The citizen's own nomination (s14)."""
+    _require_self(request, user_id)
+    return await nomination.status(user_id)
+
+
+@api_router.post("/dpdp/nominee/{user_id}")
+async def set_nominee(user_id: str, request: Request, req: dict):
+    """Nominate someone to exercise your rights if you die or become incapable.
+
+    Body: {"name": "...", "relation": "...", "contact": "..."}
+    """
+    _require_self(request, user_id)
+    try:
+        return await nomination.record(
+            user_id, name=req.get("name", ""),
+            relation=req.get("relation", ""), contact=req.get("contact", ""))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Nomination failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.delete("/dpdp/nominee/{user_id}")
+async def remove_nominee(user_id: str, request: Request):
+    _require_self(request, user_id)
+    try:
+        return await nomination.remove(user_id)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.post("/dpdp/nominee/{user_id}/activate")
+async def activate_nominee(user_id: str, request: Request, req: dict):
+    """Allow a nominee to act, on established death or incapacity.
+
+    Admin-gated and evidence-bearing: activation transfers control of a
+    citizen's record, so it must never rest on the nominee's own assertion.
+    """
+    _require_admin(request)
+    reviewer_id = request.headers.get("X-Reviewer-Id", "").strip()
+    if not reviewer_id:
+        raise HTTPException(
+            status_code=400,
+            detail="X-Reviewer-Id is required so the activation is attributable.")
+    try:
+        return await nomination.activate(
+            user_id, reviewer_id=reviewer_id,
+            evidence=req.get("evidence", ""))
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Nomination activation failed: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@api_router.get("/dpdp/identity-documents")
+async def accepted_identity_documents():
+    """Identity documents accepted in place of Aadhaar (s7 proviso).
+
+    Public: someone deciding whether this service is usable for them should be
+    able to find out what they can bring without first handing over anything.
+    """
+    return {
+        "documents": identity_documents.options(),
+        "rule_en": "Any one of these is enough. You do not need Aadhaar to "
+                   "apply.",
+        "rule_hi": "इनमें से कोई एक पर्याप्त है। आवेदन के लिए आधार आवश्यक नहीं है।",
+        "basis": "Aadhaar Act 2016, proviso to s7 — a person without Aadhaar "
+                 "must be offered an alternative means of identification.",
+    }

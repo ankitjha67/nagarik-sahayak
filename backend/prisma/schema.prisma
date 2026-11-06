@@ -18,8 +18,44 @@ model User {
   profileLastUpdated DateTime?
   schemeHistory      Json?
   createdAt          DateTime      @default(now())
+
+  // Keyed HMAC digests of the identifiers used for cross-applicant fraud
+  // checks. Stored as hashes, not values: the engine only ever asks whether two
+  // applicants share an identifier, which equality answers, so the database
+  // gains the signal without holding a second plaintext copy of everyone's
+  // Aadhaar. Indexed so the check is a counted query rather than a table scan.
+  // Populated by identity_index.py; see scripts/backfill_identity_index.py.
+  aadhaarFp          String?
+  bankAccountFp      String?
+  mobileFp           String?
+  rationCardFp       String?
+
+  // Which version of the user agreement this person accepted, and when.
+  // Recorded per version so a material change can require fresh acceptance
+  // rather than silently binding people to terms they never saw.
+  termsVersion       String?
+  termsAcceptedAt    DateTime?
+
+  // DPDP s14: the person who may exercise this citizen's rights if they die
+  // or become incapable of exercising them. Stored on the User rather than in
+  // a side table because it is a property of the data principal, and must be
+  // erased with them.
+  nomineeName        String?
+  nomineeRelation    String?
+  nomineeContact     String?
+  nomineeRecordedAt  DateTime?
+  // Set only when death or incapacity has been established by a reviewer.
+  // Until then the nominee has no access at all.
+  nomineeActivatedAt DateTime?
+  nomineeActivatedBy String?
+
   chatLogs           ChatLog[]
   applications       Application[]
+
+  @@index([aadhaarFp])
+  @@index([bankAccountFp])
+  @@index([mobileFp])
+  @@index([rationCardFp])
 }
 
 model Scheme {
@@ -32,7 +68,16 @@ model Scheme {
   descriptionHindi        String        @default("")
   officialWebsite         String        @default("")
   pdfUrl                  String
+  // "Central" or "State". A State scheme carries the State it belongs to, so a
+  // citizen is never shown a scheme they cannot claim because of where they
+  // live — and, just as importantly, a State resident still sees every Central
+  // scheme, which is the failure that would otherwise be silent.
+  level                   String        @default("Central")
+  state                   String        @default("")
   applications            Application[]
+
+  @@index([level])
+  @@index([state])
 }
 
 model FormTemplate {
@@ -44,6 +89,8 @@ model FormTemplate {
   description        String   @default("")
   descriptionHindi   String   @default("")
   category           String   @default("general")
+  level              String   @default("Central")
+  state              String   @default("")
   extractedFields    Json
   eligibilityCriteria Json?
   totalFields        Int      @default(0)
@@ -106,4 +153,93 @@ model CrawlRun {
   error           String?
   startedAt       DateTime @default(now())
   completedAt     DateTime?
+}
+
+/// A flagged benefit application awaiting human review.
+///
+/// Deliberately stores the *decision context* — risk signals, scheme, outcome —
+/// and not the applicant's personal data. Reviewers open the citizen's profile
+/// through the normal authorised path; the queue must not become a second,
+/// less-protected copy of everyone's Aadhaar and bank details.
+model ReviewCase {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @db.ObjectId
+  schemeName   String
+  outcome      String    // gate outcome recorded when the case was raised
+  riskScore    Int       @default(0)
+  signals      Json      @default("[]") // full signal detail shown to the reviewer
+  status       String    @default("pending") // pending | approved | rejected
+  reviewerId   String    @default("")
+  reviewerNote String    @default("")
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+
+// ── DPDP Act 2023 ──────────────────────────────────────────────────────
+
+// Who may download a generated artefact. Kept separate from Application
+// because eligibility reports, uploaded PDFs and voice notes are produced
+// outside the application flow and need the same guarantee.
+model ArtefactOwner {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  artefactId String
+  userId     String   @db.ObjectId
+  kind       String   @default("pdf")
+  createdAt  DateTime @default(now())
+
+  @@index([artefactId])
+  @@index([userId])
+}
+
+// Section 6 consent, recorded per purpose. Withdrawal is not a delete: the
+// record of having consented, and then withdrawn, is itself evidence the
+// Fiduciary must be able to produce.
+model ConsentRecord {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  purpose       String
+  granted       Boolean   @default(true)
+  noticeVersion String    @default("1.0")
+  language      String    @default("hi")
+  grantedAt     DateTime  @default(now())
+  withdrawnAt   DateTime?
+  // Section 9: consent given by a parent or guardian for a child's data.
+  parentalConsent Boolean @default(false)
+
+  @@index([userId])
+  @@index([userId, purpose])
+}
+
+// Sections 11-14 requests: access, correction, erasure, grievance, nomination.
+model DataPrincipalRequest {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  requestType String
+  status      String    @default("received")
+  details     Json?
+  response    Json?
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+
+  @@index([userId])
+  @@index([status])
+}
+
+// Section 8(5) breach register.
+model BreachRecord {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  detectedAt    DateTime  @default(now())
+  severity      String
+  category      String
+  description   String
+  affectedCount Int       @default(0)
+  boardNotified Boolean   @default(false)
+  principalsNotified Boolean @default(false)
+  resolvedAt    DateTime?
+
+  @@index([detectedAt])
 }

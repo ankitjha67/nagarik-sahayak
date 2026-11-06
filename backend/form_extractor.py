@@ -209,6 +209,52 @@ def ocr_pdf(pdf_path: str, max_pages: int = 20) -> str:
     return "\n\n".join(text_parts)
 
 
+def inspect_pdf(pdf_path: str) -> dict:
+    """Probe a PDF before extraction: encryption, page count, corruption.
+
+    Government portals do publish password-protected and malformed PDFs. Without
+    this probe those fail deep inside pdfplumber with an opaque error; here we
+    detect them up front and return an actionable reason.
+
+    Returns {ok, encrypted, decrypted, pages, reason}.
+    """
+    info = {"ok": True, "encrypted": False, "decrypted": False, "pages": 0, "reason": ""}
+    if not _HAS_FITZ:
+        return info
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception as e:
+        return {**info, "ok": False, "reason": f"Cannot open PDF (corrupted or not a PDF): {e}"}
+
+    try:
+        if doc.needs_pass:
+            info["encrypted"] = True
+            # Many government PDFs are "encrypted" only with an empty owner
+            # password to prevent editing; those open fine with a blank password
+            # and are perfectly readable.
+            if doc.authenticate(""):
+                info["decrypted"] = True
+            else:
+                info["ok"] = False
+                info["reason"] = (
+                    "PDF is password-protected. Please remove the password and re-upload."
+                )
+                return info
+        info["pages"] = doc.page_count
+        if info["pages"] == 0:
+            info["ok"] = False
+            info["reason"] = "PDF has no pages."
+    except Exception as e:
+        info["ok"] = False
+        info["reason"] = f"PDF inspection failed: {e}"
+    finally:
+        try:
+            doc.close()
+        except Exception:
+            pass
+    return info
+
+
 def _fitz_extract_text(pdf_path: str) -> str:
     """Use PyMuPDF (fitz) as a secondary text extractor — often catches text pdfplumber misses."""
     if not _HAS_FITZ:
@@ -248,6 +294,14 @@ async def extract_text_from_pdf(pdf_path: str) -> dict:
         "acroform_fields": [],
         "extraction_method": "none",
     }
+
+    # --- Strategy 0: probe for encryption / corruption before parsing ---
+    probe = inspect_pdf(pdf_path)
+    result["pdf_info"] = probe
+    if not probe["ok"]:
+        result["extraction_method"] = "unreadable"
+        result["error"] = probe["reason"]
+        return result
 
     # --- Strategy 1: pdfplumber ---
     pdfplumber_text = _extract_with_pdfplumber(pdf_path)
@@ -324,39 +378,72 @@ def _extract_with_pdfplumber(pdf_path: str) -> str:
     return "\n\n".join(text_parts)
 
 
-async def download_pdf(url: str) -> str:
-    """Download a PDF from URL to a temp file. Returns file path."""
-    tmp_path = ""
-    try:
-        timeout = httpx.Timeout(PDF_DOWNLOAD_TIMEOUT, connect=15.0)
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            content = resp.content
-            # Validate PDF magic bytes
-            if not content or not content[:4].startswith(PDF_MAGIC):
-                logger.error(f"Downloaded file from {url} is not a valid PDF (bad magic bytes)")
-                return ""
-            tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
-            tmp_path = tmp.name
-            tmp.write(content)
-            tmp.close()
-            return tmp_path
-    except httpx.TimeoutException:
-        logger.error(f"PDF download timed out from {url} (limit={PDF_DOWNLOAD_TIMEOUT}s)")
-        if tmp_path:
-            _safe_unlink(tmp_path)
-        return ""
-    except httpx.HTTPStatusError as e:
-        logger.error(f"PDF download HTTP error from {url}: {e.response.status_code}")
-        if tmp_path:
-            _safe_unlink(tmp_path)
-        return ""
-    except (httpx.RequestError, OSError) as e:
-        logger.error(f"PDF download failed from {url}: {e}")
-        if tmp_path:
-            _safe_unlink(tmp_path)
-        return ""
+# Government portals routinely reject requests without a browser UA, and are
+# frequently slow or briefly unavailable — hence the UA header and retries.
+_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/122.0 Safari/537.36"
+)
+PDF_DOWNLOAD_RETRIES = 3
+
+
+async def download_pdf(url: str, retries: int = PDF_DOWNLOAD_RETRIES) -> str:
+    """Download a PDF from a URL to a temp file, with retries. Returns file path.
+
+    Retries transient failures (timeouts, connection errors, 5xx and 429) with
+    exponential backoff. Permanent failures (404, non-PDF content) return
+    immediately — retrying those only wastes time.
+    """
+    import asyncio
+
+    timeout = httpx.Timeout(PDF_DOWNLOAD_TIMEOUT, connect=15.0)
+    headers = {"User-Agent": _BROWSER_UA, "Accept": "application/pdf,*/*"}
+    last_error = ""
+
+    for attempt in range(1, max(1, retries) + 1):
+        tmp_path = ""
+        try:
+            async with httpx.AsyncClient(
+                timeout=timeout, follow_redirects=True, headers=headers
+            ) as client:
+                resp = await client.get(url)
+
+                # Retry server-side and rate-limit failures; give up on the rest.
+                if resp.status_code >= 400:
+                    transient = resp.status_code >= 500 or resp.status_code == 429
+                    last_error = f"HTTP {resp.status_code}"
+                    if transient and attempt < retries:
+                        await asyncio.sleep(2 ** attempt)
+                        continue
+                    logger.error(f"PDF download HTTP error from {url}: {resp.status_code}")
+                    return ""
+
+                content = resp.content
+                if not content or not content[:4].startswith(PDF_MAGIC):
+                    # Portals often serve an HTML error page with HTTP 200.
+                    ctype = resp.headers.get("content-type", "unknown")
+                    logger.error(
+                        f"Downloaded file from {url} is not a valid PDF "
+                        f"(content-type={ctype}, {len(content)} bytes)"
+                    )
+                    return ""
+
+                tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+                tmp_path = tmp.name
+                tmp.write(content)
+                tmp.close()
+                return tmp_path
+
+        except (httpx.TimeoutException, httpx.RequestError, OSError) as e:
+            last_error = f"{type(e).__name__}: {e}"
+            if tmp_path:
+                _safe_unlink(tmp_path)
+            if attempt < retries:
+                await asyncio.sleep(2 ** attempt)
+                continue
+
+    logger.error(f"PDF download failed from {url} after {retries} attempts: {last_error}")
+    return ""
 
 
 def _safe_unlink(path: str) -> None:
@@ -453,11 +540,20 @@ async def extract_form_fields_llm(pdf_text: str, scheme_hint: str = "") -> dict:
         return {"error": str(e)}
 
 
-async def extract_form_fields(pdf_url: str = "", pdf_path: str = "", scheme_hint: str = "") -> dict:
+async def extract_form_fields(
+    pdf_url: str = "",
+    pdf_path: str = "",
+    scheme_hint: str = "",
+    allow_rule_fallback: bool = True,
+) -> dict:
     """Main entry: extract form fields from a PDF URL or local file.
 
-    Uses multi-strategy pipeline: pdfplumber → PyMuPDF → OCR → AcroForm.
-    Returns a complete FormTemplate-compatible dict with extractedFields.
+    Pipeline: probe → pdfplumber → PyMuPDF → OCR → AcroForm → LLM, with a
+    rule-based extractor as fallback whenever the LLM is unavailable or returns
+    nothing usable. Real government forms are mostly scanned, so the OCR and
+    rule-based paths are the common case rather than the exception.
+
+    Returns a FormTemplate-compatible dict with extractedFields.
     """
     local_path = pdf_path
     is_temp_file = False
@@ -476,26 +572,65 @@ async def extract_form_fields(pdf_url: str = "", pdf_path: str = "", scheme_hint
         pdf_text = extraction["text"]
         method = extraction["extraction_method"]
 
+        # Unreadable (encrypted / corrupt) — surface the concrete reason.
+        if extraction.get("error"):
+            return {"error": extraction["error"], "extraction_method": method}
+
         if not pdf_text or len(pdf_text.strip()) < MIN_TEXT_THRESHOLD:
             if not _HAS_TESSERACT:
                 return {
-                    "error": "Could not extract sufficient text from PDF. The PDF may be image-based (scanned). "
-                             "OCR support requires pytesseract to be installed.",
+                    "error": "Could not extract text — the PDF appears to be a scanned image. "
+                             "OCR is required: install tesseract-ocr and the pytesseract package.",
                     "extraction_method": method,
                 }
             return {
-                "error": "Could not extract sufficient text from PDF even after OCR.",
+                "error": "Could not extract sufficient text from PDF even after OCR. "
+                         "The scan quality may be too low to read.",
                 "extraction_method": method,
             }
 
-        # Step 2: LLM analysis
+        # Step 2: LLM analysis. extract_form_fields_llm already reports a
+        # missing key as an error, which falls through to the rule-based path.
         result = await extract_form_fields_llm(pdf_text, scheme_hint)
+
+        llm_failed = (
+            "error" in result
+            or not isinstance(result.get("extractedFields"), list)
+            or len(result.get("extractedFields") or []) == 0
+        )
+
+        # Step 3: Rule-based fallback / canonicalisation
+        if llm_failed and allow_rule_fallback:
+            from field_rules import build_template_from_text
+            fallback = build_template_from_text(pdf_text, scheme_hint)
+            if fallback.get("extractedFields"):
+                logger.info(
+                    "Rule-based extraction recovered %d fields (LLM unavailable: %s)",
+                    len(fallback["extractedFields"]), result.get("error", "no fields"),
+                )
+                fallback["_llm_error"] = result.get("error", "no fields returned")
+                result = fallback
+            elif fallback.get("_not_a_form"):
+                # "This isn't a form" is far more actionable than whatever the
+                # LLM path reported, so it wins even if the LLM also errored.
+                result = fallback
+            elif "error" not in result:
+                result = {"error": "No form fields could be identified in this PDF."}
+        elif not llm_failed:
+            # Normalise LLM profileKeys onto the canonical vocabulary so answers
+            # are reused across schemes instead of asking the same thing twice.
+            from field_rules import canonicalize_fields
+            result["extractedFields"] = canonicalize_fields(result["extractedFields"])
+            result["totalFields"] = len(result["extractedFields"])
+            result.setdefault("_extraction_engine", "llm")
 
         # Attach extraction metadata
         if "error" not in result:
             result["_extraction_method"] = method
-            result["_acroform_field_count"] = len(extraction["acroform_fields"])
+            result["_acroform_field_count"] = len(extraction.get("acroform_fields") or [])
             result["_text_length"] = len(pdf_text)
+            if pdf_url:
+                result["_source_url"] = pdf_url
 
         return result
     finally:

@@ -296,9 +296,26 @@ class TestExtractFormFields:
             "category": "housing",
             "totalFields": 6,
             "sections": [{"name": "Personal Details", "nameHindi": "व्यक्तिगत विवरण"}],
+            # One entry per field in the source form above. totalFields is
+            # recomputed from this list, so the two must agree.
             "extractedFields": [
                 {"fieldName": "applicant_name", "labelHindi": "आवेदक का नाम", "labelEnglish": "Applicant Name",
                  "type": "text", "required": True, "section": "Personal Details", "profileKey": "name"},
+                {"fieldName": "father_husband_name", "labelHindi": "पिता/पति का नाम",
+                 "labelEnglish": "Father/Husband Name", "type": "text", "required": True,
+                 "section": "Personal Details", "profileKey": "father_husband_name"},
+                {"fieldName": "aadhaar_number", "labelHindi": "आधार संख्या", "labelEnglish": "Aadhaar Number",
+                 "type": "aadhaar", "required": True, "section": "Personal Details",
+                 "profileKey": "aadhaar_number"},
+                {"fieldName": "date_of_birth", "labelHindi": "जन्म तिथि", "labelEnglish": "Date of Birth",
+                 "type": "date", "required": True, "section": "Personal Details",
+                 "profileKey": "date_of_birth"},
+                {"fieldName": "mobile_number", "labelHindi": "मोबाइल नंबर", "labelEnglish": "Mobile Number",
+                 "type": "phone", "required": True, "section": "Personal Details",
+                 "profileKey": "mobile_number"},
+                {"fieldName": "annual_income", "labelHindi": "वार्षिक आय", "labelEnglish": "Annual Income",
+                 "type": "number", "required": True, "section": "Personal Details",
+                 "profileKey": "annual_income"},
             ],
         }
         try:
@@ -371,6 +388,10 @@ class TestDownload:
 
         async def mock_get(*args, **kwargs):
             resp = MagicMock()
+            # Portals commonly serve an HTML error page with HTTP 200, which is
+            # exactly the case this test covers.
+            resp.status_code = 200
+            resp.headers = {"content-type": "text/html"}
             resp.content = b"<html>Not a PDF</html>"
             resp.raise_for_status = MagicMock()
             return resp

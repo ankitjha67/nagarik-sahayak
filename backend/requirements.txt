@@ -1,3 +1,13 @@
+# SYSTEM DEPENDENCY (not installable via pip) — required for real government forms.
+# Most Indian government forms are scanned images with no extractable text, so
+# OCR is the primary extraction path, not a fallback. Without tesseract those
+# PDFs yield zero fields.
+#
+#   Debian/Ubuntu:  apt-get install -y tesseract-ocr tesseract-ocr-hin
+#   macOS:          brew install tesseract tesseract-lang
+#
+# Verify with: tesseract --list-langs   (expect at least: eng, hin)
+
 agnost==0.1.13
 aiofiles==25.1.0
 aiohappyeyeballs==2.6.1

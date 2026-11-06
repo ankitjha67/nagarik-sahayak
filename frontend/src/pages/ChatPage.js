@@ -7,12 +7,18 @@ import { ChatBubble, TypingIndicator, ToolProgressIndicator } from "../component
 import { SchemeSelector } from "../components/SchemeSelector";
 import { SmartProfiler } from "../components/SmartProfiler";
 import { sendMessage, getChatHistory, transcribeAudio, uploadPdf, resetChat } from "../lib/api";
+import {
+  startRecording as startMicRecording, recogniseOnDevice, browserSpeechSupported,
+  recordingSupported, extensionFor, getSttMode, getSttProvider,
+} from "../lib/stt";
 import { toast } from "sonner";
+import { useLanguage } from "../lib/i18n";
 import { SendHorizontal, Mic, MicOff, Loader2, Paperclip } from "lucide-react";
 
 const RECORD_DURATION = 5; // seconds
 
 export default function ChatPage({ userId, language = "hi" }) {
+  const { tx } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
@@ -96,31 +102,47 @@ export default function ChatPage({ userId, language = "hi" }) {
 
   const startRecording = useCallback(async () => {
     if (isRecording || loading) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        if (countdownRef.current) clearInterval(countdownRef.current);
-        setRecordCountdown(0);
-        setIsRecording(false);
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        if (blob.size > 0) {
-          await processTranscription(blob);
-        }
-      };
-
-      mediaRecorder.start();
+    // On-device recognition (Web Speech API): the words leave the phone, the
+    // audio never does. Chosen in settings; used only where the browser has it.
+    if (getSttMode() === "browser" && browserSpeechSupported()) {
       setIsRecording(true);
       setRecordCountdown(RECORD_DURATION);
-      toast.info(`${RECORD_DURATION}s रिकॉर्डिंग शुरू... बोलें`);
+      try {
+        const text = await recogniseOnDevice(sttLang, { maxSeconds: RECORD_DURATION });
+        await processTranscription(null, text);
+      } catch (err) {
+        const code = err?.code || "";
+        toast.error(code === "not-allowed" ? tx("chat.micDenied") : "Transcription failed", { duration: 5000 });
+      } finally {
+        setIsRecording(false);
+        setRecordCountdown(0);
+      }
+      return;
+    }
+
+    if (!recordingSupported()) {
+      toast.error(tx("chat.micDenied"), { duration: 5000 });
+      return;
+    }
+    try {
+      // Whatever container this browser can produce (WebM on Chrome/Android,
+      // MP4 on iPhone Safari, OGG on Firefox); the server accepts them all.
+      const rec = await startMicRecording();
+      mediaRecorderRef.current = {
+        state: "recording",
+        stop: async () => {
+          mediaRecorderRef.current.state = "inactive";
+          const { blob, mime } = await rec.stop();
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          setRecordCountdown(0);
+          setIsRecording(false);
+          if (blob.size > 0) await processTranscription(blob, "", mime);
+        },
+      };
+      setIsRecording(true);
+      setRecordCountdown(RECORD_DURATION);
+      toast.info(`${RECORD_DURATION}${tx("chat.recordingStarted")}`);
 
       // Countdown ticker
       let remaining = RECORD_DURATION;
@@ -139,7 +161,7 @@ export default function ChatPage({ userId, language = "hi" }) {
         }
       }, RECORD_DURATION * 1000);
     } catch (err) {
-      toast.error("माइक्रोफोन एक्सेस दें — ब्राउज़र सेटिंग्स में अनुमति चालू करें", { duration: 5000 });
+      toast.error(tx("chat.micDenied"), { duration: 5000 });
     }
   }, [isRecording, loading]);
 
@@ -151,27 +173,30 @@ export default function ChatPage({ userId, language = "hi" }) {
     }
   };
 
-  const processTranscription = async (blob) => {
+  // Either a recorded blob (any container) or text the browser recognised.
+  const processTranscription = async (blob, text = "", mime = "") => {
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append("audio", blob, "recording.webm");
+      if (blob) formData.append("audio", blob, `recording.${extensionFor(mime || blob.type)}`);
+      if (text) formData.append("text", text);
       formData.append("user_id", userId);
       formData.append("language", sttLang);
+      const provider = text ? "client" : getSttProvider();
+      if (provider) formData.append("provider", provider);
 
       const res = await transcribeAudio(formData);
       if (res.data.success) {
         const { user_message, bot_message } = res.data;
         setMessages((prev) => [...prev, user_message, bot_message]);
 
-        const isMock = res.data.is_mock;
-        if (isMock) {
+        if (res.data.is_mock) {
           toast.info("Demo mode — mock transcript used");
         } else {
-          toast.success(`Sarvam Saaras v3 (${sttLang === "hi" ? "हिंदी" : "English"})`);
+          toast.success(`${res.data.provider || "speech"} · ${sttLang === "hi" ? "हिंदी" : "English"}`);
         }
       } else {
-        toast.error("Transcription failed");
+        toast.error(res.data.error || "Transcription failed");
       }
     } catch (err) {
       const detail = err?.response?.data?.detail || "Transcription failed";
@@ -218,7 +243,7 @@ export default function ChatPage({ userId, language = "hi" }) {
       setInput("");
       setV2Mode("idle");
       setSelectedSchemes([]);
-      toast.success("नई चैट शुरू हो गई!");
+      toast.success(tx("chat.newChatStarted"));
     } catch {
       toast.error("Chat reset failed");
     }
@@ -233,7 +258,7 @@ export default function ChatPage({ userId, language = "hi" }) {
 
   return (
     <div data-testid="chat-page" className="min-h-screen bg-gray-50 flex flex-col">
-      <AppHeader title="नागरिक सहायक" onMenuClick={() => setSidebarOpen(true)} onNewChat={handleNewChat} />
+      <AppHeader onMenuClick={() => setSidebarOpen(true)} onNewChat={handleNewChat} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Messages Area */}
@@ -249,10 +274,10 @@ export default function ChatPage({ userId, language = "hi" }) {
                 onError={(e) => { e.target.style.display = "none"; }}
               />
               <h3 className="text-base font-bold text-[#000080] font-['Mukta']">
-                नमस्ते! नागरिक सहायक में आपका स्वागत है
+                {tx("chat.welcome")}
               </h3>
               <p className="text-xs text-gray-400 font-['Nunito'] mt-1">
-                सरकारी योजनाओं के लिए आवेदन फॉर्म भरने में सहायता
+                {tx("chat.welcomeSub")}
               </p>
             </div>
             <SchemeSelector
@@ -266,7 +291,7 @@ export default function ChatPage({ userId, language = "hi" }) {
                   {
                     id: `sys-${Date.now()}`,
                     role: "assistant",
-                    content: `आपने ${schemes.length} योजना(एं) चुनी हैं:\n${schemes.map((s, i) => `${i + 1}. ${s}`).join("\n")}\n\nअब हम आपकी प्रोफ़ाइल पूरी करेंगे। कृपया नीचे दिए गए सवालों का जवाब दें।`,
+                    content: `${tx("chat.selectedSchemes").replace("{n}", schemes.length)}\n${schemes.map((s, i) => `${i + 1}. ${s}`).join("\n")}\n\n${tx("chat.nowCompleteProfile")}`,
                     created_at: new Date().toISOString(),
                   },
                 ]);
@@ -274,7 +299,7 @@ export default function ChatPage({ userId, language = "hi" }) {
             />
             {/* Legacy chat option */}
             <div className="text-center mt-4 pt-3 border-t border-gray-100">
-              <p className="text-[10px] text-gray-400 font-['Nunito'] mb-1">या बातचीत से शुरू करें</p>
+              <p className="text-[10px] text-gray-400 font-['Nunito'] mb-1">{tx("chat.orStartTalking")}</p>
               <button
                 data-testid="start-chat-btn"
                 onClick={async () => {
@@ -288,7 +313,7 @@ export default function ChatPage({ userId, language = "hi" }) {
                 }}
                 className="text-xs text-[#000080] font-bold font-['Mukta'] hover:underline"
               >
-                बातचीत शुरू करें
+                {tx("chat.startConversation")}
               </button>
             </div>
           </div>
@@ -309,14 +334,34 @@ export default function ChatPage({ userId, language = "hi" }) {
                 onMessage={(msg) => setMessages((prev) => [...prev, { ...msg, id: `p-${Date.now()}-${Math.random()}` }])}
                 onComplete={(data) => {
                   setV2Mode("complete");
+                  const refused = data.refused || [];
+                  const flagged = data.flagged_for_review || [];
+                  // Report what actually happened. Announcing "N forms ready"
+                  // while quietly dropping refused schemes leaves someone
+                  // wondering what became of a scheme they chose — and reads
+                  // absurdly ("0 forms ready!") when everything was refused.
+                  let content;
+                  if (data.count === 0) {
+                    content = tx("chat.noFormPrepared");
+                  } else {
+                    content = tx("chat.formsReadyCount").replace("{n}", data.count);
+                    if (refused.length) {
+                      content += `\n${tx("chat.formRefusedCount").replace("{n}", refused.length)}`;
+                    }
+                    if (flagged.length) {
+                      content += `\n${tx("chat.flaggedCount").replace("{n}", flagged.length)}`;
+                    }
+                  }
                   setMessages((prev) => [
                     ...prev,
                     {
                       id: `done-${Date.now()}`,
                       role: "assistant",
-                      content: `${data.count} आवेदन फॉर्म सफलतापूर्वक तैयार हो गए! ऊपर डाउनलोड बटन से डाउनलोड करें।`,
+                      content,
                       created_at: new Date().toISOString(),
                       pdf_urls: data.pdf_urls,
+                      refused,
+                      flagged_for_review: flagged,
                       user_id: userId,
                     },
                   ]);
@@ -357,7 +402,7 @@ export default function ChatPage({ userId, language = "hi" }) {
             data-testid="chat-attach-btn"
             onClick={() => fileInputRef.current?.click()}
             disabled={loading || isRecording}
-            title="PDF अपलोड करें"
+            title={tx("chat.uploadPdf")}
             aria-label="Upload PDF file"
             className="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 bg-gray-100 text-gray-500 hover:bg-[#FFF0E0] hover:text-[#FF9933]"
           >
@@ -386,7 +431,7 @@ export default function ChatPage({ userId, language = "hi" }) {
             data-testid="chat-mic-btn"
             onClick={isRecording ? stopRecording : startRecording}
             disabled={loading && !isRecording}
-            title={isRecording ? "रिकॉर्डिंग बंद करें" : "बोलकर पूछें"}
+            title={isRecording ? tx("chat.stopRecording") : tx("home.askByVoice")}
             aria-label={isRecording ? "Stop recording" : "Start voice recording"}
             className={`relative w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
               isRecording
@@ -412,7 +457,7 @@ export default function ChatPage({ userId, language = "hi" }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="अपना सवाल यहाँ लिखें..."
+            placeholder={tx("chat.inputPlaceholder")}
             disabled={loading || isRecording}
             className="flex-1 h-10 rounded-full bg-gray-50 border border-gray-200 px-4 text-sm font-['Nunito'] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#FF9933] focus:border-transparent transition-all"
           />

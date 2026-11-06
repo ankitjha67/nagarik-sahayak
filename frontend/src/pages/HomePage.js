@@ -4,10 +4,12 @@ import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
 import { getChatHistory, getSchemes, getExamAlerts, getDiscoveryStats } from "../lib/api";
+import { useLanguage } from "../lib/i18n";
 import { Mic, MessageCircle, BookOpen, ChevronRight, Sparkles, Clock, Globe } from "lucide-react";
 
 export default function HomePage({ userId }) {
   const navigate = useNavigate();
+  const { tx } = useLanguage();
   const [recentChats, setRecentChats] = useState([]);
   const [schemes, setSchemes] = useState([]);
   const [examAlerts, setExamAlerts] = useState([]);
@@ -47,28 +49,37 @@ export default function HomePage({ userId }) {
             </div>
             <div>
               <h2 className="text-base font-bold text-[#000080] font-['Mukta']">
-                नमस्ते! कैसे मदद करें?
+                {tx("home.greeting")}
               </h2>
               <p className="text-sm text-gray-500 font-['Nunito'] mt-0.5">
-                Ask about government schemes, eligibility, or apply for services
+                {tx("home.subtitle")}
               </p>
             </div>
           </div>
 
-          {/* Quick Actions */}
+          {/* Quick Actions. The label shown follows the language; the prompt
+              handed to the chat is sent in the same language so the assistant
+              answers in it. */}
           <div className="flex gap-2 mt-4">
-            {["योजनाएं", "पात्रता जांचें", "हेल्प"].map((label) => (
-              <button
-                key={label}
-                data-testid={`quick-action-${label}`}
-                onClick={() =>
-                  navigate("/chat", { state: { prefill: label } })
-                }
-                className="px-3 py-1.5 rounded-full bg-[#FFF0E0] text-[#000080] text-xs font-semibold font-['Mukta'] border border-orange-100 hover:bg-[#FFE4C4] transition-colors"
-              >
-                {label}
-              </button>
-            ))}
+            {[
+              { key: "home.quick.schemes", id: "schemes" },
+              { key: "home.quick.eligibility", id: "eligibility" },
+              { key: "home.quick.help", id: "help" },
+            ].map(({ key, id }) => {
+              const label = tx(key);
+              return (
+                <button
+                  key={id}
+                  data-testid={`quick-action-${id}`}
+                  onClick={() =>
+                    navigate("/chat", { state: { prefill: label } })
+                  }
+                  className="px-3 py-1.5 rounded-full bg-[#FFF0E0] text-[#000080] text-xs font-semibold font-['Mukta'] border border-orange-100 hover:bg-[#FFE4C4] transition-colors"
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -82,7 +93,7 @@ export default function HomePage({ userId }) {
             <Mic size={32} className="text-white" strokeWidth={2.5} />
           </button>
           <p className="text-xs text-gray-400 mt-2 font-['Mukta']">
-            बोलकर पूछें
+            {tx("home.askByVoice")}
           </p>
         </div>
 
@@ -90,14 +101,14 @@ export default function HomePage({ userId }) {
         <div className="mb-5 animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-bold text-[#000080] font-['Mukta']">
-              सरकारी योजनाएं
+              {tx("home.schemesHeading")}
             </h3>
             <button
               data-testid="view-all-schemes-btn"
               onClick={() => navigate("/schemes")}
               className="text-xs text-[#FF9933] font-semibold flex items-center gap-0.5 hover:underline"
             >
-              सभी देखें <ChevronRight size={14} />
+              {tx("common.viewAll")} <ChevronRight size={14} />
             </button>
           </div>
 
@@ -128,13 +139,13 @@ export default function HomePage({ userId }) {
           <div className="mb-5 animate-fade-in-up" style={{ animationDelay: "0.17s" }}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-bold text-[#000080] font-['Mukta']">
-                परीक्षा अलर्ट
+                {tx("home.examAlertsHeading")}
               </h3>
               <button
                 onClick={() => navigate("/exams")}
                 className="text-xs text-[#FF9933] font-semibold flex items-center gap-0.5 hover:underline"
               >
-                सभी देखें <ChevronRight size={14} />
+                {tx("common.viewAll")} <ChevronRight size={14} />
               </button>
             </div>
             <div className="space-y-2">
@@ -161,7 +172,7 @@ export default function HomePage({ userId }) {
                       <span className={`text-[10px] font-bold ml-auto flex-shrink-0 ${
                         alert.urgency === "critical" ? "text-red-700" : "text-orange-700"
                       }`}>
-                        {alert.days_left}d left
+                        {alert.days_left} {tx("home.daysLeft")}
                       </span>
                     )}
                   </div>
@@ -184,7 +195,7 @@ export default function HomePage({ userId }) {
                   <Globe size={20} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold font-['Mukta']">योजना खोज इंजन</p>
+                  <p className="text-sm font-bold font-['Mukta']">{tx("home.searchEngineTitle")}</p>
                   <p className="text-xs opacity-80 font-['Nunito']">
                     {discoveryStats.total_schemes} schemes from {Object.keys(discoveryStats.by_sector || {}).length} sectors
                   </p>
@@ -199,14 +210,14 @@ export default function HomePage({ userId }) {
         <div className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-bold text-[#000080] font-['Mukta']">
-              हाल की बातचीत
+              {tx("home.recentChatsHeading")}
             </h3>
             <button
               data-testid="view-chat-btn"
               onClick={() => navigate("/chat")}
               className="text-xs text-[#FF9933] font-semibold flex items-center gap-0.5 hover:underline"
             >
-              चैट करें <ChevronRight size={14} />
+              {tx("home.goToChat")} <ChevronRight size={14} />
             </button>
           </div>
 
@@ -214,7 +225,7 @@ export default function HomePage({ userId }) {
             <div className="bg-white rounded-xl p-6 border border-gray-100 text-center">
               <MessageCircle size={28} className="text-gray-300 mx-auto mb-2" />
               <p className="text-sm text-gray-400 font-['Nunito']">
-                No conversations yet. Start chatting!
+                {tx("home.noConversations")}
               </p>
             </div>
           ) : (

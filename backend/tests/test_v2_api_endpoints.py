@@ -24,6 +24,63 @@ TEST_PHONE = f"900000{int(time.time()) % 10000:04d}"
 TEST_USER_ID = None
 
 
+def auth_headers():
+    """The header the real app's API client always sends. The profile and PDF
+    routes read X-User-Id to enforce ownership (DPDP s8(4)); a request without
+    it is correctly refused, so every test that reaches those routes must send
+    it, exactly as the frontend does."""
+    return {"X-User-Id": TEST_USER_ID or ""}
+
+
+# These scheme names are stable fixtures in the catalog, chosen one per category
+# that is actually present. The original MVP schemes the tests were written
+# against (Vidyasiri, PMAY-U, Startup India Seed Fund) have since been replaced
+# by the real government-form catalogue, so the tests now assert against schemes
+# that exist rather than those four.
+STABLE_SCHEME = "PM-KISAN Samman Nidhi"           # agriculture
+HOUSING_SCHEME = "Pradhan Mantri Awas Yojana - Gramin"
+EDUCATION_SCHEME = "National Scholarship - Post Matric"
+
+# A few profile keys need a value in a specific format to pass validation
+# (a six-digit PIN, a digits-only account number, a real IFSC). Everything
+# else can be a plausible sample. Kept here so a complete, *valid* profile can
+# be built from any scheme's own template, which is what the engine requires
+# before it will fill and release a form.
+_VALID_SAMPLES = {
+    "pincode": "560001", "ifsc_code": "SBIN0001234",
+    "bank_account_number": "123456789012", "mobile_number": "9876543210",
+    "aadhaar_number": "234567890124", "email": "test@example.com",
+    "name": "Ramesh Kumar", "father_husband_name": "Suresh Kumar",
+    "survey_khasra_number": "123/4", "land_holding_acres": 2,
+}
+
+
+def complete_valid_profile(scheme_name):
+    """Build a profile that satisfies a scheme's form, from the form itself.
+
+    The eligibility/validity engine refuses to fill a form from an incomplete
+    or malformed profile — correctly, since a wrong value on a signed
+    government form is a false declaration — so a generation test must supply a
+    whole valid profile. Reading the required fields from the live template
+    keeps the test honest as the form evolves."""
+    tpl = requests.get(
+        f"{BASE_URL}/api/v2/form-template/{requests.utils.quote(scheme_name)}").json()
+    profile = {}
+    for f in tpl.get("extractedFields", []):
+        key, ftype, options = f["profileKey"], f.get("type", "text"), f.get("options")
+        if key in _VALID_SAMPLES:
+            profile[key] = _VALID_SAMPLES[key]
+        elif options:
+            profile[key] = options[0]
+        elif ftype == "date":
+            profile[key] = "1985-06-15"
+        elif ftype == "number":
+            profile[key] = 2
+        else:
+            profile[key] = "Sample " + key.replace("_", " ").title()
+    return profile
+
+
 class TestAuth:
     """Authentication to get a test user_id"""
     
@@ -49,53 +106,50 @@ class TestAuth:
 
 class TestV2Schemes:
     """V2 /api/v2/schemes endpoint tests"""
-    
-    def test_get_all_schemes_returns_4(self):
-        """GET /api/v2/schemes returns 4 schemes"""
+
+    def test_get_all_schemes_is_populated_and_consistent(self):
+        """GET /api/v2/schemes returns the catalogue, with count matching the list.
+
+        The catalogue grew from the original four MVP schemes to the full real
+        government-form set, so this asserts the invariant — a populated list
+        whose reported count matches it — rather than a frozen number."""
         response = requests.get(f"{BASE_URL}/api/v2/schemes")
         assert response.status_code == 200
         data = response.json()
         assert "schemes" in data
-        assert data["count"] == 4
+        assert data["count"] == len(data["schemes"])
+        assert data["count"] >= 4, "catalogue should never be emptier than the MVP"
         print(f"✓ /api/v2/schemes returns {data['count']} schemes")
-    
-    def test_schemes_have_correct_categories(self):
-        """Schemes have correct categories: housing, education, startup, agriculture"""
+
+    def test_schemes_have_known_categories(self):
+        """Every scheme carries one of the catalogue's declared categories."""
         response = requests.get(f"{BASE_URL}/api/v2/schemes")
         data = response.json()
-        categories = [s["category"] for s in data["schemes"]]
-        expected_categories = {"housing", "education", "startup", "agriculture"}
-        assert set(categories) == expected_categories
-        print(f"✓ All 4 categories present: {expected_categories}")
-    
-    def test_schemes_have_pmay_u(self):
-        """PMAY-U scheme exists with correct data"""
+        categories = {s["category"] for s in data["schemes"]}
+        known = {"housing", "education", "startup", "agriculture",
+                 "health", "finance", "general"}
+        assert categories, "schemes must declare categories"
+        assert categories <= known, f"unexpected categories: {categories - known}"
+        print(f"✓ Categories present: {sorted(categories)}")
+
+    def test_schemes_have_a_housing_scheme(self):
+        """A housing scheme exists with the expected shape."""
         response = requests.get(f"{BASE_URL}/api/v2/schemes")
         data = response.json()
-        pmay = next((s for s in data["schemes"] if "PMAY" in s["name"]), None)
-        assert pmay is not None
-        assert pmay["category"] == "housing"
-        assert "nameHindi" in pmay
-        print(f"✓ PMAY-U found: {pmay['name']}")
-    
-    def test_schemes_have_vidyasiri(self):
-        """Vidyasiri scheme exists"""
+        housing = next((s for s in data["schemes"] if s["category"] == "housing"), None)
+        assert housing is not None
+        assert "nameHindi" in housing
+        print(f"✓ Housing scheme found: {housing['name']}")
+
+    def test_schemes_have_an_education_scheme(self):
+        """An education scheme exists (the original Vidyasiri was replaced)."""
         response = requests.get(f"{BASE_URL}/api/v2/schemes")
         data = response.json()
-        vidyasiri = next((s for s in data["schemes"] if "Vidyasiri" in s["name"]), None)
-        assert vidyasiri is not None
-        assert vidyasiri["category"] == "education"
-        print(f"✓ Vidyasiri found: {vidyasiri['name']}")
-    
-    def test_schemes_have_startup_india(self):
-        """Startup India Seed Fund scheme exists"""
-        response = requests.get(f"{BASE_URL}/api/v2/schemes")
-        data = response.json()
-        startup = next((s for s in data["schemes"] if "Startup" in s["name"]), None)
-        assert startup is not None
-        assert startup["category"] == "startup"
-        print(f"✓ Startup India found: {startup['name']}")
-    
+        edu = next((s for s in data["schemes"] if s["category"] == "education"), None)
+        assert edu is not None
+        assert "nameHindi" in edu
+        print(f"✓ Education scheme found: {edu['name']}")
+
     def test_schemes_have_pmkisan(self):
         """PM-KISAN scheme exists"""
         response = requests.get(f"{BASE_URL}/api/v2/schemes")
@@ -109,62 +163,50 @@ class TestV2Schemes:
 class TestV2FormTemplates:
     """V2 /api/v2/form-templates endpoint tests"""
     
-    def test_get_all_templates_returns_4(self):
-        """GET /api/v2/form-templates returns 4 templates"""
-        response = requests.get(f"{BASE_URL}/api/v2/form-templates")
-        assert response.status_code == 200
-        data = response.json()
-        assert "templates" in data
-        assert data["count"] == 4
-        print(f"✓ /api/v2/form-templates returns {data['count']} templates")
-    
-    def test_pmay_has_22_fields(self):
-        """PMAY-U template has 22 fields"""
-        response = requests.get(f"{BASE_URL}/api/v2/form-templates")
-        data = response.json()
-        pmay = next((t for t in data["templates"] if "PMAY" in t["schemeName"]), None)
-        assert pmay is not None
-        assert pmay["totalFields"] == 22
-        print(f"✓ PMAY-U has {pmay['totalFields']} fields")
-    
-    def test_vidyasiri_has_20_fields(self):
-        """Vidyasiri template has 20 fields"""
-        response = requests.get(f"{BASE_URL}/api/v2/form-templates")
-        data = response.json()
-        vidyasiri = next((t for t in data["templates"] if "Vidyasiri" in t["schemeName"]), None)
-        assert vidyasiri is not None
-        assert vidyasiri["totalFields"] == 20
-        print(f"✓ Vidyasiri has {vidyasiri['totalFields']} fields")
-    
-    def test_startup_india_has_21_fields(self):
-        """Startup India Seed Fund template has 21 fields"""
-        response = requests.get(f"{BASE_URL}/api/v2/form-templates")
-        data = response.json()
-        startup = next((t for t in data["templates"] if "Startup" in t["schemeName"]), None)
-        assert startup is not None
-        assert startup["totalFields"] == 21
-        print(f"✓ Startup India has {startup['totalFields']} fields")
-    
-    def test_pmkisan_has_19_fields(self):
-        """PM-KISAN template has 19 fields"""
-        response = requests.get(f"{BASE_URL}/api/v2/form-templates")
-        data = response.json()
+    def test_templates_match_scheme_count(self):
+        """Every scheme has a form template: the two lists are the same size."""
+        templates = requests.get(f"{BASE_URL}/api/v2/form-templates").json()
+        schemes = requests.get(f"{BASE_URL}/api/v2/schemes").json()
+        assert templates["count"] == len(templates["templates"])
+        assert templates["count"] == schemes["count"]
+        print(f"✓ /api/v2/form-templates returns {templates['count']} templates")
+
+    def test_every_template_reports_its_field_count(self):
+        """Each template in the list declares a field count and its identity.
+
+        The list view is a summary — scheme name, category, counts — and does
+        not carry the per-section breakdown, which the detail endpoint provides
+        (see TestV2SingleFormTemplate)."""
+        data = requests.get(f"{BASE_URL}/api/v2/form-templates").json()
+        for t in data["templates"]:
+            assert t["totalFields"] >= 1, f"{t['schemeName']} has no fields"
+            assert t.get("schemeName")
+        print(f"✓ All {data['count']} templates report field counts")
+
+    def test_pmkisan_template_has_fields(self):
+        """PM-KISAN's template is present and populated.
+
+        The exact count moved (19 → 21) as the real form was modelled more
+        fully, so this asserts the template exists with fields rather than a
+        frozen number; the precise PM-KISAN shape is pinned in
+        TestV2SingleFormTemplate."""
+        data = requests.get(f"{BASE_URL}/api/v2/form-templates").json()
         pmkisan = next((t for t in data["templates"] if "KISAN" in t["schemeName"]), None)
         assert pmkisan is not None
-        assert pmkisan["totalFields"] == 19
+        assert pmkisan["totalFields"] >= 15
         print(f"✓ PM-KISAN has {pmkisan['totalFields']} fields")
 
 
 class TestV2SingleFormTemplate:
     """V2 /api/v2/form-template/{scheme_name} endpoint tests"""
     
-    def test_pmkisan_template_has_19_fields_and_5_sections(self):
-        """GET /api/v2/form-template/PM-KISAN returns 19 fields and 5 sections"""
+    def test_pmkisan_template_has_21_fields_and_5_sections(self):
+        """GET /api/v2/form-template/PM-KISAN returns its current 21 fields / 5 sections."""
         response = requests.get(f"{BASE_URL}/api/v2/form-template/PM-KISAN%20Samman%20Nidhi")
         assert response.status_code == 200
         data = response.json()
         assert data["schemeName"] == "PM-KISAN Samman Nidhi"
-        assert len(data["extractedFields"]) == 19
+        assert len(data["extractedFields"]) == 21
         assert len(data["sections"]) == 5
         print(f"✓ PM-KISAN template: {len(data['extractedFields'])} fields, {len(data['sections'])} sections")
     
@@ -179,12 +221,16 @@ class TestV2SingleFormTemplate:
             assert "required" in field, f"Field missing required: {field}"
         print(f"✓ All {len(data['extractedFields'])} fields have required properties")
     
-    def test_pmkisan_has_farmer_details_section(self):
-        """PM-KISAN has Farmer Details section"""
+    def test_pmkisan_has_land_details_section(self):
+        """PM-KISAN's form covers the applicant's landholding.
+
+        The section was renamed "Land Details" (from the MVP's "Farmer
+        Details") when the real PM-KISAN form was modelled — it is the land a
+        farmer owns that the scheme turns on."""
         response = requests.get(f"{BASE_URL}/api/v2/form-template/PM-KISAN%20Samman%20Nidhi")
         data = response.json()
         section_names = [s["name"] for s in data["sections"]]
-        assert "Farmer Details" in section_names
+        assert "Land Details" in section_names
         print(f"✓ Sections: {section_names}")
     
     def test_nonexistent_template_returns_404(self):
@@ -198,62 +244,77 @@ class TestV2UserProfile:
     """V2 /api/v2/user-profile/{user_id} endpoint tests"""
     
     def test_save_profile_fields(self):
-        """POST /api/v2/user-profile/{user_id} saves fields"""
+        """POST /api/v2/user-profile/{user_id} saves fields — and never the Aadhaar.
+
+        The full Aadhaar is stripped before storage (Aadhaar Act s29; see
+        dpdp/aadhaar_policy): only its last four digits are kept. So the test
+        sends one and asserts the ordinary fields round-trip while the number
+        itself does not reach the stored profile."""
         global TEST_USER_ID
         if not TEST_USER_ID:
             pytest.skip("No test user_id available")
-        
+
         response = requests.post(
             f"{BASE_URL}/api/v2/user-profile/{TEST_USER_ID}",
-            json={"fields": {"name": "Test User", "aadhaar_number": "1234 5678 9012"}}
+            json={"fields": {"name": "Test User", "aadhaar_number": "1234 5678 9012"}},
+            headers=auth_headers(),
         )
         assert response.status_code == 200
         data = response.json()
         assert data["success"] == True
         assert "fullProfile" in data
         assert data["fullProfile"]["name"] == "Test User"
-        assert data["fullProfile"]["aadhaar_number"] == "1234 5678 9012"
-        print(f"✓ Profile fields saved: {data['fieldsUpdated']}")
-    
+        # The number is stripped; its last four may be retained.
+        assert data["fullProfile"].get("aadhaar_number") != "1234 5678 9012"
+        assert "9012" not in str(data["fullProfile"].get("aadhaar_number", "")) or \
+            data["fullProfile"].get("aadhaar_number_last4") == "9012"
+        print(f"✓ Profile fields saved (Aadhaar stripped): {data['fieldsUpdated']}")
+
     def test_get_saved_profile(self):
-        """GET /api/v2/user-profile/{user_id} returns saved profile"""
+        """GET /api/v2/user-profile/{user_id} returns the saved, non-Aadhaar fields."""
         global TEST_USER_ID
         if not TEST_USER_ID:
             pytest.skip("No test user_id available")
-        
-        response = requests.get(f"{BASE_URL}/api/v2/user-profile/{TEST_USER_ID}")
+
+        response = requests.get(
+            f"{BASE_URL}/api/v2/user-profile/{TEST_USER_ID}", headers=auth_headers())
         assert response.status_code == 200
         data = response.json()
         assert "fullProfile" in data
         assert data["fullProfile"]["name"] == "Test User"
-        assert data["fullProfile"]["aadhaar_number"] == "1234 5678 9012"
+        assert data["fullProfile"].get("aadhaar_number") != "1234 5678 9012"
         print(f"✓ Profile retrieved: {list(data['fullProfile'].keys())}")
-    
+
     def test_profile_merges_not_overwrites(self):
-        """Profile update merges new fields, doesn't overwrite"""
+        """Profile update merges new fields rather than replacing the record."""
         global TEST_USER_ID
         if not TEST_USER_ID:
             pytest.skip("No test user_id available")
-        
-        # Add more fields
+
         response = requests.post(
             f"{BASE_URL}/api/v2/user-profile/{TEST_USER_ID}",
-            json={"fields": {"state": "Karnataka", "gender": "Male"}}
+            json={"fields": {"state": "Karnataka", "gender": "Male"}},
+            headers=auth_headers(),
         )
         assert response.status_code == 200
         data = response.json()
-        # Should have all 4 fields now
-        assert data["fullProfile"]["name"] == "Test User"  # Original
-        assert data["fullProfile"]["aadhaar_number"] == "1234 5678 9012"  # Original
-        assert data["fullProfile"]["state"] == "Karnataka"  # New
-        assert data["fullProfile"]["gender"] == "Male"  # New
+        # The earlier name survives, and the new fields are added.
+        assert data["fullProfile"]["name"] == "Test User"   # original, preserved
+        assert data["fullProfile"]["state"] == "Karnataka"   # new
+        assert data["fullProfile"]["gender"] == "Male"       # new
         print(f"✓ Profile merged correctly: {len(data['fullProfile'])} fields")
     
-    def test_invalid_user_returns_404(self):
-        """Invalid user_id returns 404"""
+    def test_invalid_user_is_refused(self):
+        """An unknown or malformed user id never leaks anything: anonymous
+        callers get 401, a signed-in citizen asking about any id but their
+        own gets 403. Only an admin would ever see the 404."""
         response = requests.get(f"{BASE_URL}/api/v2/user-profile/invalid_user_id_123")
-        assert response.status_code == 404
-        print(f"✓ 404 for invalid user_id")
+        assert response.status_code == 401
+        if TEST_USER_ID:
+            response = requests.get(f"{BASE_URL}/api/v2/user-profile/invalid_user_id_123",
+                                    headers=auth_headers())
+            assert response.status_code == 403
+        print("✓ invalid user_id is refused, not resolved")
 
 
 class TestV2SmartProfiler:
@@ -306,7 +367,7 @@ class TestV2SmartProfiler:
         
         response = requests.post(
             f"{BASE_URL}/api/v2/smart-profiler",
-            json={"user_id": TEST_USER_ID, "scheme_names": ["PM-KISAN Samman Nidhi", "Vidyasiri Scholarship"]}
+            json={"user_id": TEST_USER_ID, "scheme_names": [STABLE_SCHEME, EDUCATION_SCHEME]}
         )
         assert response.status_code == 200
         data = response.json()
@@ -324,21 +385,18 @@ class TestV2GenerateFilledForms:
         if not TEST_USER_ID:
             pytest.skip("No test user_id available")
         
-        # First fill more profile fields
+        # Supply a whole valid profile for the scheme — the engine refuses to
+        # fill a form from incomplete or malformed data.
         requests.post(
             f"{BASE_URL}/api/v2/user-profile/{TEST_USER_ID}",
-            json={"fields": {
-                "father_husband_name": "Test Father",
-                "date_of_birth": "1990-01-01",
-                "mobile_number": "9876543210",
-                "district": "Bangalore",
-                "pincode": "560001"
-            }}
+            json={"fields": complete_valid_profile(STABLE_SCHEME)},
+            headers=auth_headers(),
         )
-        
+
         response = requests.post(
             f"{BASE_URL}/api/v2/generate-filled-forms",
-            json={"user_id": TEST_USER_ID, "scheme_names": ["PM-KISAN Samman Nidhi"]}
+            json={"user_id": TEST_USER_ID, "scheme_names": [STABLE_SCHEME]},
+            headers=auth_headers(),
         )
         assert response.status_code == 200
         data = response.json()
@@ -377,22 +435,34 @@ class TestPDFDownload:
         # Generate a PDF first
         gen_response = requests.post(
             f"{BASE_URL}/api/v2/generate-filled-forms",
-            json={"user_id": TEST_USER_ID, "scheme_names": ["PM-KISAN Samman Nidhi"]}
+            json={"user_id": TEST_USER_ID, "scheme_names": [STABLE_SCHEME]},
+            headers=auth_headers(),
         )
         data = gen_response.json()
         pdf_url = data["pdf_urls"][0]["pdf_url"]
-        
-        # Download the PDF
-        response = requests.get(f"{BASE_URL}{pdf_url}")
+
+        # Download the PDF as its owner — the ownership header is what the real
+        # app's client always sends; without it the route returns 401.
+        response = requests.get(f"{BASE_URL}{pdf_url}", headers=auth_headers())
         assert response.status_code == 200
         assert response.headers.get("content-type") == "application/pdf"
         print(f"✓ PDF downloaded successfully, size: {len(response.content)} bytes")
-    
+
     def test_invalid_pdf_returns_404(self):
-        """Invalid PDF UUID returns 404"""
-        response = requests.get(f"{BASE_URL}/api/pdf/nonexistent-uuid-12345")
+        """A PDF id with no ownership record returns 404 to an authenticated caller.
+
+        The route answers 404 (not 403) for an unowned artefact so that it is
+        indistinguishable from one that never existed — no existence oracle."""
+        response = requests.get(
+            f"{BASE_URL}/api/pdf/nonexistent-uuid-12345", headers=auth_headers())
         assert response.status_code == 404
         print(f"✓ 404 for nonexistent PDF")
+
+    def test_pdf_without_auth_is_refused(self):
+        """A download with no X-User-Id is refused outright (ownership gate)."""
+        response = requests.get(f"{BASE_URL}/api/pdf/nonexistent-uuid-12345")
+        assert response.status_code == 401
+        print(f"✓ 401 for unauthenticated PDF request")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Nagarik Sahayak</string>
+    <string name="title_activity_main">Nagarik Sahayak</string>
+    <string name="package_name">app.nagariksahayak</string>
+    <string name="custom_url_scheme">app.nagariksahayak</string>
+</resources>

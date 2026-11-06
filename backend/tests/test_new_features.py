@@ -9,8 +9,22 @@ Test New Features (Iteration 10):
 import pytest
 import requests
 import os
+import time
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+
+
+def pitch_path():
+    """Locate pitch.md whether the app runs from /app (deploy) or the repo.
+
+    The tests originally hardcoded /app/pitch.md, the container path; run
+    against a local checkout the file sits at the repository root instead."""
+    here = os.path.dirname(os.path.abspath(__file__))        # backend/tests
+    repo_root = os.path.dirname(os.path.dirname(here))        # repo root
+    for candidate in ("/app/pitch.md", os.path.join(repo_root, "pitch.md")):
+        if os.path.exists(candidate):
+            return candidate
+    return "/app/pitch.md"   # report the canonical path if neither is present
 
 
 class TestDemoModeEndpoints:
@@ -59,11 +73,11 @@ class TestPitchFile:
     
     def test_pitch_file_exists(self):
         """Check /app/pitch.md exists"""
-        assert os.path.exists("/app/pitch.md"), "pitch.md should exist"
+        assert os.path.exists(pitch_path()), "pitch.md should exist"
     
     def test_pitch_file_sections(self):
         """Check pitch.md contains required sections"""
-        with open("/app/pitch.md", "r") as f:
+        with open(pitch_path(), "r") as f:
             content = f.read()
         
         required_sections = [
@@ -80,7 +94,7 @@ class TestPitchFile:
     
     def test_pitch_file_demo_phrase(self):
         """Check pitch.md contains demo phrase"""
-        with open("/app/pitch.md", "r") as f:
+        with open(pitch_path(), "r") as f:
             content = f.read()
         
         assert "Mera beta 10th pass hai" in content, "Missing demo phrase"
@@ -88,7 +102,7 @@ class TestPitchFile:
     
     def test_pitch_file_quick_reference_table(self):
         """Check pitch.md contains quick reference table"""
-        with open("/app/pitch.md", "r") as f:
+        with open(pitch_path(), "r") as f:
             content = f.read()
         
         assert "Quick Reference" in content, "Missing Quick Reference section"
@@ -101,9 +115,18 @@ class TestChatEndpointWithNewFeatures:
     
     def test_chat_message_has_status(self):
         """Verify user message status is returned (sent/delivered/read)"""
+        # A real user: a non-demo message is handled by the profiler, which
+        # looks the user up by id, so a placeholder like "test_tick_user" (not
+        # a valid ObjectId) is rejected before the status can be checked.
+        phone = f"996{int(time.time()) % 10000000:07d}"
+        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
+        user_id = requests.post(
+            f"{BASE_URL}/api/auth/verify-otp",
+            json={"phone": phone, "otp": "123456"}).json()["user_id"]
+
         # Send a message
         response = requests.post(f"{BASE_URL}/api/chat", json={
-            "user_id": "test_tick_user",
+            "user_id": user_id,
             "content": "test message",
             "language": "hi"
         })

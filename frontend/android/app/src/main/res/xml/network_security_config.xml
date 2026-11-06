@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug/dev network policy for on-device testing.
+
+  The app's own origin is http://localhost (androidScheme "http"), which
+  Chromium treats as a secure context, so getUserMedia (the microphone) works.
+  The API is reached over cleartext during USB testing:
+    * localhost / 127.0.0.1  -> the phone's own loopback, mapped to the
+      laptop's backend by `adb reverse tcp:8001 tcp:8001`;
+    * 10.0.2.2               -> the host, when run on an emulator;
+    * base-config cleartext  -> any LAN IP (e.g. 192.168.x.x) if you point the
+      app at the laptop directly instead of using adb reverse.
+
+  A production build serves the API over HTTPS and drops this file.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

@@ -16,10 +16,20 @@ import time
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 
+@pytest.fixture(scope="module")
+def uploader():
+    """A signed-in citizen: uploads need identity (ownership is recorded
+    against the caller, and the route refuses anonymous callers)."""
+    phone = f"9951{int(time.time()) % 1000000:06d}"
+    requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
+    return requests.post(f"{BASE_URL}/api/auth/verify-otp",
+                         json={"phone": phone, "otp": "123456"}).json()["user_id"]
+
+
 class TestPdfUpload:
     """PDF Upload Endpoint Tests"""
-    
-    def test_upload_pdf_accepts_valid_pdf(self):
+
+    def test_upload_pdf_accepts_valid_pdf(self, uploader):
         """POST /api/upload-pdf accepts PDF file and returns success with pdf_id, pdf_url, filename, size"""
         # Create a minimal valid PDF in memory
         pdf_content = b'%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n>>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<<\n/Size 4\n/Root 1 0 R\n>>\nstartxref\n193\n%%EOF'
@@ -27,7 +37,7 @@ class TestPdfUpload:
         files = {
             'file': ('test_document.pdf', io.BytesIO(pdf_content), 'application/pdf')
         }
-        data = {'user_id': 'test_upload_user'}
+        data = {'user_id': uploader}
         
         response = requests.post(f"{BASE_URL}/api/upload-pdf", files=files, data=data)
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -41,7 +51,7 @@ class TestPdfUpload:
         
         print(f"PDF Upload successful: pdf_id={result['pdf_id']}, filename={result['filename']}, size={result['size']}")
     
-    def test_upload_pdf_rejects_non_pdf(self):
+    def test_upload_pdf_rejects_non_pdf(self, uploader):
         """POST /api/upload-pdf rejects non-PDF files with 400 error"""
         # Create a text file
         text_content = b'This is not a PDF file, just plain text.'
@@ -49,7 +59,7 @@ class TestPdfUpload:
         files = {
             'file': ('test_document.txt', io.BytesIO(text_content), 'text/plain')
         }
-        data = {'user_id': 'test_upload_user'}
+        data = {'user_id': uploader}
         
         response = requests.post(f"{BASE_URL}/api/upload-pdf", files=files, data=data)
         assert response.status_code == 400, f"Expected 400 for non-PDF, got {response.status_code}: {response.text}"
@@ -58,7 +68,7 @@ class TestPdfUpload:
         assert 'detail' in result, "Expected detail in error response"
         print(f"Non-PDF correctly rejected: {result['detail']}")
     
-    def test_upload_pdf_rejects_wrong_extension(self):
+    def test_upload_pdf_rejects_wrong_extension(self, uploader):
         """POST /api/upload-pdf rejects files with wrong extension"""
         # Create a file with .jpg extension (even if content is PDF)
         image_content = b'\xff\xd8\xff\xe0\x00\x10JFIF'  # JPEG magic bytes
@@ -66,7 +76,7 @@ class TestPdfUpload:
         files = {
             'file': ('test_image.jpg', io.BytesIO(image_content), 'image/jpeg')
         }
-        data = {'user_id': 'test_upload_user'}
+        data = {'user_id': uploader}
         
         response = requests.post(f"{BASE_URL}/api/upload-pdf", files=files, data=data)
         assert response.status_code == 400, f"Expected 400 for .jpg file, got {response.status_code}: {response.text}"
@@ -238,14 +248,25 @@ class TestUploadedPdfDownload:
             'file': ('downloadable.pdf', io.BytesIO(pdf_content), 'application/pdf')
         }
         
-        upload_resp = requests.post(f"{BASE_URL}/api/upload-pdf", files=files, data={'user_id': 'test'})
+        # A real user: ownership is recorded against the user id (an ObjectId),
+        # so a placeholder like 'test' records no owner and the document is then
+        # unreachable by design.
+        phone = f"997{int(time.time()) % 10000000:07d}"
+        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
+        owner = requests.post(
+            f"{BASE_URL}/api/auth/verify-otp",
+            json={"phone": phone, "otp": "123456"}).json()["user_id"]
+
+        upload_resp = requests.post(f"{BASE_URL}/api/upload-pdf", files=files, data={'user_id': owner})
         assert upload_resp.status_code == 200
-        
+
         pdf_id = upload_resp.json()['pdf_id']
         pdf_url = upload_resp.json()['pdf_url']
-        
-        # Download the PDF
-        download_resp = requests.get(f"{BASE_URL}{pdf_url}")
+
+        # Download the PDF as its owner — upload records ownership, and the
+        # download route enforces it (DPDP s8(4)).
+        download_resp = requests.get(f"{BASE_URL}{pdf_url}",
+                                     headers={"X-User-Id": owner})
         assert download_resp.status_code == 200
         assert download_resp.headers.get('content-type') == 'application/pdf'
         assert download_resp.content.startswith(b'%PDF')

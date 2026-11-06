@@ -32,28 +32,31 @@ app = FastAPI()
 async def startup():
     await prisma.connect()
     logger.info("Prisma connected")
-    # Seed Prisma Scheme table (idempotent)
-    count = await prisma.scheme.count()
-    if count == 0:
-        try:
-            for s in [
-                {"name": "Pradhan Mantri Awas Yojana",
-                 "eligibilityCriteriaText": "Family income < ₹3 lakh per annum, no pucca house owned, rural or urban BPL category.",
-                 "pdfUrl": "https://pmaymis.gov.in/pdf/pmay_guidelines.pdf"},
-                {"name": "Vidyasiri Scholarship",
-                 "eligibilityCriteriaText": "Karnataka resident, passed 10th or equivalent, family income < ₹1.5 lakh, studying in Karnataka.",
-                 "pdfUrl": "https://karnataka.gov.in/scholarship/vidyasiri.pdf"},
-                {"name": "Vidya Lakshmi Education Loan",
-                 "eligibilityCriteriaText": "Indian citizen, 12th pass, pursuing higher education in approved institution.",
-                 "pdfUrl": "https://www.vidyalakshmi.co.in/files/guidelines.pdf"},
-            ]:
-                existing = await prisma.scheme.find_first(where={"name": s["name"]})
-                if not existing:
-                    await prisma.scheme.create(data=s)
-        except Exception as e:
-            logger.error(f"Seed failed: {e}\n{traceback.format_exc()}")
-    scheme_count = await prisma.scheme.count()
-    logger.info(f"Prisma Scheme table: {scheme_count} records")
+
+    # Seed real government schemes and their form templates from the curated
+    # catalog (data/gov_forms.py). Idempotent and non-destructive: existing
+    # templates are left alone, so live-refreshed or user-uploaded forms
+    # survive a restart.
+    try:
+        from services.form_seeder import seed_from_catalog
+        report = await seed_from_catalog(overwrite=False)
+        logger.info(
+            "Government form catalog seeded: %d created, %d updated, %d already present",
+            report["created"], report["updated"], report["skipped"],
+        )
+        if report["errors"]:
+            logger.warning("Catalog seed errors: %s", report["errors"])
+    except Exception as e:
+        logger.error(f"Catalog seed failed: {e}\n{traceback.format_exc()}")
+
+    try:
+        scheme_count = await prisma.scheme.count()
+        template_count = await prisma.formtemplate.count()
+        logger.info(
+            f"Ready: {scheme_count} schemes, {template_count} form templates"
+        )
+    except Exception as e:
+        logger.error(f"Startup count failed: {e}")
 
 
 @app.on_event("shutdown")
@@ -80,7 +83,23 @@ async def root():
 async def analytics_status():
     return {"enabled": bool(AGNOST_WRITE_KEY), "dashboard_url": "https://app.agnost.ai"}
 
-app.include_router(api_router)
+# Every API request passes through one authorisation rule (auth/deps.py):
+# a request that names a user must be authenticated as, or for, that user;
+# a request that names nobody needs a token unless the route is public.
+from fastapi import Depends
+from auth.deps import enforce
+app.include_router(api_router, dependencies=[Depends(enforce)])
+
+# Edge hygiene, innermost first: request ids, security headers, body limits,
+# rate limiting. CORS is added last so it is outermost and preflights never
+# hit the limiter.
+from api.middleware import (
+    BodySizeLimitMiddleware, RateLimitMiddleware, RequestIdMiddleware, SecurityHeadersMiddleware,
+)
+app.add_middleware(RequestIdMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(BodySizeLimitMiddleware)
+app.add_middleware(RateLimitMiddleware)
 
 # CORS: explicit origins only, never wildcard with credentials
 app.add_middleware(
@@ -88,5 +107,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_origins=CORS_ORIGINS,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-User-Id", "X-Admin-Secret"],
+    allow_headers=["Content-Type", "Authorization", "X-User-Id", "X-Admin-Secret",
+                   "X-Reviewer-Id", "X-Request-Id"],
+    expose_headers=["X-Request-Id", "Retry-After"],
 )

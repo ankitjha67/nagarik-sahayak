@@ -9,6 +9,11 @@ import SchemesPage from "@/pages/SchemesPage";
 import ExamsPage from "@/pages/ExamsPage";
 import DiscoveryPage from "@/pages/DiscoveryPage";
 import ProfilePage from "@/pages/ProfilePage";
+import ReviewPage from "@/pages/ReviewPage";
+import PrivacyPage from "@/pages/PrivacyPage";
+import IdentityPage from "@/pages/IdentityPage";
+import { LanguageProvider, useLanguage } from "@/lib/i18n";
+import { FallbackBanner } from "@/components/LanguagePicker";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -46,37 +51,32 @@ class ErrorBoundary extends Component {
   }
 }
 
-function App() {
-  const [userId, setUserId] = useState(() => localStorage.getItem("ns_user_id") || null);
-  const [phone, setPhone] = useState(() => localStorage.getItem("ns_phone") || null);
-  const [language, setLanguage] = useState(() => localStorage.getItem("ns_language") || "hi");
-
-  const handleLogin = (uid, ph) => {
-    setUserId(uid);
-    setPhone(ph);
-    localStorage.setItem("ns_user_id", uid);
-    localStorage.setItem("ns_phone", ph);
-  };
-
-  const handleLogout = () => {
-    setUserId(null);
-    setPhone(null);
-    localStorage.removeItem("ns_user_id");
-    localStorage.removeItem("ns_phone");
-    localStorage.removeItem("ns_language");
-  };
-
+// The routes live in their own component *inside* the LanguageProvider so the
+// `language` each page receives is the provider's live value, not a copy frozen
+// at mount. Before this split, App held its own `language` state that the
+// language picker never updated — the picker changes the provider, not App — so
+// switching language left every page keyed on the prop stuck in the old
+// language until a full reload. Reading it from the provider here fixes every
+// page at once.
+function AppRoutes({ userId, onLogin, onLogout }) {
+  const { code: language } = useLanguage();
   const isLoggedIn = !!userId;
 
   return (
-    <div className="App">
-      <BrowserRouter>
+    <BrowserRouter>
+        {/* WCAG 2.4.1 — lets keyboard and screen-reader users bypass the
+            header rather than tabbing through it on every page. */}
+        <a href="#main-content" className="skip-to-content">
+          मुख्य सामग्री पर जाएं / Skip to main content
+        </a>
+        <FallbackBanner />
         <ErrorBoundary>
+        <main id="main-content">
         <Routes>
           <Route
             path="/"
             element={
-              isLoggedIn ? <Navigate to="/home" replace /> : <LoginPage onLogin={handleLogin} />
+              isLoggedIn ? <Navigate to="/home" replace /> : <LoginPage onLogin={onLogin} />
             }
           />
           <Route
@@ -94,7 +94,7 @@ function App() {
           <Route
             path="/schemes"
             element={
-              isLoggedIn ? <SchemesPage language={language} /> : <Navigate to="/" replace />
+              isLoggedIn ? <SchemesPage userId={userId} language={language} /> : <Navigate to="/" replace />
             }
           />
           <Route
@@ -109,11 +109,27 @@ function App() {
               isLoggedIn ? <DiscoveryPage language={language} /> : <Navigate to="/" replace />
             }
           />
+          {/* Reviewer console. Not behind the citizen login: reviewers are
+              departmental staff who authenticate with their own credentials,
+              and may never have a citizen account at all. */}
+          <Route path="/review" element={<ReviewPage />} />
+          <Route
+            path="/privacy"
+            element={
+              isLoggedIn ? <PrivacyPage userId={userId} /> : <Navigate to="/" replace />
+            }
+          />
+          <Route
+            path="/identity"
+            element={
+              isLoggedIn ? <IdentityPage userId={userId} /> : <Navigate to="/" replace />
+            }
+          />
           <Route
             path="/profile"
             element={
               isLoggedIn ? (
-                <ProfilePage userId={userId} onLogout={handleLogout} />
+                <ProfilePage userId={userId} onLogout={onLogout} />
               ) : (
                 <Navigate to="/" replace />
               )
@@ -121,8 +137,47 @@ function App() {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </main>
         </ErrorBoundary>
       </BrowserRouter>
+  );
+}
+
+function App() {
+  // A stored id without a token (storage from before sessions existed, or a
+  // half-cleared logout) is not a session: start signed out.
+  const [userId, setUserId] = useState(() =>
+    localStorage.getItem("ns_access") ? localStorage.getItem("ns_user_id") || null : null);
+  // Phone is kept in localStorage for the auth flow; App no longer holds it in
+  // state because nothing rendered here reads it.
+  const initialLanguage = localStorage.getItem("ns_language") || "hi";
+
+  const handleLogin = (uid, ph) => {
+    setUserId(uid);
+    localStorage.setItem("ns_user_id", uid);
+    localStorage.setItem("ns_phone", ph);
+  };
+
+  const handleLogout = () => {
+    setUserId(null);
+    // Revoke the session on the server (best effort) and drop every token
+    // and identifier this client holds.
+    import("./lib/api").then((m) => m.logoutServer()).catch(() => {});
+    localStorage.removeItem("ns_user_id");
+    localStorage.removeItem("ns_phone");
+    localStorage.removeItem("ns_language");
+  };
+
+  return (
+    <div className="App">
+      {/* The language provider wraps the router, not each page: the chosen
+          language sets document.documentElement.lang and dir, which must hold
+          across navigation or a screen reader re-guesses the language on every
+          route change. AppRoutes lives inside it so each page gets the live
+          language, not a copy frozen at mount. */}
+      <LanguageProvider initial={initialLanguage}>
+        <AppRoutes userId={userId} onLogin={handleLogin} onLogout={handleLogout} />
+      </LanguageProvider>
       <Toaster position="top-center" richColors />
     </div>
   );

@@ -5,11 +5,17 @@ import { Sidebar } from "../components/Sidebar";
 import {
   getProfile, updateProfile,
   getNotificationPreferences, updateNotificationPreferences,
+  getMyReviewCases,
 } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { toast } from "sonner";
-import { UserCircle2, Phone, Globe, LogOut, Save, Loader2, Bell, Mail } from "lucide-react";
+import { useLanguage } from "../lib/i18n";
+import { useNavigate } from "react-router-dom";
+import {
+  UserCircle2, Phone, Globe, LogOut, Save, Loader2, Bell, Mail,
+  ShieldCheck, Clock, CheckCircle2, XCircle, Lock, ChevronRight,
+} from "lucide-react";
 
 function PrefToggle({ label, labelHi, checked, onChange }) {
   return (
@@ -36,8 +42,10 @@ function PrefToggle({ label, labelHi, checked, onChange }) {
 }
 
 export default function ProfilePage({ userId, onLogout }) {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [name, setName] = useState("");
+  const { tx } = useLanguage();
   const [language, setLanguage] = useState("hi");
   const [saving, setSaving] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -48,6 +56,7 @@ export default function ProfilePage({ userId, onLogout }) {
     email: "",
   });
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [reviewCases, setReviewCases] = useState([]);
 
   useEffect(() => {
     if (userId) {
@@ -57,6 +66,12 @@ export default function ProfilePage({ userId, onLogout }) {
           setName(r.data.name || "");
           setLanguage(r.data.language || "hi");
         })
+        .catch(() => {});
+      // Applications held for verification. Someone whose benefit is delayed is
+      // entitled to know that a check is under way rather than assuming silence
+      // means refusal.
+      getMyReviewCases(userId)
+        .then((r) => setReviewCases(r.data.cases || []))
         .catch(() => {});
       getNotificationPreferences(userId)
         .then((r) => setPrefs({
@@ -73,7 +88,7 @@ export default function ProfilePage({ userId, onLogout }) {
     setSavingPrefs(true);
     try {
       await updateNotificationPreferences(userId, prefs);
-      toast.success("नोटिफिकेशन सेटिंग सेव हो गई!");
+      toast.success(tx("profile.notifSaved"));
     } catch (e) {
       toast.error(e.response?.data?.detail || "Failed to save preferences");
     } finally {
@@ -87,7 +102,7 @@ export default function ProfilePage({ userId, onLogout }) {
     try {
       const res = await updateProfile(userId, { name, language });
       setProfile(res.data);
-      toast.success("प्रोफाइल अपडेट हो गया!");
+      toast.success(tx("profile.saved"));
     } catch {
       toast.error("Failed to update profile");
     } finally {
@@ -97,7 +112,7 @@ export default function ProfilePage({ userId, onLogout }) {
 
   return (
     <div data-testid="profile-page" className="min-h-screen bg-gray-50 pb-20">
-      <AppHeader title="प्रोफाइल" onMenuClick={() => setSidebarOpen(true)} />
+      <AppHeader onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="max-w-md mx-auto px-4 pt-6">
@@ -124,7 +139,7 @@ export default function ProfilePage({ userId, onLogout }) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="अपना नाम दर्ज करें"
+              placeholder={tx("profile.namePlaceholder")}
               className="h-11 rounded-xl border-gray-200 font-['Nunito']"
             />
           </div>
@@ -188,11 +203,57 @@ export default function ProfilePage({ userId, onLogout }) {
             ) : (
               <>
                 <Save size={16} />
-                सेव करें
+                {tx("profile.save")}
               </>
             )}
           </Button>
         </div>
+
+        {/* Verification status */}
+        {reviewCases.length > 0 && (
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm mt-5 animate-fade-in-up">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldCheck size={16} className="text-[#FF9933]" />
+              <h3 className="text-sm font-bold text-[#000080] font-['Mukta']">
+                सत्यापन स्थिति / Verification Status
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {reviewCases.map((c, i) => {
+                const cfg = {
+                  pending: { Icon: Clock, cls: "bg-amber-50 border-amber-200 text-amber-800" },
+                  approved: { Icon: CheckCircle2, cls: "bg-green-50 border-green-200 text-green-800" },
+                  rejected: { Icon: XCircle, cls: "bg-red-50 border-red-200 text-red-800" },
+                }[c.status] || { Icon: Clock, cls: "bg-gray-50 border-gray-200 text-gray-700" };
+                const { Icon, cls } = cfg;
+                return (
+                  <div key={i} className={`rounded-xl border p-3 ${cls}`}>
+                    <div className="flex items-start gap-2">
+                      <Icon size={14} className="mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold font-['Mukta'] truncate">
+                          {c.scheme}
+                        </p>
+                        <p className="text-[11px] font-['Nunito'] opacity-90 mt-0.5">
+                          {c.message_hi}
+                        </p>
+                        <p className="text-[10px] font-['Nunito'] opacity-70">
+                          {c.message_en}
+                        </p>
+                        {/* Only rejections carry a note; an approval needs none. */}
+                        {c.note && (
+                          <p className="text-[10px] font-['Nunito'] mt-1 pt-1 border-t border-current/20">
+                            कारण / Reason: {c.note}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Notification Preferences */}
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm mt-5 animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
@@ -247,11 +308,32 @@ export default function ProfilePage({ userId, onLogout }) {
             ) : (
               <>
                 <Save size={14} />
-                अलर्ट सेव करें
+                {tx("profile.saveAlerts")}
               </>
             )}
           </Button>
         </div>
+
+        {/* Privacy & data rights. A statutory right nobody can find is not a
+            right, so this sits in the main profile flow rather than a submenu. */}
+        <button
+          onClick={() => navigate("/privacy")}
+          data-testid="privacy-link"
+          className="w-full mt-5 bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3 text-left animate-fade-in-up"
+        >
+          <div className="w-9 h-9 rounded-xl bg-[#E8EAF6] flex items-center justify-center flex-shrink-0">
+            <Lock size={17} className="text-[#000080]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-[#000080] font-['Mukta']">
+              गोपनीयता और आपके अधिकार
+            </p>
+            <p className="text-[11px] text-gray-500 font-['Nunito']">
+              Privacy, consent, and your data rights
+            </p>
+          </div>
+          <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+        </button>
 
         {/* Logout */}
         <button

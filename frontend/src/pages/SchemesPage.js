@@ -2,13 +2,43 @@ import { useState, useEffect } from "react";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
-import { getSchemes, getV2Schemes, getDiscoveredSchemes, downloadSchemesExcel } from "../lib/api";
+import {
+  getSchemes, getV2Schemes, getDiscoveredSchemes, downloadSchemesExcel,
+  getUserFullProfile, screenAllSchemes, getFormCatalog, getCatalogStates,
+} from "../lib/api";
+import { loadKycOutcomes } from "../lib/kycStore";
+import { DocumentChecklist } from "../components/DocumentChecklist";
 import { Badge } from "../components/ui/badge";
 import {
   Sprout, HeartPulse, Baby, ExternalLink, ChevronDown, ChevronUp,
   Users, IndianRupee, Home, GraduationCap, Rocket, Briefcase,
-  Search, Download, Building2,
+  Search, Download, Building2, CheckCircle2, XCircle, HelpCircle, Loader2,
+  FileText,
 } from "lucide-react";
+
+// How an eligibility outcome is presented on a scheme card.
+const ELIGIBILITY_BADGE = {
+  approved: {
+    icon: CheckCircle2, label: "आप पात्र हैं", labelEn: "You qualify",
+    cls: "bg-green-50 text-green-700 border-green-200",
+  },
+  approved_with_review: {
+    icon: CheckCircle2, label: "आप पात्र हैं", labelEn: "You qualify",
+    cls: "bg-green-50 text-green-700 border-green-200",
+  },
+  blocked_not_eligible: {
+    icon: XCircle, label: "पात्र नहीं", labelEn: "Not eligible",
+    cls: "bg-red-50 text-red-700 border-red-200",
+  },
+  blocked_invalid_data: {
+    icon: XCircle, label: "विवरण जाँचें", labelEn: "Check your details",
+    cls: "bg-red-50 text-red-700 border-red-200",
+  },
+  incomplete: {
+    icon: HelpCircle, label: "जानकारी अधूरी", labelEn: "More info needed",
+    cls: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+};
 
 const ICON_MAP = {
   sprout: Sprout,
@@ -34,12 +64,56 @@ const CATEGORY_COLORS = {
   general: { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" },
 };
 
-export default function SchemesPage({ language = "hi" }) {
+export default function SchemesPage({ userId, language = "hi" }) {
   const [schemes, setSchemes] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  // "" means show everything. A named State shows that State's schemes *plus*
+  // every Central one — filtering a Bihar user down to Bihar-only schemes would
+  // hide most of what they can claim, and hide it silently.
+  const [stateFilter, setStateFilter] = useState(
+    () => localStorage.getItem("ns_state_filter") || ""
+  );
+  const [catalogStates, setCatalogStates] = useState([]);
+  const [catalogMeta, setCatalogMeta] = useState({});
+  // scheme name -> {outcome, reasons_hi, reasons_en, benefit}
+  const [eligibility, setEligibility] = useState({});
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+  const [onlyEligible, setOnlyEligible] = useState(false);
+  // The scheme whose "documents to carry" sheet is open, or null. Held as the
+  // catalog name so the sheet can fetch by it.
+  const [docChecklistFor, setDocChecklistFor] = useState(null);
+
+  // Screen the citizen's stored profile against every scheme so the list can
+  // answer the question people actually have — "what am I entitled to?" —
+  // instead of leaving them to read criteria and guess.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    setCheckingEligibility(true);
+    getUserFullProfile(userId)
+      .then((r) => {
+        const profile = r.data?.fullProfile || {};
+        if (!Object.keys(profile).length) return null;
+        // Any identity checks this citizen has completed go in with the
+        // screen, so verifying actually buys them something here rather than
+        // only on the identity page.
+        return screenAllSchemes(profile, userId, loadKycOutcomes());
+      })
+      .then((res) => {
+        if (cancelled || !res) return;
+        const map = {};
+        for (const group of ["eligible", "not_eligible", "needs_more_info"]) {
+          for (const item of res.data[group] || []) map[item.scheme] = item;
+        }
+        setEligibility(map);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCheckingEligibility(false); });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   useEffect(() => {
     // Load curated (V1+V2) and crawler-discovered (V3) schemes, merge results
@@ -87,13 +161,52 @@ export default function SchemesPage({ language = "hi" }) {
       ];
       setSchemes(merged);
     });
+
+    // The curated schemes come from the Scheme table, which may predate the
+    // level/state columns on a deployment that has not reseeded. The form
+    // catalog always has them, so it is kept alongside and consulted when a
+    // scheme carries no level of its own. Held separately rather than merged
+    // into `schemes`, because the two requests race and whichever resolved
+    // second would otherwise overwrite the other.
+    Promise.all([
+      getFormCatalog().catch(() => ({ data: { forms: [] } })),
+      getCatalogStates().catch(() => ({ data: { states: [] } })),
+    ]).then(([catRes, stateRes]) => {
+      const meta = {};
+      for (const f of catRes.data.forms || []) {
+        meta[f.schemeName] = { level: f.level, state: f.state };
+      }
+      setCatalogMeta(meta);
+      setCatalogStates(stateRes.data.states || []);
+    });
   }, []);
+
+  // Where a scheme sits, from the scheme itself or the form catalog. Anything
+  // with no level recorded counts as Central: showing a scheme that may not
+  // apply is recoverable, hiding one the citizen could have claimed is not.
+  const placeOf = (s) => ({
+    level: s.level || catalogMeta[s.title]?.level || "Central",
+    state: s.state || catalogMeta[s.title]?.state || "",
+  });
 
   const isHindi = language === "hi";
 
   // Filter schemes
+  const eligibleOutcomes = new Set(["approved", "approved_with_review"]);
+  const eligibleCount = Object.values(eligibility)
+    .filter(e => eligibleOutcomes.has(e.outcome)).length;
+
   const filteredSchemes = schemes.filter(s => {
+    if (onlyEligible) {
+      const e = eligibility[s.title];
+      if (!e || !eligibleOutcomes.has(e.outcome)) return false;
+    }
     if (categoryFilter && s.category !== categoryFilter) return false;
+    // A State's residents see that State's schemes and every Central one.
+    if (stateFilter) {
+      const place = placeOf(s);
+      if (place.level === "State" && place.state !== stateFilter) return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const searchable = `${s.title || ""} ${s.title_hi || ""} ${s.description || ""} ${s.category || ""}`.toLowerCase();
@@ -118,7 +231,7 @@ export default function SchemesPage({ language = "hi" }) {
 
   return (
     <div data-testid="schemes-page" className="min-h-screen bg-gray-50 pb-20">
-      <AppHeader title={isHindi ? "सरकारी योजनाएं" : "Government Schemes"} onMenuClick={() => setSidebarOpen(true)} />
+      <AppHeader onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="max-w-md mx-auto px-4 pt-4">
@@ -142,6 +255,42 @@ export default function SchemesPage({ language = "hi" }) {
             <Download size={14} />
           </button>
         </div>
+
+        {/* State selector. Placed above the category chips because where a
+            citizen lives decides what exists for them, and the category only
+            sorts what is left. */}
+        {catalogStates.length > 0 && (
+          <div className="mb-3 animate-fade-in-up">
+            <label htmlFor="state-filter" className="block text-[11px] font-semibold text-gray-600 mb-1">
+              {isHindi ? "आपका राज्य" : "Your State"}
+            </label>
+            <select
+              id="state-filter"
+              value={stateFilter}
+              onChange={(e) => {
+                setStateFilter(e.target.value);
+                localStorage.setItem("ns_state_filter", e.target.value);
+              }}
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm"
+            >
+              <option value="">
+                {isHindi ? "सभी राज्य" : "All States"}
+              </option>
+              {catalogStates.map((st) => (
+                <option key={st.state} value={st.state}>
+                  {st.state} ({st.totalAvailable})
+                </option>
+              ))}
+            </select>
+            {stateFilter && (
+              <p className="text-[11px] text-gray-500 mt-1">
+                {isHindi
+                  ? `${stateFilter} की योजनाएँ तथा सभी केंद्रीय योजनाएँ दिखाई जा रही हैं।`
+                  : `Showing ${stateFilter} schemes and every Central scheme.`}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Category Filter Chips */}
         {categories.length > 1 && (
@@ -172,14 +321,46 @@ export default function SchemesPage({ language = "hi" }) {
           </div>
         )}
 
-        {/* Info Banner */}
-        <div className="bg-[#FFF0E0] rounded-xl p-4 border border-orange-100 mb-5 animate-fade-in-up">
-          <p className="text-sm text-[#000080] font-['Mukta'] font-semibold">
-            {isHindi
-              ? `${filteredSchemes.length} योजनाओं की जानकारी देखें और अपनी पात्रता जांचें।`
-              : `Browse ${filteredSchemes.length} schemes below and check your eligibility.`}
-          </p>
-        </div>
+        {/* Eligibility summary — what this citizen actually qualifies for */}
+        {checkingEligibility ? (
+          <div className="bg-white rounded-xl p-4 border border-gray-100 mb-5 flex items-center gap-2">
+            <Loader2 size={14} className="animate-spin text-[#FF9933]" />
+            <span className="text-xs text-gray-500 font-['Nunito']">
+              {isHindi ? "आपकी पात्रता जाँची जा रही है…" : "Checking your eligibility…"}
+            </span>
+          </div>
+        ) : Object.keys(eligibility).length > 0 ? (
+          <button
+            onClick={() => setOnlyEligible(v => !v)}
+            className={`w-full text-left rounded-xl p-4 border mb-5 transition-all animate-fade-in-up ${
+              onlyEligible
+                ? "bg-green-50 border-green-300"
+                : "bg-[#E6F4EA] border-green-100 hover:border-green-300"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-[#138808] flex-shrink-0" />
+              <p className="text-sm text-[#000080] font-['Mukta'] font-semibold flex-1">
+                {isHindi
+                  ? `आप ${eligibleCount} योजनाओं के लिए पात्र हैं`
+                  : `You qualify for ${eligibleCount} scheme${eligibleCount === 1 ? "" : "s"}`}
+              </p>
+            </div>
+            <p className="text-[11px] text-gray-600 font-['Nunito'] mt-0.5 ml-6">
+              {onlyEligible
+                ? (isHindi ? "सभी योजनाएं देखने के लिए टैप करें" : "Tap to show all schemes")
+                : (isHindi ? "केवल पात्र योजनाएं देखने के लिए टैप करें" : "Tap to show only these")}
+            </p>
+          </button>
+        ) : (
+          <div className="bg-[#FFF0E0] rounded-xl p-4 border border-orange-100 mb-5 animate-fade-in-up">
+            <p className="text-sm text-[#000080] font-['Mukta'] font-semibold">
+              {isHindi
+                ? `${filteredSchemes.length} योजनाओं की जानकारी देखें और अपनी पात्रता जांचें।`
+                : `Browse ${filteredSchemes.length} schemes below and check your eligibility.`}
+            </p>
+          </div>
+        )}
 
         {/* Scheme Cards */}
         <div className="space-y-4 stagger-children">
@@ -216,6 +397,18 @@ export default function SchemesPage({ language = "hi" }) {
                       >
                         {scheme.category}
                       </Badge>
+                      {(() => {
+                        const e = eligibility[scheme.title];
+                        const badge = e && ELIGIBILITY_BADGE[e.outcome];
+                        if (!badge) return null;
+                        const BadgeIcon = badge.icon;
+                        return (
+                          <Badge className={`${badge.cls} border text-[10px] font-semibold px-2 py-0.5 flex items-center gap-1`}>
+                            <BadgeIcon size={10} />
+                            {isHindi ? badge.label : badge.labelEn}
+                          </Badge>
+                        );
+                      })()}
                       {scheme.discovered && (
                         <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 border text-[10px] font-semibold px-2 py-0.5">
                           {isHindi ? "खोजी गई" : "Discovered"}
@@ -236,6 +429,59 @@ export default function SchemesPage({ language = "hi" }) {
                 {/* Expanded Content */}
                 {isExpanded && (
                   <div className="px-5 pb-5 border-t border-gray-50 animate-fade-in-up">
+                    {/* Why this citizen does or does not qualify. A bare verdict
+                        is not actionable — the specific unmet condition is. */}
+                    {(() => {
+                      const e = eligibility[scheme.title];
+                      if (!e) return null;
+                      const reasons = (isHindi && e.reasons_hi?.length)
+                        ? e.reasons_hi : (e.reasons_en || []);
+                      const qualifies = ["approved", "approved_with_review"].includes(e.outcome);
+                      if (qualifies) {
+                        return (
+                          <div className="mt-4 rounded-lg bg-green-50 border border-green-200 p-3">
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle2 size={13} className="text-green-600" />
+                              <span className="text-[11px] font-bold text-green-800 font-['Mukta']">
+                                {isHindi ? "आप इस योजना के लिए पात्र हैं" : "You qualify for this scheme"}
+                              </span>
+                            </div>
+                            {e.benefit && (
+                              <p className="text-[11px] text-green-700 font-['Nunito'] mt-1 ml-5">
+                                {isHindi ? "लाभ: " : "Benefit: "}{e.benefit}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      }
+                      if (!reasons.length) return null;
+                      const isIncomplete = e.outcome === "incomplete";
+                      return (
+                        <div className={`mt-4 rounded-lg border p-3 ${
+                          isIncomplete
+                            ? "bg-amber-50 border-amber-200"
+                            : "bg-red-50 border-red-200"}`}>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            {isIncomplete
+                              ? <HelpCircle size={13} className="text-amber-600" />
+                              : <XCircle size={13} className="text-red-600" />}
+                            <span className={`text-[11px] font-bold font-['Mukta'] ${
+                              isIncomplete ? "text-amber-800" : "text-red-800"}`}>
+                              {isIncomplete
+                                ? (isHindi ? "और जानकारी चाहिए" : "More information needed")
+                                : (isHindi ? "आप अभी पात्र नहीं हैं" : "You do not currently qualify")}
+                            </span>
+                          </div>
+                          {reasons.map((r, i) => (
+                            <p key={i} className={`text-[10px] font-['Nunito'] leading-snug ml-5 ${
+                              isIncomplete ? "text-amber-700" : "text-red-700"}`}>
+                              • {r}
+                            </p>
+                          ))}
+                        </div>
+                      );
+                    })()}
+
                     {/* Eligibility */}
                     <div className="mt-4">
                       <div className="flex items-center gap-2 mb-2">
@@ -264,6 +510,20 @@ export default function SchemesPage({ language = "hi" }) {
 
                     {/* Action Links */}
                     <div className="flex gap-2 mt-4 flex-wrap">
+                      {/* "What to carry to the counter" — only for schemes that
+                          have a real form in the catalog, since the checklist
+                          is derived from that form's fields. catalogMeta holds
+                          exactly those, keyed by scheme title. */}
+                      {catalogMeta[scheme.title] && (
+                        <button
+                          data-testid={`scheme-documents-${scheme.id}`}
+                          onClick={() => setDocChecklistFor(scheme.title)}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#138808] text-white rounded-full text-sm font-semibold hover:brightness-95 transition-all"
+                        >
+                          <FileText size={14} />
+                          {isHindi ? "कौन से दस्तावेज़ ले जाएं" : "Documents to carry"}
+                        </button>
+                      )}
                       {scheme.pdf_url && (
                         <a
                           href={scheme.pdf_url}
@@ -295,6 +555,15 @@ export default function SchemesPage({ language = "hi" }) {
           })}
         </div>
       </div>
+
+      {docChecklistFor && (
+        <DocumentChecklist
+          schemeName={docChecklistFor}
+          schemeTitle={docChecklistFor}
+          isHindi={isHindi}
+          onClose={() => setDocChecklistFor(null)}
+        />
+      )}
 
       <BottomNav />
     </div>

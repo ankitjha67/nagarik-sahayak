@@ -1,0 +1,673 @@
+import { useState, useEffect, useCallback } from "react";
+import { AppHeader } from "../components/AppHeader";
+import { BottomNav } from "../components/BottomNav";
+import {
+  getPrivacyNotice, getConsent, grantConsent, withdrawConsent,
+  getMyData, eraseMyData, lodgeRightsRequest,
+  getTerms, getTermsStatus, acceptTerms, getNominee, setNominee, removeNominee,
+} from "../lib/api";
+import { toast } from "sonner";
+import { useLanguage } from "../lib/i18n";
+import {
+  AlertTriangle, CheckCircle2, ChevronDown, Database, Eye,
+  FileText, Loader2, Lock, MessageSquareWarning, ScrollText, ShieldCheck,
+  Trash2, UserPlus, Users, XCircle,
+} from "lucide-react";
+
+// Plain-language purpose descriptions. The statutory purpose names are precise
+// but opaque; a citizen deciding whether to consent needs to understand what
+// they are agreeing to, which is the whole point of section 6's "informed".
+const PURPOSE_TEXT = {
+  scheme_eligibility: {
+    hi: "यह जाँचना कि आप किन योजनाओं के लिए पात्र हैं",
+    en: "Checking which schemes you qualify for",
+    why: "Your age, income and category are compared against each scheme's published conditions.",
+  },
+  form_completion: {
+    hi: "आपके आवेदन फॉर्म भरना",
+    en: "Filling in your application forms",
+    why: "Your details are written into the government forms you choose.",
+  },
+  benefit_disbursement: {
+    hi: "लाभ आपके बैंक खाते में भेजना",
+    en: "Sending the benefit to your bank account",
+    why: "Your account and IFSC are needed so the payment reaches you.",
+  },
+  fraud_prevention: {
+    hi: "सार्वजनिक धन के दुरुपयोग को रोकना",
+    en: "Preventing misuse of public funds",
+    why: "Identifiers are compared as one-way codes against other applications. The numbers themselves are not readable.",
+  },
+  account_management: {
+    hi: "आपका खाता चलाना",
+    en: "Running your account",
+    why: "Your phone number identifies you when you sign in.",
+  },
+  service_communication: {
+    hi: "समय-सीमा और स्थिति की सूचनाएं भेजना",
+    en: "Sending deadline and status alerts",
+    why: "Only if you ask for alerts.",
+  },
+};
+
+// Without these the app cannot do the thing the citizen came for. Presented as
+// required rather than hidden, so the choice stays honest.
+const ESSENTIAL = ["scheme_eligibility", "form_completion", "account_management"];
+
+function Section({ icon: Icon, title, titleHi, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-3 overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full px-5 py-4 flex items-center gap-3 text-left"
+      >
+        <div className="w-9 h-9 rounded-xl bg-[#E8EAF6] flex items-center justify-center flex-shrink-0">
+          <Icon size={17} className="text-[#000080]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-[#000080] font-['Mukta']">{titleHi}</p>
+          <p className="text-[11px] text-gray-500 font-['Nunito']">{title}</p>
+        </div>
+        <ChevronDown
+          size={16}
+          className={`text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && <div className="px-5 pb-5 border-t border-gray-50 pt-4">{children}</div>}
+    </div>
+  );
+}
+
+export default function PrivacyPage({ userId }) {
+  const { tx } = useLanguage();
+  const [notice, setNotice] = useState(null);
+  const [consent, setConsent] = useState(null);
+  const [myData, setMyData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
+  const [grievance, setGrievance] = useState("");
+  const [confirmErase, setConfirmErase] = useState(false);
+  const [terms, setTerms] = useState(null);
+  const [termsStatus, setTermsStatus] = useState(null);
+  const [nominee, setNomineeState] = useState(null);
+  const [nomineeForm, setNomineeForm] = useState({ name: "", relation: "", contact: "" });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [n, c, t, ts, nom] = await Promise.all([
+      getPrivacyNotice().catch(() => null),
+      userId ? getConsent(userId).catch(() => null) : Promise.resolve(null),
+      getTerms().catch(() => null),
+      userId ? getTermsStatus(userId).catch(() => null) : Promise.resolve(null),
+      userId ? getNominee(userId).catch(() => null) : Promise.resolve(null),
+    ]);
+    if (n) setNotice(n.data);
+    if (c) setConsent(c.data);
+    if (t) setTerms(t.data);
+    if (ts) setTermsStatus(ts.data);
+    if (nom) setNomineeState(nom.data);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const consented = new Set((consent?.granted || []).map((g) => g.purpose));
+
+  const togglePurpose = async (purpose, on) => {
+    setBusy(purpose);
+    try {
+      if (on) {
+        await grantConsent(userId, [purpose]);
+        toast.success(tx("privacy.consentRecorded"));
+      } else {
+        await withdrawConsent(userId, [purpose]);
+        toast.success(tx("privacy.consentWithdrawn"));
+      }
+      const c = await getConsent(userId);
+      setConsent(c.data);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not update consent");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const acceptEssential = async () => {
+    setBusy("all");
+    try {
+      await grantConsent(userId, ESSENTIAL);
+      const c = await getConsent(userId);
+      setConsent(c.data);
+      toast.success(tx("privacy.thanksCanApply"));
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not record consent");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const loadMyData = async () => {
+    setBusy("mydata");
+    try {
+      const r = await getMyData(userId);
+      setMyData(r.data);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not load your data");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const doErase = async () => {
+    setBusy("erase");
+    try {
+      const r = await eraseMyData(userId, { all: true });
+      toast.success(`${r.data.profile_fields || 0} ${tx("privacy.detailsErased")}`);
+      setConfirmErase(false);
+      setMyData(null);
+      await load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erasure failed");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const doAcceptTerms = async () => {
+    setBusy("terms");
+    try {
+      await acceptTerms(userId, terms.version);
+      setTermsStatus((await getTermsStatus(userId)).data);
+      toast.success(tx("privacy.termsAccepted"));
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not record acceptance");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const saveNominee = async () => {
+    if (!nomineeForm.name.trim() || !nomineeForm.relation.trim()) return;
+    setBusy("nominee");
+    try {
+      await setNominee(userId, nomineeForm);
+      setNomineeState((await getNominee(userId)).data);
+      setNomineeForm({ name: "", relation: "", contact: "" });
+      toast.success(tx("privacy.nomineeRecorded"));
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not record nominee");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const clearNominee = async () => {
+    setBusy("nominee");
+    try {
+      await removeNominee(userId);
+      setNomineeState((await getNominee(userId)).data);
+      toast.success(tx("privacy.nomineeRemoved"));
+    } catch (e) {
+      toast.error("Could not remove nominee");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const sendGrievance = async () => {
+    if (!grievance.trim()) return;
+    setBusy("grievance");
+    try {
+      await lodgeRightsRequest(userId, "grievance", { message: grievance.trim() });
+      toast.success(tx("privacy.grievanceLodged"));
+      setGrievance("");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Could not lodge grievance");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 size={24} className="animate-spin text-[#000080]" />
+      </div>
+    );
+  }
+
+  const hasAnyConsent = consented.size > 0;
+
+  return (
+    <div data-testid="privacy-page" className="min-h-screen bg-gray-50 pb-20">
+      <AppHeader />
+
+      <div className="max-w-md mx-auto px-4 pt-4">
+        {/* Terms not yet accepted. Placed above consent because a person
+            should learn what the service is — and is not — before agreeing to
+            what it does with their data. */}
+        {termsStatus?.needs_acceptance && terms && (
+          <div
+            data-testid="terms-prompt"
+            className="bg-white rounded-2xl border-2 border-[#000080] p-5 mb-4 animate-fade-in-up"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <ScrollText size={18} className="text-[#000080]" />
+              <h2 className="text-sm font-bold text-[#000080] font-['Mukta']">
+                कृपया यह पढ़ें / Please read this
+              </h2>
+            </div>
+            <div className="space-y-2 mb-3">
+              {terms.critical_disclosures.map((d) => (
+                <div key={d.id} className="flex gap-2">
+                  <AlertTriangle size={13} className="text-[#FF9933] flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-800 font-['Mukta'] leading-snug">
+                      {d.hi}
+                    </p>
+                    <p className="text-[10px] text-gray-500 font-['Nunito'] leading-snug">
+                      {d.en}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={doAcceptTerms}
+              disabled={busy === "terms"}
+              data-testid="accept-terms-btn"
+              className="w-full py-2.5 rounded-xl bg-[#000080] text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {busy === "terms"
+                ? <Loader2 size={15} className="animate-spin" />
+                : <CheckCircle2 size={15} />}
+              मैंने पढ़ लिया और सहमत हूँ / I have read and agree
+            </button>
+            {termsStatus.reason && (
+              <p className="text-[10px] text-gray-500 font-['Nunito'] text-center mt-2">
+                {termsStatus.reason}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* First-run prompt. Shown only until consent exists, so it informs
+            rather than nags. */}
+        {!hasAnyConsent && (
+          <div
+            data-testid="consent-prompt"
+            className="bg-[#FFF0E0] rounded-2xl border border-orange-200 p-5 mb-4 animate-fade-in-up"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldCheck size={18} className="text-[#FF9933]" />
+              <h2 className="text-sm font-bold text-[#000080] font-['Mukta']">
+                {tx("privacy.consentNeeded")}
+              </h2>
+            </div>
+            <p className="text-xs text-gray-700 font-['Nunito'] leading-relaxed mb-3">
+              {tx("privacy.consentExplain")}{" "}
+              {tx("privacy.canWithdraw")}
+              <span className="block text-[11px] text-gray-500 mt-1">
+                We need some details to apply for schemes on your behalf. You can
+                withdraw this permission at any time.
+              </span>
+            </p>
+            <button
+              onClick={acceptEssential}
+              disabled={busy === "all"}
+              data-testid="accept-consent-btn"
+              className="w-full py-2.5 rounded-xl bg-[#FF9933] text-white text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {busy === "all" ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
+              मैं सहमत हूँ / I agree
+            </button>
+            <p className="text-[10px] text-gray-500 font-['Nunito'] text-center mt-2">
+              {tx("privacy.chooseEachPurpose")}
+            </p>
+          </div>
+        )}
+
+        {/* s6 — consent, per purpose */}
+        <Section icon={Lock} titleHi="आपकी अनुमतियाँ" title="Your permissions"
+                 defaultOpen>
+          <p className="text-[11px] text-gray-500 font-['Nunito'] mb-3">
+            {tx("privacy.separatePermission")}
+          </p>
+          {(consent?.available_purposes || []).map((p) => {
+            const text = PURPOSE_TEXT[p.purpose] || {};
+            const on = consented.has(p.purpose);
+            const essential = ESSENTIAL.includes(p.purpose);
+            return (
+              <div key={p.purpose} className="py-2.5 border-b border-gray-50 last:border-0">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-800 font-['Mukta']">
+                      {text.hi || p.purpose}
+                      {essential && (
+                        <span className="ml-1.5 text-[9px] text-[#FF9933] font-normal">
+                          {tx("privacy.required")}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-gray-500 font-['Nunito']">{text.en}</p>
+                    {text.why && (
+                      <p className="text-[10px] text-gray-400 font-['Nunito'] mt-0.5">
+                        {text.why}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {p.field_count} विवरण / fields
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => togglePurpose(p.purpose, !on)}
+                    disabled={busy === p.purpose}
+                    aria-label={`${text.en}: ${on ? "on" : "off"}`}
+                    data-testid={`consent-toggle-${p.purpose}`}
+                    className={`relative w-11 h-6 rounded-full flex-shrink-0 mt-0.5 transition-colors disabled:opacity-50 ${
+                      on ? "bg-[#138808]" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+                        on ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          {hasAnyConsent && (
+            <button
+              onClick={() => withdrawConsent(userId).then(async () => {
+                toast.success(tx("privacy.allConsentWithdrawn"));
+                setConsent((await getConsent(userId)).data);
+              }).catch(() => toast.error("Could not withdraw"))}
+              className="w-full mt-3 py-2 rounded-xl border border-gray-300 text-gray-600 text-xs font-semibold"
+            >
+              सभी अनुमतियाँ वापस लें / Withdraw all
+            </button>
+          )}
+        </Section>
+
+        {/* s11 — access */}
+        <Section icon={Eye} titleHi="मेरा डेटा देखें" title="See what we hold about you">
+          {myData ? (
+            <div>
+              <p className="text-xs text-gray-700 font-['Nunito'] mb-2">
+                <strong>{myData.field_count}</strong> {tx("privacy.storedFields")} ·{" "}
+                <strong>{myData.applications_count}</strong> {tx("privacy.applications")} ·{" "}
+                <strong>{myData.chat_messages_count}</strong> {tx("privacy.messages")}
+              </p>
+              <div className="max-h-56 overflow-y-auto space-y-1 pr-1">
+                {(myData.personal_data_held || []).map((f, i) => (
+                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
+                    <Database size={11} className="text-gray-400 flex-shrink-0" />
+                    <span className="text-[11px] text-gray-700 font-['Nunito'] flex-1 truncate">
+                      {f.field.replace(/_/g, " ")}
+                    </span>
+                    {f.used_for_decisions && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                        {tx("privacy.decisionBadge")}
+                      </span>
+                    )}
+                    <span className="text-[9px] text-gray-400">{f.retention_days}d</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-500 font-['Nunito'] mt-2">
+                {tx("privacy.decisionHelp")}
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={loadMyData}
+              disabled={busy === "mydata"}
+              data-testid="load-mydata-btn"
+              className="w-full py-2.5 rounded-xl bg-[#000080] text-white text-xs font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {busy === "mydata" ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
+              {tx("privacy.showMyData")}
+            </button>
+          )}
+        </Section>
+
+        {/* s11(1)(c) — who else receives it */}
+        <Section icon={Users} titleHi="आपका डेटा किसके साथ साझा होता है"
+                 title="Who else receives your data">
+          {(notice?.shared_with || []).map((r, i) => (
+            <div key={i} className="py-2 border-b border-gray-50 last:border-0">
+              <p className="text-xs font-semibold text-gray-800 font-['Nunito']">
+                {r.recipient}
+              </p>
+              <p className="text-[11px] text-gray-600 font-['Nunito']">{r.data}</p>
+              <p className="text-[10px] text-gray-400">{r.purpose}</p>
+            </div>
+          ))}
+        </Section>
+
+        {/* s5 — the notice itself */}
+        <Section icon={FileText} titleHi="गोपनीयता सूचना" title="Privacy notice">
+          <p className="text-xs text-gray-700 font-['Nunito'] leading-relaxed">
+            {notice?.summary_hi}
+          </p>
+          <p className="text-[11px] text-gray-500 font-['Nunito'] leading-relaxed mt-2">
+            {notice?.summary_en}
+          </p>
+          <p className="text-[10px] text-gray-400 mt-2">
+            सूचना संस्करण / Notice version: {notice?.notice_version}
+          </p>
+        </Section>
+
+        {/* s13 — grievance */}
+        <Section icon={MessageSquareWarning} titleHi="शिकायत दर्ज करें"
+                 title="Raise a grievance">
+          <textarea
+            value={grievance}
+            onChange={(e) => setGrievance(e.target.value)}
+            rows={3}
+            data-testid="grievance-input"
+            placeholder={tx("privacy.whatGrievance")}
+            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-['Nunito'] focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none resize-none"
+          />
+          <button
+            onClick={sendGrievance}
+            disabled={busy === "grievance" || !grievance.trim()}
+            className="w-full mt-2 py-2.5 rounded-xl bg-[#000080] text-white text-xs font-semibold disabled:opacity-40"
+          >
+            {busy === "grievance" ? tx("privacy.sending") : tx("privacy.sendGrievance")}
+          </button>
+          <p className="text-[10px] text-gray-500 font-['Nunito'] mt-2">
+            {notice?.grievance?.escalation}
+          </p>
+        </Section>
+
+        {/* The agreement in full, always readable, not only at first run. */}
+        <Section icon={ScrollText} titleHi="सेवा की शर्तें" title="Terms of service">
+          {terms && (
+            <div className="space-y-3">
+              {termsStatus?.accepted && (
+                <p className="text-[11px] text-green-700 font-['Nunito'] flex items-center gap-1">
+                  <CheckCircle2 size={12} />
+                  {tx("privacy.versionPrefix")} {termsStatus.accepted_version} {tx("privacy.versionAccepted")}
+                </p>
+              )}
+              <p className="text-xs text-gray-700 font-['Nunito'] leading-relaxed">
+                {terms.summary_hi}
+              </p>
+
+              <div>
+                <p className="text-[11px] font-bold text-[#000080] font-['Mukta'] mb-1">
+                  आपकी ज़िम्मेदारियाँ / Your obligations
+                </p>
+                {terms.your_obligations.map((o) => (
+                  <div key={o.id} className="py-1">
+                    <p className="text-[11px] text-gray-700 font-['Mukta']">• {o.hi}</p>
+                    <p className="text-[10px] text-gray-500 font-['Nunito'] pl-2">{o.en}</p>
+                    {o.basis && (
+                      <p className="text-[9px] text-gray-400 pl-2">{o.basis}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold text-[#138808] font-['Mukta'] mb-1">
+                  हमारे वचन / Our commitments
+                </p>
+                {terms.our_commitments.map((cm, i) => (
+                  <p key={i} className="text-[11px] text-gray-700 font-['Mukta'] py-0.5">
+                    • {cm.hi}
+                  </p>
+                ))}
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold text-amber-700 font-['Mukta'] mb-1">
+                  सीमाएँ / Limitations
+                </p>
+                {terms.limitations.map((l) => (
+                  <p key={l.id} className="text-[10px] text-gray-600 font-['Nunito'] py-0.5">
+                    • {l.en}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+        </Section>
+
+        {/* s14 — nomination */}
+        <Section icon={UserPlus} titleHi="नामित व्यक्ति"
+                 title="Nominate someone to act for you">
+          <p className="text-[11px] text-gray-600 font-['Nunito'] mb-3 leading-relaxed">
+            {tx("privacy.nomineeExplain")}
+            
+            <span className="block text-[10px] text-gray-500 mt-0.5">
+              They gain access only after death or incapacity is verified —
+              never on their own say-so.
+            </span>
+          </p>
+
+          {nominee?.has_nominee ? (
+            <div className="rounded-xl bg-gray-50 border border-gray-200 p-3">
+              <p className="text-xs font-bold text-gray-800 font-['Mukta']">
+                {nominee.nominee.name}
+              </p>
+              <p className="text-[11px] text-gray-600 font-['Nunito']">
+                {nominee.nominee.relation}
+                {nominee.nominee.contact ? ` · ${nominee.nominee.contact}` : ""}
+              </p>
+              <p className={`text-[10px] mt-1 ${nominee.active ? "text-amber-700" : "text-gray-500"}`}>
+                {nominee.active
+                  ? tx("privacy.nomineeActive")
+                  : nominee.note_hi}
+              </p>
+              <button
+                onClick={clearNominee}
+                disabled={busy === "nominee"}
+                className="mt-2 text-[11px] text-red-600 font-semibold underline disabled:opacity-50"
+              >
+                नामांकन हटाएं / Remove nominee
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={nomineeForm.name}
+                onChange={(e) => setNomineeForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="नाम / Name"
+                data-testid="nominee-name"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-['Nunito'] focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none"
+              />
+              <input
+                type="text"
+                value={nomineeForm.relation}
+                onChange={(e) => setNomineeForm((f) => ({ ...f, relation: e.target.value }))}
+                placeholder="आपसे संबंध / Relationship to you"
+                data-testid="nominee-relation"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-['Nunito'] focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none"
+              />
+              <input
+                type="text"
+                value={nomineeForm.contact}
+                onChange={(e) => setNomineeForm((f) => ({ ...f, contact: e.target.value }))}
+                placeholder="फोन या ईमेल (वैकल्पिक) / Phone or email (optional)"
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-['Nunito'] focus:border-[#000080] focus:ring-1 focus:ring-[#000080] outline-none"
+              />
+              <button
+                onClick={saveNominee}
+                disabled={busy === "nominee" || !nomineeForm.name.trim() || !nomineeForm.relation.trim()}
+                data-testid="save-nominee-btn"
+                className="w-full py-2.5 rounded-xl bg-[#000080] text-white text-xs font-semibold disabled:opacity-40"
+              >
+                {busy === "nominee" ? tx("privacy.saving") : tx("privacy.nominate")}
+              </button>
+            </div>
+          )}
+        </Section>
+
+        {/* s12 — erasure. Destructive, so it is last and gated behind a
+            confirmation that states plainly what will be lost. */}
+        <Section icon={Trash2} titleHi="मेरा डेटा मिटाएं" title="Erase my data">
+          {!confirmErase ? (
+            <>
+              <p className="text-xs text-gray-700 font-['Nunito'] leading-relaxed mb-3">
+                {tx("privacy.eraseWarning")}
+
+                <span className="block text-[11px] text-gray-500 mt-1">
+                  Your details, generated forms and conversations will be deleted.
+                  This cannot be undone.
+                </span>
+              </p>
+              <button
+                onClick={() => setConfirmErase(true)}
+                data-testid="erase-start-btn"
+                className="w-full py-2.5 rounded-xl border border-red-300 text-red-600 text-xs font-bold"
+              >
+                {tx("privacy.eraseMyData")}
+              </button>
+            </>
+          ) : (
+            <div className="rounded-xl bg-red-50 border border-red-200 p-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <AlertTriangle size={14} className="text-red-600" />
+                <span className="text-xs font-bold text-red-800 font-['Mukta']">
+                  {tx("privacy.areYouSure")}
+                </span>
+              </div>
+              <p className="text-[11px] text-red-700 font-['Nunito'] mb-3">
+                {tx("privacy.phoneRetained")}
+                <span className="block opacity-80">
+                  Your phone number is retained for legal reasons. Everything
+                  else is removed.
+                </span>
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmErase(false)}
+                  className="flex-1 py-2 rounded-xl border border-gray-300 text-gray-700 text-xs font-semibold"
+                >
+                  {tx("privacy.keepIt")}
+                </button>
+                <button
+                  onClick={doErase}
+                  disabled={busy === "erase"}
+                  data-testid="erase-confirm-btn"
+                  className="flex-1 py-2 rounded-xl bg-red-600 text-white text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {busy === "erase" ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
+                  {tx("privacy.yesErase")}
+                </button>
+              </div>
+            </div>
+          )}
+        </Section>
+      </div>
+
+      <BottomNav />
+    </div>
+  );
+}
