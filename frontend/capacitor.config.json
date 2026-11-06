@@ -1,0 +1,12 @@
+{
+  "appId": "app.nagariksahayak",
+  "appName": "Nagarik Sahayak",
+  "webDir": "build",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

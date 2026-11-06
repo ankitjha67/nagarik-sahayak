@@ -1,7 +1,32 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+// The backend origin. Baked in at build time from REACT_APP_BACKEND_URL, but a
+// runtime override in localStorage ("ns_backend_url") wins — so the installed
+// Android app can be pointed at a laptop on the LAN (or a phone's localhost via
+// `adb reverse`) without rebuilding. Set it from the browser console or the
+// in-app backend field: localStorage.setItem("ns_backend_url", "http://192.168.1.5:8001").
+const ENV_BACKEND = process.env.REACT_APP_BACKEND_URL || "";
+const resolveBackend = () => {
+  try {
+    const override = localStorage.getItem("ns_backend_url");
+    if (override) return override.replace(/\/+$/, "");
+  } catch {
+    /* storage unavailable */
+  }
+  return ENV_BACKEND.replace(/\/+$/, "");
+};
+const BACKEND_URL = resolveBackend();
 const API = `${BACKEND_URL}/api`;
+
+export const getBackendUrl = () => BACKEND_URL;
+export const setBackendUrl = (url) => {
+  try {
+    if (url) localStorage.setItem("ns_backend_url", url.replace(/\/+$/, ""));
+    else localStorage.removeItem("ns_backend_url");
+  } catch {
+    /* storage unavailable */
+  }
+};
 
 const api = axios.create({
   baseURL: API,
