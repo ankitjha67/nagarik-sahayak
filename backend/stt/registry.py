@@ -26,11 +26,13 @@ logger = logging.getLogger(__name__)
 _instances: dict[str, SttProvider] = {}
 
 # Indic speech: GoI and Indian-specialist engines first, then general ones.
-DEFAULT_INDIC = ["bhashini", "sarvam", "whisper_local", "openai_compatible", "groq", "openai",
-                 "gemini", "google", "azure", "deepgram", "assemblyai", "vosk"]
+DEFAULT_INDIC = ["bhashini", "sarvam", "whisper_local", "openai_compatible", "nvidia_riva",
+                 "groq", "openai", "gemini", "google", "azure", "deepgram", "assemblyai",
+                 "elevenlabs", "vosk"]
 # English and everything else: local first, then the strongest general engines.
-DEFAULT_OTHER = ["whisper_local", "openai_compatible", "groq", "openai", "deepgram", "assemblyai",
-                 "google", "azure", "gemini", "sarvam", "bhashini", "vosk"]
+DEFAULT_OTHER = ["whisper_local", "openai_compatible", "nvidia_riva", "groq", "openai",
+                 "deepgram", "assemblyai", "elevenlabs", "google", "azure", "gemini",
+                 "sarvam", "bhashini", "vosk"]
 
 
 def providers() -> dict[str, SttProvider]:

@@ -364,12 +364,28 @@ class TestExtractFormFields:
 
 class TestLLMExtraction:
     @pytest.mark.asyncio
-    async def test_llm_no_key_returns_error(self):
+    async def test_llm_not_configured_returns_error(self):
+        """With no provider configured, the extractor reports it and the caller
+        falls back to rule-based extraction."""
         from form_extractor import extract_form_fields_llm
-        with patch("form_extractor.EMERGENT_KEY", ""):
+        with patch("llm.registry.is_configured", return_value=False):
             result = await extract_form_fields_llm("some text")
             assert "error" in result
-            assert "key" in result["error"].lower()
+
+    @pytest.mark.asyncio
+    async def test_llm_extraction_uses_configured_provider(self):
+        """When a provider is configured, its JSON output is parsed and
+        returned — whichever provider it is."""
+        from form_extractor import extract_form_fields_llm
+        from llm.base import Completion
+        payload = '{"schemeName":"Test","extractedFields":[{"fieldName":"name","profileKey":"name"}]}'
+        async def fake_complete(*a, **k):
+            return Completion(text=payload, provider="mock", model="mock"), [{"provider": "mock", "ok": True}]
+        with patch("llm.registry.is_configured", return_value=True), \
+             patch("llm.registry.complete", side_effect=fake_complete):
+            result = await extract_form_fields_llm("some text", "Test Scheme")
+            assert result.get("schemeName") == "Test"
+            assert result["extractedFields"][0]["profileKey"] == "name"
 
 
 # ─── Download ───
