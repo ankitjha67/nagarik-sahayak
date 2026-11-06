@@ -38,7 +38,8 @@ PUBLIC_EXACT = {
     "/api/dpdp/identity-documents", "/api/dpdp/grievance-officer",
     "/api/v2/schemes", "/api/v2/form-templates", "/api/forms/catalog",
     "/api/forms/catalog-states", "/api/forms/refresh-status", "/api/stt/providers",
-    "/api/verify/fields", "/api/verify/eligibility", "/api/mcp/tools", "/api/kyc/methods",
+    "/api/llm/providers", "/api/verify/fields", "/api/verify/eligibility",
+    "/api/mcp/tools", "/api/kyc/methods",
 }
 # The KYC *method list* is public; the verification endpoints carry identity
 # documents and need a signed-in caller.

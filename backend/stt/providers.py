@@ -271,6 +271,49 @@ class OpenAICompatibleServer(_OpenAICompatible):
         return _env("STT_COMPAT_BASE_URL")
 
 
+class NvidiaRiva(_OpenAICompatible):
+    """NVIDIA Riva / NIM speech recognition. Recent Riva ASR NIM containers
+    expose an OpenAI-compatible /v1/audio/transcriptions endpoint; point
+    NVIDIA_STT_BASE_URL at it (self-hosted, so audio stays on your infra)."""
+    key = "nvidia_riva"
+    display_name = "NVIDIA Riva / NIM"
+    tier = TIER_FREE_LOCAL
+    languages = INDIC | {"en"}
+    data_leaves_host = False
+    env_keys = ("NVIDIA_STT_BASE_URL",)
+    key_env = "NVIDIA_API_KEY"
+    model_env = "NVIDIA_STT_MODEL"
+    default_model = "parakeet-1.1b"
+    translate_model = ""
+    note = "Set NVIDIA_STT_BASE_URL to your Riva/NIM ASR endpoint (e.g. http://riva:9000/v1)."
+
+    def _base(self) -> str:
+        return _env("NVIDIA_STT_BASE_URL")
+
+
+class ElevenLabs(SttProvider):
+    key = "elevenlabs"
+    display_name = "ElevenLabs Scribe"
+    tier = TIER_FRONTIER
+    env_keys = ("ELEVENLABS_API_KEY",)
+    note = "Scribe v1, 99 languages; set ELEVENLABS_STT_MODEL (default scribe_v1)."
+
+    async def transcribe(self, audio, mime, language="", translate_to=""):
+        data = {"model_id": _env("ELEVENLABS_STT_MODEL", "scribe_v1")}
+        iso = _iso(language)
+        if iso:
+            data["language_code"] = iso
+        files = {"file": (f"audio.{audio_tools.extension_for(mime)}", audio, mime)}
+        r = await _post("https://api.elevenlabs.io/v1/speech-to-text",
+                        headers={"xi-api-key": _env("ELEVENLABS_API_KEY")}, data=data, files=files)
+        if r.status_code >= 300:
+            raise _fail(self.key, r)
+        body = r.json()
+        return Transcript(text=(body.get("text") or "").strip(),
+                          language=_iso(body.get("language_code") or language),
+                          provider=self.key, model=data["model_id"], raw=body)
+
+
 # ── Frontier hosted engines ─────────────────────────────────────────────────
 
 class Deepgram(SttProvider):
@@ -477,6 +520,7 @@ class Mock(SttProvider):
 
 
 ALL: list[type[SttProvider]] = [
-    Bhashini, WhisperLocal, Vosk, OpenAICompatibleServer, Groq, OpenAI, Gemini,
-    Deepgram, AssemblyAI, GoogleSTT, AzureSpeech, Sarvam, ClientSide, Mock,
+    Bhashini, WhisperLocal, Vosk, OpenAICompatibleServer, NvidiaRiva, Groq, OpenAI,
+    Gemini, Deepgram, AssemblyAI, GoogleSTT, AzureSpeech, Sarvam, ElevenLabs,
+    ClientSide, Mock,
 ]

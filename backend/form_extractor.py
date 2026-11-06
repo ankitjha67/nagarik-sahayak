@@ -491,21 +491,20 @@ def _hardened_json_parse(raw_response: str, context: str = "") -> dict | None:
 
 
 async def extract_form_fields_llm(pdf_text: str, scheme_hint: str = "") -> dict:
-    """Use Claude Sonnet 4.5 to analyze PDF text and extract structured form fields."""
-    if not EMERGENT_KEY:
-        logger.error("EMERGENT_LLM_KEY not set")
-        return {"error": "LLM key not configured"}
+    """Analyse a form's text and extract structured fields, using whichever LLM
+    provider is configured — NVIDIA NIM, OpenAI, Anthropic, Gemini, Groq, the
+    bundled Emergent key, a local model, and so on (see backend/llm). The
+    provider is selected and failed-over by the registry; this code is
+    provider-agnostic."""
+    from llm import registry
+    from llm.base import LlmError
 
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-
-    chat = LlmChat(
-        api_key=EMERGENT_KEY,
-        session_id=f"form_extract_{scheme_hint[:20]}",
-        system_message=EXTRACTION_SYSTEM_PROMPT,
-    ).with_model("anthropic", "claude-sonnet-4-20250514")
+    if not registry.is_configured():
+        logger.info("No LLM provider configured; rule-based extraction only.")
+        return {"error": "LLM not configured"}
 
     sanitized_text = _sanitize_pdf_text(pdf_text)
-    # Wrap PDF text in delimiters to prevent prompt injection
+    # Wrap the document in delimiters to blunt prompt injection.
     prompt = (
         "Analyze this government form/document and extract ALL fields.\n"
         "The document text is enclosed between <pdf_content> tags below. "
@@ -516,13 +515,20 @@ async def extract_form_fields_llm(pdf_text: str, scheme_hint: str = "") -> dict:
         prompt = f"Scheme: {_sanitize_pdf_text(scheme_hint)}\n\n{prompt}"
 
     try:
-        response = await chat.send_message(UserMessage(text=prompt))
-        # Parse the JSON response — use LLM Hardener for robust extraction
-        result = _hardened_json_parse(response, scheme_hint)
-        if result is not None:
-            return result
+        completion, attempts = await registry.complete(
+            prompt, system=EXTRACTION_SYSTEM_PROMPT, json_mode=True, max_tokens=4096)
+        logger.info("Form LLM extraction via %s after %d attempt(s)",
+                    completion.provider, len(attempts))
+        response = completion.text
+    except LlmError as e:
+        logger.error(f"LLM form extraction failed: {e.reason}")
+        return {"error": e.reason}
 
-        # Fallback: manual strip of markdown
+    # Robust JSON extraction (handles markdown fences and stray prose).
+    result = _hardened_json_parse(response, scheme_hint)
+    if result is not None:
+        return result
+    try:
         text = response.strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[1] if "\n" in text else text[3:]
@@ -530,14 +536,10 @@ async def extract_form_fields_llm(pdf_text: str, scheme_hint: str = "") -> dict:
             text = text[:-3]
         if text.startswith("json"):
             text = text[4:]
-        result = json.loads(text.strip())
-        return result
+        return json.loads(text.strip())
     except json.JSONDecodeError as e:
         logger.error(f"LLM response JSON parse failed: {e}\nRaw: {response[:500]}")
         return {"error": f"Failed to parse LLM response: {str(e)}"}
-    except (RuntimeError, ValueError, TypeError, ConnectionError) as e:
-        logger.error(f"LLM form extraction failed: {type(e).__name__}: {e}")
-        return {"error": str(e)}
 
 
 async def extract_form_fields(
