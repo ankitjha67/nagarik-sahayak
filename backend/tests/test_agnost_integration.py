@@ -128,9 +128,17 @@ class TestEligibilityCheck:
         assert response.status_code == 400
 
 
+def _signed_in_user() -> str:
+    """generate-pdf issues a document, so it needs a signed-in caller."""
+    phone = f"9661{int(time.time()) % 1000000:06d}"
+    requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
+    return requests.post(f"{BASE_URL}/api/auth/verify-otp",
+                         json={"phone": phone, "otp": "123456"}).json()["user_id"]
+
+
 class TestGeneratePDF:
     """Test POST /api/generate-pdf endpoint with agnost tracking"""
-    
+
     def test_generate_pdf_with_profile(self):
         """Verify generate-pdf creates PDF and returns download URL"""
         profile = {
@@ -141,7 +149,7 @@ class TestGeneratePDF:
         }
         response = requests.post(
             f"{BASE_URL}/api/generate-pdf",
-            json={"profile": profile},
+            json={"profile": profile, "user_id": _signed_in_user()},
             headers={"Content-Type": "application/json"}
         )
         assert response.status_code == 200
@@ -183,7 +191,7 @@ class TestGeneratePDF:
         """Verify generate-pdf returns 400 for incomplete profile"""
         response = requests.post(
             f"{BASE_URL}/api/generate-pdf",
-            json={"profile": {"age": 30}},  # Missing name
+            json={"profile": {"age": 30}, "user_id": _signed_in_user()},  # Missing name
             headers={"Content-Type": "application/json"}
         )
         assert response.status_code == 400

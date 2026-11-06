@@ -55,10 +55,10 @@ class TestAuthAPI:
     def test_verify_otp_invalid(self):
         """POST /api/auth/verify-otp with wrong OTP returns failure"""
         response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": "9999777701", "otp": "9999"})
-        assert response.status_code == 200
-        data = response.json()
-        assert data["success"] == False
-        print("✓ Invalid OTP returns failure")
+        # Authentication failures are 401s with a reason, never a 200.
+        assert response.status_code == 401
+        assert response.json()["detail"]
+        print("✓ Invalid OTP returns 401")
 
 
 class TestChatProfilerFlow:

@@ -204,119 +204,93 @@ def clear_rate_limits():
 
 
 class TestAuthEndpoints:
-    """Test auth endpoints with mocked DB."""
+    """One-time codes and sessions, against the in-memory auth store the
+    conftest installs for every unit test. DEMO_MODE is on in this module,
+    so send-otp issues the fixed demo code instead of sending an SMS."""
 
-    @pytest.mark.asyncio
-    async def test_send_otp_invalid_phone(self, client):
-        """Should reject invalid phone numbers."""
-        resp = client.post("/api/auth/send-otp", json={"phone": "1234"})
-        assert resp.status_code == 422 or resp.status_code == 400
+    def test_send_otp_rate_limit(self, client):
+        codes = [client.post("/api/auth/send-otp", json={"phone": "9876500001"}).status_code
+                 for _ in range(8)]
+        assert 429 in codes
 
-    @pytest.mark.asyncio
-    async def test_send_otp_rate_limit(self, client):
-        """Should rate limit after 5 requests."""
-        from config import _rate_limit_store
-        phone = "9876543210"
-        # Pre-fill rate limit store
-        key = f"otp:{phone}"
-        now = time.time()
-        _rate_limit_store[key] = [now] * 5
+    def test_send_otp_success(self, client):
+        resp = client.post("/api/auth/send-otp", json={"phone": "9876500002"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["success"] is True and "OTP sent" in data["message"]
+        assert data["mock"] is True          # demo build: no SMS was sent
 
-        with patch("routes.auth.motor_db") as mock_db:
-            mock_db.otp_sessions.update_one = AsyncMock()
-            resp = client.post("/api/auth/send-otp", json={"phone": phone})
-            assert resp.status_code == 429
-
-    @pytest.mark.asyncio
-    async def test_send_otp_success(self, client):
-        """Should succeed with valid phone in DEMO_MODE."""
-        phone = "9876543210"
-        with patch("routes.auth.motor_db") as mock_db:
-            mock_db.otp_sessions.update_one = AsyncMock()
-            resp = client.post("/api/auth/send-otp", json={"phone": phone})
-            assert resp.status_code == 200
-            data = resp.json()
-            assert data["success"] is True
-            assert "OTP sent" in data["message"]
-
-    @pytest.mark.asyncio
-    async def test_verify_otp_success(self, client):
-        """Should verify OTP correctly."""
-        phone = "9876543210"
+    def test_verify_otp_success_returns_tokens(self, client):
+        phone = "9876500003"
         mock_user = MagicMock()
         mock_user.id = "user123"
         mock_user.phone = phone
         mock_user.language = "hi"
         mock_user.profile = json.dumps({"name": ""})
         mock_user.createdAt = datetime.now(timezone.utc)
-
-        with patch("routes.auth.motor_db") as mock_db, \
-             patch("routes.auth.prisma") as mock_prisma:
-            mock_db.otp_sessions.find_one = AsyncMock(return_value={
-                "phone": phone, "otp": "123456", "verified": False,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            })
-            mock_db.otp_sessions.update_one = AsyncMock()
+        client.post("/api/auth/send-otp", json={"phone": phone})
+        with patch("routes.auth.prisma") as mock_prisma:
             mock_prisma.user.find_unique = AsyncMock(return_value=mock_user)
-
             resp = client.post("/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
-            assert resp.status_code == 200
-            data = resp.json()
-            assert data["success"] is True
-            assert data["user_id"] == "user123"
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["success"] is True and data["user_id"] == "user123"
+        assert data["access_token"] and data["refresh_token"] and data["role"] == "citizen"
+        # The token works, and the code was single-use.
+        me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {data['access_token']}"})
+        assert me.status_code == 200 and me.json()["user_id"] == "user123"
+        again = client.post("/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
+        assert again.status_code == 401
 
-    @pytest.mark.asyncio
-    async def test_verify_otp_wrong(self, client):
-        """Should reject wrong OTP."""
-        phone = "9876543210"
-        with patch("routes.auth.motor_db") as mock_db:
-            mock_db.otp_sessions.find_one = AsyncMock(return_value={
-                "phone": phone, "otp": "123456", "verified": False,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            })
-            resp = client.post("/api/auth/verify-otp", json={"phone": phone, "otp": "000000"})
-            assert resp.status_code == 200
-            data = resp.json()
-            assert data["success"] is False
-            assert "Invalid" in data["message"]
+    def test_verify_otp_wrong_is_401_with_attempts_left(self, client):
+        phone = "9876500004"
+        client.post("/api/auth/send-otp", json={"phone": phone})
+        resp = client.post("/api/auth/verify-otp", json={"phone": phone, "otp": "000000"})
+        assert resp.status_code == 401
+        assert "attempt" in resp.json()["detail"]
 
-    @pytest.mark.asyncio
-    async def test_verify_otp_expired(self, client):
-        """Should reject expired OTP."""
-        phone = "9876543210"
-        old_time = "2020-01-01T00:00:00+00:00"
-        with patch("routes.auth.motor_db") as mock_db:
-            mock_db.otp_sessions.find_one = AsyncMock(return_value={
-                "phone": phone, "otp": "123456", "verified": False,
-                "created_at": old_time
-            })
-            resp = client.post("/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
-            assert resp.status_code == 200
-            data = resp.json()
-            assert data["success"] is False
-            assert "expired" in data["message"].lower()
+    def test_verify_otp_expired(self, client):
+        from auth.store import get_store
+        phone = "9876500005"
+        client.post("/api/auth/send-otp", json={"phone": phone})
+        get_store().otps[phone]["expires_at"] = 0          # memory store: age the record
+        resp = client.post("/api/auth/verify-otp", json={"phone": phone, "otp": "123456"})
+        assert resp.status_code == 401 and "expired" in resp.json()["detail"].lower()
 
-    @pytest.mark.asyncio
-    async def test_verify_otp_no_session(self, client):
-        """Should reject when no OTP session exists."""
-        with patch("routes.auth.motor_db") as mock_db:
-            mock_db.otp_sessions.find_one = AsyncMock(return_value=None)
-            resp = client.post("/api/auth/verify-otp", json={"phone": "9876543210", "otp": "123456"})
-            assert resp.status_code == 200
-            data = resp.json()
-            assert data["success"] is False
+    def test_verify_otp_no_session(self, client):
+        resp = client.post("/api/auth/verify-otp", json={"phone": "9876500006", "otp": "123456"})
+        assert resp.status_code == 401
+
+    def test_refresh_rotates_and_logout_revokes(self, client):
+        phone = "9876500007"
+        mock_user = MagicMock(); mock_user.id = "user777"; mock_user.phone = phone
+        mock_user.language = "hi"; mock_user.profile = "{}"; mock_user.createdAt = datetime.now(timezone.utc)
+        client.post("/api/auth/send-otp", json={"phone": phone})
+        with patch("routes.auth.prisma") as mock_prisma:
+            mock_prisma.user.find_unique = AsyncMock(return_value=mock_user)
+            data = client.post("/api/auth/verify-otp", json={"phone": phone, "otp": "123456"}).json()
+        r = client.post("/api/auth/refresh", json={"refresh_token": data["refresh_token"]})
+        assert r.status_code == 200 and r.json()["refresh_token"] != data["refresh_token"]
+        # the old refresh token is dead; reusing it kills the session
+        assert client.post("/api/auth/refresh", json={"refresh_token": data["refresh_token"]}).status_code == 401
+        h = {"Authorization": f"Bearer {r.json()['access_token']}"}
+        assert client.get("/api/auth/me", headers=h).status_code == 401
 
 
 class TestProfileEndpoints:
     """Test profile endpoints."""
 
-    def test_get_profile_not_found(self, client):
+    def test_get_profile_not_found(self, client, bearer_for):
         with patch("routes.profile.prisma") as mock_prisma:
             mock_prisma.user.find_unique = AsyncMock(return_value=None)
-            resp = client.get("/api/profile/nonexistent")
+            resp = client.get("/api/profile/nonexistent", headers=bearer_for("nonexistent"))
             assert resp.status_code == 404
 
-    def test_get_profile_success(self, client):
+    def test_get_profile_requires_the_owner(self, client, bearer_for):
+        assert client.get("/api/profile/user123").status_code == 401
+        assert client.get("/api/profile/user123", headers=bearer_for("someone-else")).status_code == 403
+
+    def test_get_profile_success(self, client, bearer_for):
         mock_user = MagicMock()
         mock_user.id = "user123"
         mock_user.phone = "9876543210"
@@ -328,7 +302,7 @@ class TestProfileEndpoints:
         # id ("user123" is not an ObjectId) before Prisma is consulted — so the
         # seam to mock is find_user itself, not prisma.
         with patch("routes.profile.find_user", AsyncMock(return_value=mock_user)):
-            resp = client.get("/api/profile/user123")
+            resp = client.get("/api/profile/user123", headers=bearer_for("user123"))
             assert resp.status_code == 200
             data = resp.json()
             assert data["phone"] == "9876543210"
@@ -397,18 +371,18 @@ class TestPDFEndpoints:
         resp = client.get("/api/pdf/not-a-uuid")
         assert resp.status_code in (400, 401, 404, 422)
 
-    def test_pdf_valid_uuid_not_found(self, client):
+    def test_pdf_valid_uuid_not_found(self, client, bearer_for):
         """A valid UUID whose file does not exist returns 404 — to its owner.
 
-        The ownership gate runs first and 401s an unauthenticated caller, so to
+        The route needs a signed-in caller, then the ownership gate runs, so to
         reach the missing-file path at all the caller must be authorised. The
         gate is mocked to allow, which is what exercises the 404 this test is
         about; the gate itself is covered by the DPDP ownership tests."""
         from unittest.mock import AsyncMock, patch
         test_uuid = str(__import__("uuid").uuid4())
+        assert client.get(f"/api/pdf/{test_uuid}").status_code == 401
         with patch("dpdp.ownership.assert_access", new_callable=AsyncMock):
-            resp = client.get(f"/api/pdf/{test_uuid}",
-                              headers={"X-User-Id": "user123"})
+            resp = client.get(f"/api/pdf/{test_uuid}", headers=bearer_for("user123"))
         assert resp.status_code == 404
 
     def test_audio_path_traversal_blocked(self, client):

@@ -68,8 +68,10 @@ class TestAuthEndpoints:
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
         
         response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={"phone": phone, "otp": "9999"})
-        data = response.json()
-        assert data["success"] is False, "Expected failure for wrong OTP"
+        # A wrong code is an authentication failure: 401 with a reason, and the
+        # remaining attempts named so the citizen knows where they stand.
+        assert response.status_code == 401, f"Expected 401 for wrong OTP, got {response.status_code}"
+        assert "attempt" in response.json()["detail"]
         print("✓ verify-otp rejects wrong OTP")
 
 
@@ -308,8 +310,14 @@ class TestPDFDownload:
 
         An authenticated request for an id with no ownership record is answered
         404 — indistinguishable from one that never existed."""
+        phone = f"99886{int(time.time()) % 100000:05d}"
+        requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
+        caller = requests.post(f"{BASE_URL}/api/auth/verify-otp",
+                               json={"phone": phone, "otp": "123456"}).json()["user_id"]
+        # Anonymous: refused outright. Signed in: not found.
+        assert requests.get(f"{BASE_URL}/api/pdf/invalid-uuid-12345").status_code == 401
         response = requests.get(f"{BASE_URL}/api/pdf/invalid-uuid-12345",
-                                headers={"X-User-Id": "6aeb0560c9a1a6bb529e441a"})
+                                headers={"X-User-Id": caller})
         assert response.status_code == 404, f"Expected 404 for invalid PDF ID, got {response.status_code}"
         print("✓ PDF 404 for invalid ID")
 

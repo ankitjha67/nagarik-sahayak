@@ -137,16 +137,23 @@ class TestRoutingWorks:
         })
         assert r.status_code == 200 and r.json()["eligible"] is True
 
-    def test_reviewer_routes_are_gated(self, client):
-        """Reviewer data describes suspicion about named people."""
-        assert client.get("/api/review/queue").status_code == 403
+    def test_reviewer_routes_are_gated(self, client, bearer_for):
+        """Reviewer data describes suspicion about named people: anonymous
+        callers are refused outright, and a signed-in citizen is still not a
+        reviewer."""
+        assert client.get("/api/review/queue").status_code == 401
+        assert client.get("/api/review/queue", headers=bearer_for("c1")).status_code == 403
 
-    def test_admin_routes_are_gated(self, client):
-        assert client.post("/api/forms/refresh", json={}).status_code == 403
+    def test_admin_routes_are_gated(self, client, bearer_for):
+        assert client.post("/api/forms/refresh", json={}).status_code == 401
+        assert client.post("/api/forms/refresh", json={}, headers=bearer_for("c1")).status_code == 403
 
-    def test_citizen_case_status_is_not_gated(self, client):
-        """People are entitled to know their own application is being checked."""
-        assert client.get("/api/review/my-cases/anyone").status_code == 200
+    def test_citizen_case_status_is_their_own(self, client, bearer_for):
+        """People are entitled to know their own application is being checked —
+        and only their own."""
+        assert client.get("/api/review/my-cases/anyone", headers=bearer_for("anyone")).status_code == 200
+        assert client.get("/api/review/my-cases/anyone", headers=bearer_for("other")).status_code == 403
+        assert client.get("/api/review/my-cases/anyone").status_code == 401
 
     def test_terms_of_service_is_public(self, client):
         """IT Rules 3(1)(a): the user agreement must be published."""
@@ -161,16 +168,21 @@ class TestRoutingWorks:
         assert r.status_code == 200
         assert r.json()["purposes"] and r.json()["your_rights"]
 
-    def test_dpdp_compliance_routes_are_gated(self, client):
-        assert client.get("/api/dpdp/compliance/registry").status_code == 403
-        assert client.get("/api/dpdp/compliance/audit").status_code == 403
+    def test_dpdp_compliance_routes_are_gated(self, client, bearer_for):
+        assert client.get("/api/dpdp/compliance/registry").status_code == 401
+        assert client.get("/api/dpdp/compliance/audit").status_code == 401
+        assert client.get("/api/dpdp/compliance/audit", headers=bearer_for("c1")).status_code == 403
 
     def test_rights_routes_reject_anonymous_callers(self, client):
         """Without this, changing the id in the path reads another person's data."""
         assert client.get("/api/dpdp/my-data/someone").status_code == 401
 
-    def test_rights_routes_reject_cross_user_access(self, client):
-        r = client.get("/api/dpdp/my-data/victim", headers={"X-User-Id": "attacker"})
+    def test_rights_routes_reject_cross_user_access(self, client, bearer_for):
+        r = client.get("/api/dpdp/my-data/victim", headers=bearer_for("attacker"))
+        assert r.status_code == 403
+        # A forged X-User-Id header cannot widen a real session either.
+        r = client.get("/api/dpdp/my-data/victim",
+                       headers={**bearer_for("attacker"), "X-User-Id": "victim"})
         assert r.status_code == 403
 
 
@@ -192,10 +204,10 @@ class TestKycRouting:
         assert client.post("/api/kyc/aadhaar/secure-qr", json={}).status_code == 401
         assert client.post("/api/kyc/self-declaration", json={}).status_code == 401
 
-    def test_a_malformed_qr_gets_a_bilingual_400_not_a_500(self, client):
+    def test_a_malformed_qr_gets_a_bilingual_400_not_a_500(self, client, bearer_for):
         r = client.post("/api/kyc/aadhaar/secure-qr",
                         json={"qr": "http://example.com", "profile": {}},
-                        headers={"X-User-Id": "u1"})
+                        headers={**bearer_for("u1"), "X-User-Id": "u1"})
         assert r.status_code == 400
         detail = r.json()["detail"]
         assert detail["errorHindi"]
@@ -203,10 +215,10 @@ class TestKycRouting:
     def test_an_unlisted_method_is_404_not_a_silent_success(self, client):
         assert client.get("/api/kyc/methods/magic-wand").status_code == 404
 
-    def test_scheme_gap_never_reports_a_block(self, client):
+    def test_scheme_gap_never_reports_a_block(self, client, bearer_for):
         r = client.post("/api/kyc/scheme-gap",
                         json={"outcomes": [], "schemeName": "Ayushman Bharat PM-JAY"},
-                        headers={"X-User-Id": "u1"})
+                        headers={**bearer_for("u1"), "X-User-Id": "u1"})
         assert r.status_code == 200 and r.json()["canStillApply"] is True
 
     def test_catalog_can_be_filtered_by_state(self, client):

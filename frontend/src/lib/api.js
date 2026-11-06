@@ -8,12 +8,38 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Request interceptor — attach user_id from localStorage
+// ── Session ──
+// The server issues a short-lived signed access token and an opaque refresh
+// token that rotates on every use. Both live in localStorage for this
+// single-page client; the access token is attached to every request and
+// silently refreshed once on a 401 before the session is treated as gone.
+
+const KEYS = { access: "ns_access", refresh: "ns_refresh", role: "ns_role", user: "ns_user_id", phone: "ns_phone" };
+
+const safeGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const safeSet = (k, v) => { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } };
+const safeDel = (k) => { try { localStorage.removeItem(k); } catch { /* storage unavailable */ } };
+
+export const storeSession = ({ access_token, refresh_token, role, user_id, phone }) => {
+  if (access_token) safeSet(KEYS.access, access_token);
+  if (refresh_token) safeSet(KEYS.refresh, refresh_token);
+  if (role) safeSet(KEYS.role, role);
+  if (user_id) safeSet(KEYS.user, user_id);
+  if (phone) safeSet(KEYS.phone, phone);
+};
+
+export const clearSession = () => {
+  Object.values(KEYS).forEach(safeDel);
+  safeDel("ns_language");
+};
+
+export const sessionRole = () => safeGet(KEYS.role) || "citizen";
+export const hasSession = () => !!safeGet(KEYS.access);
+
+// Request interceptor — attach the bearer token
 api.interceptors.request.use((config) => {
-  const userId = localStorage.getItem("ns_user_id");
-  if (userId) {
-    config.headers["X-User-Id"] = userId;
-  }
+  const token = safeGet(KEYS.access);
+  if (token) config.headers["Authorization"] = `Bearer ${token}`;
   return config;
 });
 
@@ -21,24 +47,59 @@ api.interceptors.request.use((config) => {
 // those are wrong. A rejected reviewer password must surface as an error on the
 // reviewer screen, not silently destroy the citizen's session and redirect them
 // to the login page.
-const SELF_AUTHENTICATING = ["/review/", "/forms/refresh", "/forms/seed", "/demo/toggle"];
+const SELF_AUTHENTICATING = ["/review/", "/forms/refresh", "/forms/seed", "/demo/toggle", "/auth/"];
 
-// Response interceptor — handle 401/403
+let refreshing = null;
+const refreshAccessToken = async () => {
+  const refresh = safeGet(KEYS.refresh);
+  if (!refresh) throw new Error("no refresh token");
+  if (!refreshing) {
+    refreshing = axios
+      .post(`${API}/auth/refresh`, { refresh_token: refresh })
+      .then((r) => { storeSession(r.data); return r.data.access_token; })
+      .finally(() => { refreshing = null; });
+  }
+  return refreshing;
+};
+
+const endSession = () => {
+  clearSession();
+  window.location.href = "/";
+};
+
+// Response interceptor — refresh once on 401, otherwise end the session
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error.response?.status;
-    const url = error.config?.url || "";
+    const config = error.config || {};
+    const url = config.url || "";
     const selfAuth = SELF_AUTHENTICATING.some((p) => url.includes(p));
-    if (!selfAuth && (status === 401 || status === 403)) {
-      localStorage.removeItem("ns_user_id");
-      localStorage.removeItem("ns_phone");
-      localStorage.removeItem("ns_language");
-      window.location.href = "/";
+    if (selfAuth) return Promise.reject(error);
+
+    if (status === 401 && !config._retried && safeGet(KEYS.refresh)) {
+      config._retried = true;
+      try {
+        const token = await refreshAccessToken();
+        config.headers = { ...(config.headers || {}), Authorization: `Bearer ${token}` };
+        return api.request(config);
+      } catch {
+        endSession();
+        return Promise.reject(error);
+      }
     }
+    if (status === 401) endSession();
+    // 403 means "not yours": the session is fine, the caller shows the message.
     return Promise.reject(error);
   }
 );
+
+export const logoutServer = async () => {
+  try { await api.post("/auth/logout"); } catch { /* already gone */ }
+  clearSession();
+};
+export const refreshSession = () => api.post("/auth/refresh", { refresh_token: safeGet(KEYS.refresh) });
+export const whoAmI = () => api.get("/auth/me");
 
 // Cancel token helper using AbortController
 export const createCancelToken = () => {
@@ -69,10 +130,21 @@ export const sendVoice = (formData) =>
     headers: { "Content-Type": "multipart/form-data" },
   });
 
-// Sarvam Transcribe
+// Voice turn in the chat: audio (any container) or on-device text. The server
+// picks a speech engine with fallback; `provider` may name one explicitly.
 export const transcribeAudio = (formData) =>
   api.post("/transcribe", formData, {
     headers: { "Content-Type": "multipart/form-data" },
+    timeout: 90000,
+  });
+
+// ── Speech to text, provider-agnostic ──
+export const getSttProviders = (language = "hi") =>
+  api.get("/stt/providers", { params: { language } });
+export const sttTranscribe = (formData) =>
+  api.post("/stt/transcribe", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 90000,
   });
 
 // MCP Tools

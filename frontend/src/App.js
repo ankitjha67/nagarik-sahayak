@@ -144,7 +144,10 @@ function AppRoutes({ userId, onLogin, onLogout }) {
 }
 
 function App() {
-  const [userId, setUserId] = useState(() => localStorage.getItem("ns_user_id") || null);
+  // A stored id without a token (storage from before sessions existed, or a
+  // half-cleared logout) is not a session: start signed out.
+  const [userId, setUserId] = useState(() =>
+    localStorage.getItem("ns_access") ? localStorage.getItem("ns_user_id") || null : null);
   // Phone is kept in localStorage for the auth flow; App no longer holds it in
   // state because nothing rendered here reads it.
   const initialLanguage = localStorage.getItem("ns_language") || "hi";
@@ -157,6 +160,9 @@ function App() {
 
   const handleLogout = () => {
     setUserId(null);
+    // Revoke the session on the server (best effort) and drop every token
+    // and identifier this client holds.
+    import("./lib/api").then((m) => m.logoutServer()).catch(() => {});
     localStorage.removeItem("ns_user_id");
     localStorage.removeItem("ns_phone");
     localStorage.removeItem("ns_language");

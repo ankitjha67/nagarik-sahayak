@@ -6,7 +6,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "../components/ui/input-otp";
-import { sendOTP, verifyOTP } from "../lib/api";
+import { sendOTP, verifyOTP, storeSession } from "../lib/api";
 import { toast } from "sonner";
 import { Phone, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { useLanguage } from "../lib/i18n";
@@ -43,13 +43,17 @@ export default function LoginPage({ onLogin }) {
     try {
       const res = await verifyOTP(phone, otp);
       if (res.data.success) {
+        // Keep the tokens before anything renders that needs them.
+        storeSession(res.data);
         toast.success(tx("login.verified"));
         onLogin(res.data.user_id, res.data.phone);
       } else {
         toast.error(res.data.message || tx("login.invalidOtp"));
       }
-    } catch {
-      toast.error(tx("login.verifyFailed"));
+    } catch (err) {
+      // A wrong or expired code is a 401 with a reason; a locked number a 429.
+      const detail = err?.response?.data?.detail;
+      toast.error(detail || tx("login.verifyFailed"));
     } finally {
       setLoading(false);
     }

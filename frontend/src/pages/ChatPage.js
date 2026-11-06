@@ -7,6 +7,10 @@ import { ChatBubble, TypingIndicator, ToolProgressIndicator } from "../component
 import { SchemeSelector } from "../components/SchemeSelector";
 import { SmartProfiler } from "../components/SmartProfiler";
 import { sendMessage, getChatHistory, transcribeAudio, uploadPdf, resetChat } from "../lib/api";
+import {
+  startRecording as startMicRecording, recogniseOnDevice, browserSpeechSupported,
+  recordingSupported, extensionFor, getSttMode, getSttProvider,
+} from "../lib/stt";
 import { toast } from "sonner";
 import { useLanguage } from "../lib/i18n";
 import { SendHorizontal, Mic, MicOff, Loader2, Paperclip } from "lucide-react";
@@ -98,28 +102,44 @@ export default function ChatPage({ userId, language = "hi" }) {
 
   const startRecording = useCallback(async () => {
     if (isRecording || loading) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        if (countdownRef.current) clearInterval(countdownRef.current);
-        setRecordCountdown(0);
+    // On-device recognition (Web Speech API): the words leave the phone, the
+    // audio never does. Chosen in settings; used only where the browser has it.
+    if (getSttMode() === "browser" && browserSpeechSupported()) {
+      setIsRecording(true);
+      setRecordCountdown(RECORD_DURATION);
+      try {
+        const text = await recogniseOnDevice(sttLang, { maxSeconds: RECORD_DURATION });
+        await processTranscription(null, text);
+      } catch (err) {
+        const code = err?.code || "";
+        toast.error(code === "not-allowed" ? tx("chat.micDenied") : "Transcription failed", { duration: 5000 });
+      } finally {
         setIsRecording(false);
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        if (blob.size > 0) {
-          await processTranscription(blob);
-        }
-      };
+        setRecordCountdown(0);
+      }
+      return;
+    }
 
-      mediaRecorder.start();
+    if (!recordingSupported()) {
+      toast.error(tx("chat.micDenied"), { duration: 5000 });
+      return;
+    }
+    try {
+      // Whatever container this browser can produce (WebM on Chrome/Android,
+      // MP4 on iPhone Safari, OGG on Firefox); the server accepts them all.
+      const rec = await startMicRecording();
+      mediaRecorderRef.current = {
+        state: "recording",
+        stop: async () => {
+          mediaRecorderRef.current.state = "inactive";
+          const { blob, mime } = await rec.stop();
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          setRecordCountdown(0);
+          setIsRecording(false);
+          if (blob.size > 0) await processTranscription(blob, "", mime);
+        },
+      };
       setIsRecording(true);
       setRecordCountdown(RECORD_DURATION);
       toast.info(`${RECORD_DURATION}${tx("chat.recordingStarted")}`);
@@ -153,27 +173,30 @@ export default function ChatPage({ userId, language = "hi" }) {
     }
   };
 
-  const processTranscription = async (blob) => {
+  // Either a recorded blob (any container) or text the browser recognised.
+  const processTranscription = async (blob, text = "", mime = "") => {
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append("audio", blob, "recording.webm");
+      if (blob) formData.append("audio", blob, `recording.${extensionFor(mime || blob.type)}`);
+      if (text) formData.append("text", text);
       formData.append("user_id", userId);
       formData.append("language", sttLang);
+      const provider = text ? "client" : getSttProvider();
+      if (provider) formData.append("provider", provider);
 
       const res = await transcribeAudio(formData);
       if (res.data.success) {
         const { user_message, bot_message } = res.data;
         setMessages((prev) => [...prev, user_message, bot_message]);
 
-        const isMock = res.data.is_mock;
-        if (isMock) {
+        if (res.data.is_mock) {
           toast.info("Demo mode — mock transcript used");
         } else {
-          toast.success(`Sarvam Saaras v3 (${sttLang === "hi" ? "हिंदी" : "English"})`);
+          toast.success(`${res.data.provider || "speech"} · ${sttLang === "hi" ? "हिंदी" : "English"}`);
         }
       } else {
-        toast.error("Transcription failed");
+        toast.error(res.data.error || "Transcription failed");
       }
     } catch (err) {
       const detail = err?.response?.data?.detail || "Transcription failed";

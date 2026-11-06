@@ -12,6 +12,7 @@ from config import PDF_DIR, AGNOST_WRITE_KEY, validate_path_within, validate_pdf
 from models import GeneratePDFRequest, FilledFormRequest
 from services.eligibility import eligibility_matcher_sync
 from services.profiler import generate_filled_form
+from auth.deps import principal_of, subject_for
 from routes import api_router
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ async def serve_pdf(pdf_id: str, request: Request):
 
     from dpdp import ownership
     await ownership.assert_access(
-        safe_id, request.headers.get("X-User-Id", "").strip(), ownership.ArtefactKind.PDF)
+        safe_id, principal_of(request).user_id, ownership.ArtefactKind.PDF)
 
     if not pdf_path.exists():
         raise HTTPException(status_code=404, detail="PDF not found")
@@ -119,7 +120,7 @@ async def serve_audio(msg_id: str, request: Request):
 
     from dpdp import ownership
     await ownership.assert_access(
-        safe_id, request.headers.get("X-User-Id", "").strip(), ownership.ArtefactKind.AUDIO)
+        safe_id, principal_of(request).user_id, ownership.ArtefactKind.AUDIO)
     if not audio_path.exists():
         raise HTTPException(status_code=404, detail="Audio not found")
 
@@ -134,8 +135,9 @@ async def serve_audio(msg_id: str, request: Request):
 
 
 @api_router.get("/download-all")
-async def download_all_pdfs(user_id: str = "", count: int = 0):
+async def download_all_pdfs(request: Request, user_id: str = "", count: int = 0):
     """Track multi-PDF download event via Agnost."""
+    user_id = subject_for(request, user_id)
     if AGNOST_WRITE_KEY:
         try:
             import agnost
@@ -162,7 +164,7 @@ async def download_all_zip(request: Request, pdf_ids: str = "", user_id: str = "
     # filled forms — strictly worse than the single-document endpoint. Each id
     # is checked individually against recorded ownership (DPDP s8(4)).
     from dpdp import ownership
-    requester = request.headers.get("X-User-Id", "").strip() or user_id
+    requester = principal_of(request).user_id
     for pid in ids:
         safe = re.sub(r'[^a-zA-Z0-9\-]', '', pid)
         await ownership.assert_access(safe, requester, ownership.ArtefactKind.PDF)
@@ -203,7 +205,8 @@ UPLOADS_DIR = PDF_DIR
 
 
 @api_router.post("/upload-pdf")
-async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("")):
+async def upload_pdf(request: Request, file: UploadFile = File(...), user_id: str = Form("")):
+    user_id = subject_for(request, user_id)
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
     if file.content_type and file.content_type not in ("application/pdf", "application/octet-stream"):
@@ -236,10 +239,12 @@ async def upload_pdf(file: UploadFile = File(...), user_id: str = Form("")):
 
 @api_router.post("/upload-and-extract")
 async def upload_and_extract_pdf(
+    request: Request,
     file: UploadFile = File(...), user_id: str = Form(""),
     scheme_hint: str = Form(""), save_to_db: bool = Form(True),
 ):
     """Upload a PDF and immediately extract form fields."""
+    user_id = subject_for(request, user_id)
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
     if file.content_type and file.content_type not in ("application/pdf", "application/octet-stream"):

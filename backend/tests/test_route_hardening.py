@@ -111,8 +111,13 @@ def test_full_aadhaar_is_never_echoed_or_stored(user_id):
     assert "aadhaar_number_last4" in json.loads(stored)["fullProfile"]
 
 
-def test_ssrf_targets_are_refused_for_live_extraction():
+def test_ssrf_targets_are_refused_for_live_extraction(user_id):
+    # Live extraction downloads on the server's behalf, so it needs a signed-in
+    # caller first; then every internal or non-http target is refused.
+    assert requests.post(f"{BASE_URL}/api/forms/extract-live",
+                         json={"pdf_url": "http://127.0.0.1:8006/api/schemes"}).status_code == 401
     for url in ("http://127.0.0.1:8006/api/schemes", "http://169.254.169.254/latest/meta-data/",
                 "file:///etc/passwd", "javascript:alert(1)"):
-        r = requests.post(f"{BASE_URL}/api/forms/extract-live", json={"pdf_url": url})
+        r = requests.post(f"{BASE_URL}/api/forms/extract-live", json={"pdf_url": url},
+                          headers={"X-User-Id": user_id})
         assert r.status_code in (400, 422), f"{url} -> {r.status_code}"

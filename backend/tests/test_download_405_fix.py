@@ -47,21 +47,21 @@ def demo_pdf_urls(api_client, authenticated_user):
 class TestDownloadAllGet:
     """Test GET /api/download-all endpoint (was POST-only, now GET)"""
     
-    def test_download_all_get_returns_200(self, api_client):
+    def test_download_all_get_returns_200(self, api_client, authenticated_user):
         """GET /api/download-all?user_id=test&count=2 should return 200"""
-        resp = api_client.get(f"{BASE_URL}/api/download-all", params={"user_id": "test", "count": 2})
+        resp = api_client.get(f"{BASE_URL}/api/download-all", params={"user_id": authenticated_user, "count": 2})
         assert resp.status_code == 200
         
-    def test_download_all_get_returns_tracked_true(self, api_client):
+    def test_download_all_get_returns_tracked_true(self, api_client, authenticated_user):
         """GET /api/download-all should return {tracked: true}"""
-        resp = api_client.get(f"{BASE_URL}/api/download-all", params={"user_id": "test", "count": 2})
+        resp = api_client.get(f"{BASE_URL}/api/download-all", params={"user_id": authenticated_user, "count": 2})
         assert resp.status_code == 200
         data = resp.json()
         assert data.get("tracked") == True
         
-    def test_download_all_get_includes_count(self, api_client):
+    def test_download_all_get_includes_count(self, api_client, authenticated_user):
         """GET /api/download-all should return the count passed"""
-        resp = api_client.get(f"{BASE_URL}/api/download-all", params={"user_id": "test", "count": 5})
+        resp = api_client.get(f"{BASE_URL}/api/download-all", params={"user_id": authenticated_user, "count": 5})
         assert resp.status_code == 200
         data = resp.json()
         assert data.get("count") == 5
@@ -70,9 +70,9 @@ class TestDownloadAllGet:
 class TestDownloadAllZipGet:
     """Test GET /api/download-all-zip endpoint (was POST-only, now GET)"""
     
-    def test_download_all_zip_without_pdf_ids_returns_400(self, api_client):
+    def test_download_all_zip_without_pdf_ids_returns_400(self, api_client, authenticated_user):
         """GET /api/download-all-zip without pdf_ids should return 400"""
-        resp = api_client.get(f"{BASE_URL}/api/download-all-zip", params={"user_id": "test"})
+        resp = api_client.get(f"{BASE_URL}/api/download-all-zip", params={"user_id": authenticated_user})
         assert resp.status_code == 400
         data = resp.json()
         assert "No pdf_ids provided" in data.get("detail", "")

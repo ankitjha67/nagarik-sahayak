@@ -7,7 +7,10 @@ import tempfile
 import traceback
 import time as _time
 from datetime import datetime, timezone
-from fastapi import UploadFile, File, Form, HTTPException
+from fastapi import UploadFile, File, Form, HTTPException, Request
+from auth.deps import subject_for
+from stt import registry as stt_registry
+from stt.base import SttError
 from database import prisma
 from config import AGNOST_WRITE_KEY, AUDIO_DIR, DEMO_MODE, sanitize_input
 from models import ChatMessageRequest
@@ -159,51 +162,50 @@ async def get_chat_history(user_id: str):
 
 
 @api_router.post("/transcribe")
-async def transcribe_audio(audio: UploadFile = File(...), user_id: str = Form(""), language: str = Form("hi")):
-    audio_bytes = await audio.read()
+async def transcribe_audio(request: Request, audio: UploadFile | None = File(None),
+                           user_id: str = Form(""), language: str = Form("hi"),
+                           provider: str = Form(""), text: str = Form("")):
+    """A voice turn in the chat.
+
+    Audio goes through the speech registry (any engine the deployment has,
+    with fallback — see stt/registry.py). A browser that recognised speech
+    itself sends `text` instead of audio (provider "client"). The recording
+    is kept encrypted, like every other document a citizen gives us.
+    """
+    # Multipart bodies are not inspected by the global rule; bind here.
+    user_id = subject_for(request, user_id)
+    audio_bytes = await audio.read() if audio is not None else b""
     audio_msg_id = str(uuid.uuid4())
     audio_path = AUDIO_DIR / f"{audio_msg_id}.webm"
-    with open(audio_path, "wb") as af:
-        af.write(audio_bytes)
+    if audio_bytes:
+        from dpdp import file_vault
+        file_vault.write(audio_path, audio_bytes)
 
     transcript_hi = ""
     transcript_en = ""
-    sarvam_key = os.environ.get("SARVAM_API_KEY", "")
-    if sarvam_key:
-        tmp_path = None
+    provider_used = ""
+    if text.strip():
+        provider_used = "client"
+        if language == "en":
+            transcript_en = text.strip()[:5000]
+        else:
+            transcript_hi = text.strip()[:5000]
+    elif audio_bytes:
         try:
-            from sarvamai import SarvamAI
-            sarvam_client = SarvamAI(api_subscription_key=sarvam_key)
-            with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as tmp:
-                tmp.write(audio_bytes)
-                tmp_path = tmp.name
-
-            with open(tmp_path, "rb") as f:
-                resp_orig = sarvam_client.speech_to_text.transcribe(file=f, model="saaras:v3", mode="transcribe")
-            original_text = resp_orig.transcript or ""
-
+            t, attempts = await stt_registry.transcribe(
+                audio_bytes, mime=audio.content_type or "", language=language,
+                translate_to="en" if language != "en" else "", requested=provider)
+            provider_used = t.provider
             if language == "en":
-                transcript_en = original_text
-                with open(tmp_path, "rb") as f:
-                    resp_hi = sarvam_client.speech_to_text.transcribe(file=f, model="saaras:v3", mode="transcribe", language_code="hi-IN")
-                transcript_hi = resp_hi.transcript or original_text
+                transcript_en = t.text
             else:
-                transcript_hi = original_text
-                with open(tmp_path, "rb") as f:
-                    resp_en = sarvam_client.speech_to_text.transcribe(file=f, model="saaras:v3", mode="translate")
-                transcript_en = resp_en.transcript or ""
+                transcript_hi = t.text
+                transcript_en = t.translated_text
+            logger.info("STT via %s (%s) after %d attempt(s)", t.provider, t.model, len(attempts))
+        except SttError as e:
+            logger.warning("STT failed: %s", e)
 
-            logger.info(f"Sarvam STT success: lang={language}")
-        except Exception as e:
-            logger.error(f"Sarvam STT failed: {e}\n{traceback.format_exc()}")
-        finally:
-            if tmp_path:
-                try:
-                    os.unlink(tmp_path)
-                except OSError:
-                    pass
-
-    is_mock = False
+    is_mock = provider_used == "mock"
     if not transcript_hi and not transcript_en:
         if DEMO_MODE:
             is_mock = True
@@ -258,18 +260,21 @@ async def transcribe_audio(audio: UploadFile = File(...), user_id: str = Form(""
             import agnost
             agnost.track(user_id=user_id or "api", agent_name="nagarik_tool",
                          input=f"audio_{len(audio_bytes)}bytes", output=query_text[:100],
-                         properties={"tool": "sarvam_stt", "is_mock": is_mock, "language": language},
+                         properties={"tool": "stt", "provider": provider_used, "is_mock": is_mock,
+                                     "language": language},
                          success=not is_mock, latency=0)
         except Exception:
             pass
 
     return {"success": True, "transcript_hi": transcript_hi, "transcript_en": transcript_en,
-            "is_mock": is_mock, "user_message": user_msg, "bot_message": bot_msg}
+            "is_mock": is_mock, "provider": provider_used,
+            "user_message": user_msg, "bot_message": bot_msg}
 
 
 @api_router.post("/chat/voice")
-async def voice_to_text(audio: UploadFile = File(...), user_id: str = Form(""), language: str = Form("hi")):
-    return await transcribe_audio(audio=audio, user_id=user_id, language=language)
+async def voice_to_text(request: Request, audio: UploadFile = File(...), user_id: str = Form(""),
+                        language: str = Form("hi")):
+    return await transcribe_audio(request=request, audio=audio, user_id=user_id, language=language)
 
 
 @api_router.post("/chat/reset")

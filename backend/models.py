@@ -20,6 +20,13 @@ class SendOTPRequest(BaseModel):
 class VerifyOTPRequest(BaseModel):
     phone: str
     otp: str
+    # Admins with an enrolled authenticator must also present its code.
+    totp: Optional[str] = None
+    # A signed-in operator sets this to record the citizen's consent (the
+    # citizen just proved the phone is theirs on the operator's device)
+    # instead of starting a session for the citizen.
+    for_operator: bool = False
+    consent_minutes: Optional[int] = 60
 
     @field_validator('phone')
     @classmethod
@@ -36,6 +43,17 @@ class AuthResponse(BaseModel):
     message: str
     user_id: Optional[str] = None
     phone: Optional[str] = None
+    # Issued on a successful verify-otp. The access token is short-lived and
+    # signed; the refresh token is opaque and rotates on every use.
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    token_type: Optional[str] = None
+    expires_in: Optional[int] = None
+    role: Optional[str] = None
+    # send-otp: whether a fixed demo code was used instead of a delivered one.
+    mock: Optional[bool] = None
+    # verify-otp with for_operator: how long the recorded consent lasts.
+    consent_expires_in: Optional[int] = None
 
 
 class ChatMessageRequest(BaseModel):

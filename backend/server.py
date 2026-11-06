@@ -83,7 +83,23 @@ async def root():
 async def analytics_status():
     return {"enabled": bool(AGNOST_WRITE_KEY), "dashboard_url": "https://app.agnost.ai"}
 
-app.include_router(api_router)
+# Every API request passes through one authorisation rule (auth/deps.py):
+# a request that names a user must be authenticated as, or for, that user;
+# a request that names nobody needs a token unless the route is public.
+from fastapi import Depends
+from auth.deps import enforce
+app.include_router(api_router, dependencies=[Depends(enforce)])
+
+# Edge hygiene, innermost first: request ids, security headers, body limits,
+# rate limiting. CORS is added last so it is outermost and preflights never
+# hit the limiter.
+from api.middleware import (
+    BodySizeLimitMiddleware, RateLimitMiddleware, RequestIdMiddleware, SecurityHeadersMiddleware,
+)
+app.add_middleware(RequestIdMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(BodySizeLimitMiddleware)
+app.add_middleware(RateLimitMiddleware)
 
 # CORS: explicit origins only, never wildcard with credentials
 app.add_middleware(
@@ -91,5 +107,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_origins=CORS_ORIGINS,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-User-Id", "X-Admin-Secret"],
+    allow_headers=["Content-Type", "Authorization", "X-User-Id", "X-Admin-Secret",
+                   "X-Reviewer-Id", "X-Request-Id"],
+    expose_headers=["X-Request-Id", "Retry-After"],
 )
