@@ -107,6 +107,7 @@ cp .env.example .env            # then fill in the values (see the file's commen
 export MONGO_URL="mongodb://127.0.0.1:27017/nagarik_sahayak?replicaSet=rs0"
 export DEMO_MODE=true            # OTP is 123456 and speech falls back to a mock
 python -m prisma db push --skip-generate
+python scripts/seed_demo.py     # optional: a complete demo citizen to explore every feature
 python -m uvicorn server:app --host 127.0.0.1 --port 8001
 
 # Frontend (in another shell)
@@ -118,6 +119,13 @@ REACT_APP_BACKEND_URL="http://localhost:8001" npm start
 `backend/.env.example` documents every setting, including real SMS providers
 and the fourteen speech engines. Nothing but MongoDB is required to run the core
 flow; an LLM key is optional.
+
+**Demo profile.** `python scripts/seed_demo.py` creates one demo citizen
+(Sunita Devi) with a complete profile. In a `DEMO_MODE` build, sign in with
+phone `9000000001` and OTP `123456` and you land straight in the app with data
+for every feature — eligible schemes, the intake answers already filled, the
+document checklist, KYC, the filled PDF, and the DPDP screens. `--remove`
+deletes it.
 
 ### Tests
 
