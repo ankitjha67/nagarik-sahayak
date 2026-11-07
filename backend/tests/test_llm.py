@@ -1,7 +1,7 @@
 """The provider-agnostic LLM layer: selection, fallback, and the routes.
 
-No model is called for real; fakes stand in so the registry's behaviour — try
-the chain, skip the unconfigured, survive a failing provider, report attempts —
+No model is called for real; fakes stand in so the registry's behaviour - try
+the chain, skip the unconfigured, survive a failing provider, report attempts -
 is what is under test.
 """
 from __future__ import annotations

@@ -47,7 +47,7 @@ _results: list[tuple[str, str, str]] = []
 
 def check(stage: str, ok: bool, detail: str = "") -> bool:
     _results.append((PASS if ok else FAIL, stage, detail))
-    print(f"  [{PASS if ok else FAIL}] {stage}" + (f" — {detail}" if detail else ""))
+    print(f"  [{PASS if ok else FAIL}] {stage}" + (f" - {detail}" if detail else ""))
     return ok
 
 
@@ -102,7 +102,7 @@ async def stage_fetch_and_extract(offline: bool) -> dict | None:
 
 
 async def stage_ocr(offline: bool) -> None:
-    banner("STAGE 2b  OCR path — a scanned form with no extractable text")
+    banner("STAGE 2b  OCR path - a scanned form with no extractable text")
     if offline:
         print("  (skipped: --offline)")
         return
@@ -111,7 +111,7 @@ async def stage_ocr(offline: bool) -> None:
 
     if not _HAS_TESSERACT:
         check("OCR available", False,
-              "tesseract not installed — scanned forms will yield no fields")
+              "tesseract not installed - scanned forms will yield no fields")
         return
 
     import time
@@ -198,7 +198,7 @@ async def stage_generate_pdf(profile: dict) -> None:
 
 
 def stage_adversarial() -> None:
-    banner("STAGE 7  Adversarial cases — each must be caught")
+    banner("STAGE 7  Adversarial cases - each must be caught")
 
     from eligibility_engine import evaluate_scheme
     from fraud_detection import ApplicantHistory, assess
@@ -210,7 +210,7 @@ def stage_adversarial() -> None:
     sukanya = get_by_name("Sukanya Samriddhi Yojana")
     base_aadhaar = make_valid_aadhaar("48291736450")
 
-    # T1 — fabricated identity
+    # T1 - fabricated identity
     check("T1 Invented Aadhaar rejected",
           validate_aadhaar("123456789012").is_blocking, "starts with 1")
     good = make_valid_aadhaar("23456789012")
@@ -222,14 +222,14 @@ def stage_adversarial() -> None:
     check("T1 Malformed IFSC rejected",
           validate_ifsc("SB1N123").is_blocking, "wrong format")
 
-    # T3 — age gaming for an old-age pension
+    # T3 - age gaming for an old-age pension
     too_young = {"name": "Suresh", "age": 34, "is_bpl": "Yes",
                  "aadhaar_number": base_aadhaar}
     e = evaluate_scheme(too_young, pension)
     check("T3 Under-age old-age pension refused", not e.is_eligible,
           e.failed[0].message_en[:52] if e.failed else "")
 
-    # T3 — age inflated to clear the threshold, contradicted by date of birth
+    # T3 - age inflated to clear the threshold, contradicted by date of birth
     lying = {"name": "Suresh", "age": 62, "date_of_birth": "1992-06-01",
              "is_bpl": "Yes", "aadhaar_number": base_aadhaar}
     r = assess(lying, pension, ApplicantHistory())
@@ -237,7 +237,7 @@ def stage_adversarial() -> None:
           any(s.code == "age_dob_mismatch" for s in r.signals),
           f"risk {r.score}")
 
-    # T3 — a man applying for a women-only pension
+    # T3 - a man applying for a women-only pension
     male = {"name": "Mohan", "gender": "Male", "age": 45,
             "marital_status": "Married", "aadhaar_number": base_aadhaar}
     r = assess(male, widow, ApplicantHistory())
@@ -247,7 +247,7 @@ def stage_adversarial() -> None:
     e = evaluate_scheme(male, widow)
     check("T3 Gender rule also fails eligibility", not e.is_eligible)
 
-    # T3 — over-age child for Sukanya Samriddhi
+    # T3 - over-age child for Sukanya Samriddhi
     old_child = {"girl_child_name": "Anu", "girl_child_age": 14}
     r = assess(old_child, sukanya, ApplicantHistory())
     check("T3 Over-age child for Sukanya flagged",
@@ -255,7 +255,7 @@ def stage_adversarial() -> None:
     check("T3 Over-age child also fails eligibility",
           not evaluate_scheme(old_child, sukanya).is_eligible)
 
-    # T2 — means-test gaming
+    # T2 - means-test gaming
     rich_farmer = {"name": "Vikram", "annual_income": 0,
                    "land_holding_acres": 25, "aadhaar_number": base_aadhaar}
     r = assess(rich_farmer, None, ApplicantHistory())
@@ -274,7 +274,7 @@ def stage_adversarial() -> None:
           any(s.code == "bpl_high_income"
               for s in assess(bpl_rich, None, ApplicantHistory()).signals))
 
-    # T5 — benefit diversion: many genuine applicants, one collecting account
+    # T5 - benefit diversion: many genuine applicants, one collecting account
     clean = {"name": "Sita", "age": 70, "is_bpl": "Yes",
              "aadhaar_number": base_aadhaar}
     r = assess(clean, pension,
@@ -283,13 +283,13 @@ def stage_adversarial() -> None:
           r.decision.value == "escalate",
           f"risk {r.score}, 12 applicants on one account")
 
-    # T1 — one Aadhaar across several accounts
+    # T1 - one Aadhaar across several accounts
     r = assess(clean, pension, ApplicantHistory(users_sharing_aadhaar=4))
     check("T1 Aadhaar reused across accounts flagged",
           any(s.code == "aadhaar_shared_across_users" for s in r.signals),
           f"risk {r.score}")
 
-    # T4 — duplicate and household claims
+    # T4 - duplicate and household claims
     r = assess(clean, pension,
                ApplicantHistory(prior_applications_same_scheme=3))
     check("T4 Repeat application flagged",
@@ -298,7 +298,7 @@ def stage_adversarial() -> None:
     check("T4 Household double-dipping flagged",
           any(s.code == "household_duplicate_claim" for s in r.signals))
 
-    # T6 — bulk filing
+    # T6 - bulk filing
     r = assess(clean, pension, ApplicantHistory(applications_last_24h=45))
     check("T6 Bulk filing flagged",
           any(s.code.startswith("velocity") for s in r.signals),
@@ -329,7 +329,7 @@ def stage_adversarial() -> None:
 
 
 async def stage_gate_integration() -> None:
-    banner("STAGE 8  Combined gate — the decision the API actually returns")
+    banner("STAGE 8  Combined gate - the decision the API actually returns")
 
     from data.gov_forms import get_by_name
     from fraud_detection import ApplicantHistory
@@ -364,7 +364,7 @@ async def stage_gate_integration() -> None:
         )
         ok = g.outcome.value == expected and g.may_issue_form == should_issue
         reason = (g.reasons_en[0][:44] if g.reasons_en else "")
-        check(f"Gate: {label}", ok, f"{g.outcome.value} — {reason}")
+        check(f"Gate: {label}", ok, f"{g.outcome.value} - {reason}")
 
     # An audit record must exist for every decision, for appeal purposes.
     g = await application_guard.evaluate_application(
@@ -378,7 +378,7 @@ async def stage_gate_integration() -> None:
 
 
 def stage_catalog_coverage() -> None:
-    banner("STAGE 9  Catalog — Central and State coverage")
+    banner("STAGE 9  Catalog - Central and State coverage")
 
     from data.gov_forms import catalog_states, get_catalog
 
@@ -503,7 +503,7 @@ def stage_state_applicants() -> None:
         profile = demo["profile"]
         v = validate_profile(profile, scheme["extractedFields"])
         e = evaluate_scheme(profile, scheme)
-        check(f"{demo['label']} — {scheme['schemeName'][:38]}",
+        check(f"{demo['label']} - {scheme['schemeName'][:38]}",
               not v.is_blocking and e.verdict is Verdict.ELIGIBLE,
               f"{len(v.errors)} errors, verdict {e.verdict.value}")
 
@@ -532,7 +532,7 @@ def stage_state_applicants() -> None:
 
 
 def stage_kyc() -> None:
-    banner("STAGE 11  KYC — offline Aadhaar, matching, and what it decides")
+    banner("STAGE 11  KYC - offline Aadhaar, matching, and what it decides")
 
     from kyc import aadhaar_offline as ao
     from kyc import matching, service
@@ -573,7 +573,7 @@ def stage_kyc() -> None:
 
     check("Unverified signature is NOT reported as verified",
           record.assurance is Assurance.DOCUMENTED,
-          f"{record.assurance.label_en} — no UIDAI certificate configured")
+          f"{record.assurance.label_en} - no UIDAI certificate configured")
 
     # A citizen whose typed name differs from the document by transliteration.
     claimed = {"name": "Kamala Devi", "date_of_birth": "1958-04-12",
@@ -603,7 +603,7 @@ def stage_kyc() -> None:
     ]
     for label, result in survivors:
         check(f"Not refused: {label}", not result.decisive,
-              f"score {result.score:.2f} — routed to a reviewer")
+              f"score {result.score:.2f} - routed to a reviewer")
 
     # Verification must buy an honest applicant something, or nobody bothers.
     # Measured on a profile that actually carries risk: a citizen reapplying to
@@ -645,7 +645,7 @@ def stage_kyc() -> None:
 
 
 def stage_languages() -> None:
-    banner("STAGE 12  Languages — coverage, honesty, and right-to-left")
+    banner("STAGE 12  Languages - coverage, honesty, and right-to-left")
 
     from i18n import languages, resolve
     from i18n.catalog import KEYS, Quality, coverage, quality_of
@@ -710,7 +710,7 @@ def stage_languages() -> None:
 
 
 def stage_dpdp_and_notice() -> None:
-    banner("STAGE 13  DPDP — the notice is narrower than the interface")
+    banner("STAGE 13  DPDP - the notice is narrower than the interface")
 
     from routes import dpdp as dpdp_routes
     from i18n import resolve
@@ -745,7 +745,7 @@ async def stage_end_to_end_integration() -> None:
     evidence that never reached the decision, and a missing document that was
     reported as invalid data rather than an unfinished form.
     """
-    banner("STAGE 14  End to end — the wiring between the layers")
+    banner("STAGE 14  End to end - the wiring between the layers")
 
     import fraud_detection as fd
     from data.gov_forms import get_by_name, get_catalog
@@ -774,7 +774,7 @@ async def stage_end_to_end_integration() -> None:
     partial = await run({"name": "Sunita Devi", "age": 34, "gender": "Female"})
     check("Unfinished form is INCOMPLETE, not a refusal",
           partial.outcome is GateOutcome.INCOMPLETE,
-          f"{partial.outcome.value} — "
+          f"{partial.outcome.value} - "
           f"{partial.reasons_en[0][:44] if partial.reasons_en else ''}")
 
     # An identity document that is absent is an absence, not bad data.
@@ -854,7 +854,7 @@ async def stage_end_to_end_integration() -> None:
 
 async def stage_form_geometry(offline: bool) -> None:
     """Reading the ruled grid off a scan, and staying inside it."""
-    banner("STAGE 15  Form geometry — placing values without spilling over")
+    banner("STAGE 15  Form geometry - placing values without spilling over")
 
     import form_geometry
     from form_geometry import Cell
@@ -927,7 +927,7 @@ async def stage_form_geometry(offline: bool) -> None:
 
     page = pymupdf.open(source)[0]
     check("A scanned form has no vector lines at all", not page.get_drawings(),
-          "borders are pixels — page.get_drawings() returns nothing")
+          "borders are pixels - page.get_drawings() returns nothing")
 
     grid = form_geometry.describe(page)
     check("The grid is recovered from the image", grid["gridDetected"],
@@ -1028,7 +1028,7 @@ async def main() -> int:
     args = ap.parse_args()
 
     print("=" * 74)
-    print("NAGARIK SAHAYAK — FULL ENGINE SMOKE TEST")
+    print("NAGARIK SAHAYAK - FULL ENGINE SMOKE TEST")
     print("=" * 74)
 
     await stage_fetch_and_extract(args.offline)
@@ -1053,7 +1053,7 @@ async def main() -> int:
         print("\n  Failed checks:")
         for status, stage, detail in _results:
             if status == FAIL:
-                print(f"    · {stage} — {detail}")
+                print(f"    · {stage} - {detail}")
     print()
     return 1 if failed else 0
 

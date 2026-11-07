@@ -1,9 +1,9 @@
-"""What to carry to the counter — the documents a scheme's form implies.
+"""What to carry to the counter - the documents a scheme's form implies.
 
 The form-filling engine tells a citizen what to *write*. This tells them what
 to *bring*. The single most common reason an application is turned away at the
-counter is a missing enclosure — an income certificate that was at home, a
-caste certificate nobody mentioned — and the citizen has already spent a day
+counter is a missing enclosure - an income certificate that was at home, a
+caste certificate nobody mentioned - and the citizen has already spent a day
 and a bus fare to get there. A form lists its fields; it rarely lists, in one
 place and in the citizen's language, the papers those fields stand for. So this
 derives that list from the fields themselves.
@@ -11,9 +11,9 @@ derives that list from the fields themselves.
 The mapping is deliberately conservative. A document is listed only when a
 field, or the scheme's own eligibility rules, genuinely implies it, and each
 entry says *why* it is needed so the citizen can judge it against their own
-case. Where the law allows a choice — most importantly, Aadhaar is one option
+case. Where the law allows a choice - most importantly, Aadhaar is one option
 among several identity documents under the Aadhaar Act s7 proviso, never the
-only one — the alternatives are named rather than hidden.
+only one - the alternatives are named rather than hidden.
 
 Pure data in, pure data out: no database, no network, no model. It is derived
 from the bundled catalog and can be unit-tested on its own.
@@ -61,8 +61,8 @@ _DOCS: dict[str, Document] = {
     "identity": Document(
         "identity", "Aadhaar card", "आधार कार्ड",
         "To confirm who you are. Aadhaar is one accepted option, not the only "
-        "one — a benefit cannot be refused for not having it.",
-        "अपनी पहचान के लिए। आधार एक विकल्प है, एकमात्र नहीं — आधार न होने पर "
+        "one - a benefit cannot be refused for not having it.",
+        "अपनी पहचान के लिए। आधार एक विकल्प है, एकमात्र नहीं - आधार न होने पर "
         "लाभ से इनकार नहीं किया जा सकता।",
         alternatives=("Voter ID (EPIC)", "Ration card", "MGNREGA job card",
                       "Driving licence", "Passport"),
@@ -127,9 +127,9 @@ _DOCS: dict[str, Document] = {
     ),
     "land": Document(
         "land", "Land records (khasra / khatauni)", "भूमि रिकॉर्ड (खसरा/खतौनी)",
-        "An agricultural scheme needs proof of your landholding — the survey "
+        "An agricultural scheme needs proof of your landholding - the survey "
         "or khasra number and the record of rights.",
-        "कृषि योजना के लिए आपकी जोत का प्रमाण चाहिए — खसरा संख्या और अधिकार "
+        "कृषि योजना के लिए आपकी जोत का प्रमाण चाहिए - खसरा संख्या और अधिकार "
         "अभिलेख।",
     ),
     "death_certificate": Document(
@@ -182,9 +182,9 @@ def _has_income_limit(scheme: dict) -> bool:
     """True when the scheme turns on income, by rule or by its own words.
 
     A rule on annual_income or is_bpl is the clear signal. But a scheme can gate
-    on income without modelling it as a rule — the Daman & Diu scholarship
+    on income without modelling it as a rule - the Daman & Diu scholarship
     prints a "Parental income below/above 1.5 Lakh" tick on the form and says so
-    in its eligibility summary — so the summary text is read too. The phrases
+    in its eligibility summary - so the summary text is read too. The phrases
     are specific enough ("income", "lakh", "BPL") that a scheme which merely
     mentions money in passing is not swept in.
     """
@@ -218,7 +218,7 @@ def required_documents(scheme: dict) -> list[Document]:
             or "is_bpl" in keys or _has_income_limit(scheme)):
         out.append(_DOCS["income"])
 
-    # Caste certificate only where a reserved category is actually offered —
+    # Caste certificate only where a reserved category is actually offered -
     # never ask a General-only form's applicant for one.
     reserved = {"SC", "ST", "OBC"}
     if "category" in keys and (_category_options(scheme) & reserved
@@ -281,10 +281,10 @@ def checklist_for(scheme: dict) -> dict:
         # themselves. It is not a government decision about their documents.
         "noticeEnglish":
             "This is a checklist to help you prepare. Carry the originals and "
-            "one photocopy of each. Requirements can vary by office — if in "
+            "one photocopy of each. Requirements can vary by office - if in "
             "doubt, ask at the counter.",
         "noticeHindi":
             "यह तैयारी में मदद के लिए सूची है। हर दस्तावेज़ की मूल प्रति और एक "
-            "फोटोकॉपी ले जाएँ। कार्यालय अनुसार आवश्यकताएँ बदल सकती हैं — संदेह "
+            "फोटोकॉपी ले जाएँ। कार्यालय अनुसार आवश्यकताएँ बदल सकती हैं - संदेह "
             "हो तो काउंटर पर पूछें।",
     }

@@ -1,4 +1,4 @@
-"""Terms of service — IT Rules 2021 rule 3(1)(a), and DPDP s15.
+"""Terms of service - IT Rules 2021 rule 3(1)(a), and DPDP s15.
 
 Rule 3(1)(a) requires an intermediary to publish its rules, privacy policy and
 user agreement. The privacy notice covers data; this covers the service itself.
@@ -14,7 +14,7 @@ not, or paying someone who claims they can secure one:
      defrauding you.
   4. The citizen must **submit the form themselves**. The app fills it in.
 
-Section 15 of the DPDP Act also places duties on the Data Principal — not to
+Section 15 of the DPDP Act also places duties on the Data Principal - not to
 impersonate, not to suppress material information, to furnish authentic
 particulars. Those appear as user obligations because they are the citizen's
 statutory duties, not merely house rules.
@@ -51,10 +51,10 @@ CRITICAL_DISCLOSURES = [
         "id": "never_pay",
         "en": "This service is free. No fee is ever payable to us or to anyone "
               "claiming to act for us. If someone asks you for money to get a "
-              "scheme approved, it is fraud — report it.",
+              "scheme approved, it is fraud - report it.",
         "hi": "यह सेवा निःशुल्क है। हमें या हमारे नाम पर किसी को कोई शुल्क नहीं "
               "देना है। यदि कोई योजना स्वीकृत कराने के लिए पैसे मांगे, तो यह "
-              "धोखाधड़ी है — इसकी शिकायत करें।",
+              "धोखाधड़ी है - इसकी शिकायत करें।",
     },
     {
         "id": "you_must_submit",
@@ -134,8 +134,8 @@ OUR_COMMITMENTS = [
            "rather than simply omitting it.",
      "hi": "यदि आप किसी योजना के लिए पात्र नहीं हैं, तो हम आपको स्पष्ट कारण "
            "बताएंगे।"},
-    {"en": "We store your Aadhaar number nowhere — only its last four digits.",
-     "hi": "हम आपका आधार नंबर कहीं संग्रहीत नहीं करते — केवल उसके अंतिम चार अंक।"},
+    {"en": "We store your Aadhaar number nowhere - only its last four digits.",
+     "hi": "हम आपका आधार नंबर कहीं संग्रहीत नहीं करते - केवल उसके अंतिम चार अंक।"},
     {"en": "You can see everything we hold about you, correct it, or have it "
            "erased, at any time.",
      "hi": "आप कभी भी अपना संपूर्ण डेटा देख सकते हैं, सुधार सकते हैं, या मिटवा "
@@ -156,10 +156,10 @@ LIMITATIONS = [
     {
         "id": "form_accuracy",
         "en": "We fill forms from what you tell us. Check the completed form "
-              "before you sign and submit it — you are responsible for what it "
+              "before you sign and submit it - you are responsible for what it "
               "says.",
         "hi": "हम आपके दिए विवरण से फॉर्म भरते हैं। हस्ताक्षर और जमा करने से पहले "
-              "भरा हुआ फॉर्म जाँच लें — उसमें लिखी बातों के लिए आप उत्तरदायी हैं।",
+              "भरा हुआ फॉर्म जाँच लें - उसमें लिखी बातों के लिए आप उत्तरदायी हैं।",
     },
     {
         "id": "eligibility_is_indicative",

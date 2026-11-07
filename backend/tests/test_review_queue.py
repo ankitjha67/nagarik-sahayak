@@ -2,7 +2,7 @@
 
 The queue is the half of fraud detection that makes it legitimate: the screen
 never refuses anyone on suspicion, it defers to a person. These tests cover the
-rules that keep that deferral honest — decisions are attributable, refusals
+rules that keep that deferral honest - decisions are attributable, refusals
 carry a reason, closed cases are not silently overwritten, and no case can be
 starved out of the queue.
 """

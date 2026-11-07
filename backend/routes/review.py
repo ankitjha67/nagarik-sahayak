@@ -1,4 +1,4 @@
-"""Reviewer queue routes — work the pile of applications flagged for checking.
+"""Reviewer queue routes - work the pile of applications flagged for checking.
 
 All endpoints except the citizen-facing status check are admin-gated: this data
 describes suspicion about named people, and must not be browsable by applicants.
@@ -54,7 +54,7 @@ async def review_case_detail(case_id: str, request: Request):
     Applicant context is resolved live rather than stored on the case, so the
     queue never becomes a second copy of everyone's personal data and the
     reviewer always sees current values. Identifiers are masked to their last
-    four digits — enough to confirm which number was used and whether two
+    four digits - enough to confirm which number was used and whether two
     applicants share it, which is all the flags actually turn on.
     """
     _require_reviewer(request)
@@ -75,7 +75,7 @@ async def review_case_decide(case_id: str, request: Request, req: dict):
     """Approve or reject a flagged application.
 
     Body: {"decision": "approved" | "rejected", "note": "..."}
-    A rejection must carry a note — a citizen refused on suspicion needs
+    A rejection must carry a note - a citizen refused on suspicion needs
     something to appeal against.
     """
     reviewer_id = _require_reviewer(request)
@@ -114,7 +114,7 @@ async def review_case_reopen(case_id: str, request: Request, req: dict | None = 
 async def my_review_cases(user_id: str):
     """A citizen's own cases, so the app can say a check is under way.
 
-    Not admin-gated — people are entitled to know their application is being
+    Not admin-gated - people are entitled to know their application is being
     verified. Only status and timing are returned: the underlying risk signals
     stay internal, since disclosing them would tell a genuine fraudster exactly
     which behaviour to change.
@@ -135,12 +135,12 @@ async def my_review_cases(user_id: str):
             "note": c["reviewerNote"] if c["status"] == CaseStatus.REJECTED.value else "",
             "message_en": {
                 "pending": "Your application is being verified.",
-                "approved": "Verification complete — your application may proceed.",
+                "approved": "Verification complete - your application may proceed.",
                 "rejected": "Your application could not be verified.",
             }.get(c["status"], ""),
             "message_hi": {
                 "pending": "आपके आवेदन का सत्यापन किया जा रहा है।",
-                "approved": "सत्यापन पूर्ण — आपका आवेदन आगे बढ़ सकता है।",
+                "approved": "सत्यापन पूर्ण - आपका आवेदन आगे बढ़ सकता है।",
                 "rejected": "आपके आवेदन का सत्यापन नहीं हो सका।",
             }.get(c["status"], ""),
         } for c in cases],

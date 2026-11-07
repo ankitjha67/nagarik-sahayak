@@ -1,6 +1,6 @@
 """Text generation, behind one interface, across every major provider.
 
-The app's only LLM use is optional — classifying a government form's fields
+The app's only LLM use is optional - classifying a government form's fields
 from its extracted text when the rule-based extractor is not enough. It must
 not be tied to one vendor, so every model sits behind an `LlmProvider` with the
 same `complete()`, selected and failed-over by a registry exactly like the

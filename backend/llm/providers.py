@@ -128,7 +128,7 @@ class NvidiaNim(_OpenAICompatible):
             if r.status_code < 300:
                 available = {m.get("id") for m in (r.json().get("data") or [])}
                 chosen = next((m for m in self.PREFERENCE if m in available), chosen)
-        except Exception:  # noqa: BLE001 — discovery is best-effort; fall back
+        except Exception:  # noqa: BLE001 - discovery is best-effort; fall back
             pass
         NvidiaNim._discovered = chosen
         return chosen
@@ -361,7 +361,7 @@ class Emergent(LlmProvider):
         chat = chat.with_model(provider, model)
         try:
             text = await chat.send_message(UserMessage(text=prompt))
-        except Exception as e:  # noqa: BLE001 — their SDK raises broadly
+        except Exception as e:  # noqa: BLE001 - their SDK raises broadly
             raise LlmError(self.key, f"{type(e).__name__}: {e}")
         return Completion(text=(text or "").strip(), provider=self.key, model=model)
 

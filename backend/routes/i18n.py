@@ -52,7 +52,7 @@ async def message_keys():
 async def suggest_language(request: Request, state: str = ""):
     """Which language to offer, from the citizen's State and browser.
 
-    A State's own language ranks first — someone applying for a Tamil Nadu
+    A State's own language ranks first - someone applying for a Tamil Nadu
     scheme should be offered Tamil ahead of Hindi.
     """
     return resolve.suggest(

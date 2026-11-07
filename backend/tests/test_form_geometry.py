@@ -1,7 +1,7 @@
 """Reading the ruled grid off a scanned form, and writing inside it.
 
 A printed government form is a table, and the border of a cell is the line a
-clerk reads by. A value that crosses it lands on the next field — on the
+clerk reads by. A value that crosses it lands on the next field - on the
 Haryana scholarship form, the applicant's college name printed across the
 Class, Session and Admission No. columns.
 
@@ -70,7 +70,7 @@ class TestCells:
         assert fg.cell_containing(self.CELLS, 900, 900) is None
 
     def test_no_cells_is_a_legitimate_answer(self):
-        """An unruled document — a typed letter — has no grid, and the caller
+        """An unruled document - a typed letter - has no grid, and the caller
         falls back to bounding by the next printed word."""
         assert fg.cell_containing([], 100, 110) is None
 
@@ -174,7 +174,7 @@ class TestAgainstARealScan:
 
         Asserted on the writable span rather than the raw cell. The Class
         divider does not run the full height of this row, so the cell is
-        row-wide and it is the printed word "Class" that bounds the value —
+        row-wide and it is the printed word "Class" that bounds the value -
         which is the right answer arrived at by the second rule rather than the
         first, and the citizen cannot tell the difference.
         """

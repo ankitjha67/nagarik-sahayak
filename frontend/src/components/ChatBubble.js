@@ -135,7 +135,7 @@ const TranscriptionBlock = ({ message }) => {
         <div className="flex items-center gap-1.5">
           <Languages size={14} className="text-[#FF9933]" />
           <span className="text-[10px] font-bold text-[#FF9933] font-['Mukta'] uppercase tracking-wider">
-            Voice Transcription — Sarvam Saaras v3
+            Voice Transcription - Sarvam Saaras v3
           </span>
         </div>
         {audioUrl && (
@@ -166,7 +166,7 @@ const TranscriptionBlock = ({ message }) => {
   );
 };
 
-/* Hindi Voice Reply — uses browser SpeechSynthesis (works offline) */
+/* Hindi Voice Reply - uses browser SpeechSynthesis (works offline) */
 const HindiVoiceBtn = ({ text }) => {
   const { tx } = useLanguage();
   const [speaking, setSpeaking] = useState(false);
@@ -239,7 +239,7 @@ const TickStatus = ({ status }) => {
   );
 };
 
-/* WhatsApp Share Button — copies share text to clipboard */
+/* WhatsApp Share Button - copies share text to clipboard */
 const WhatsAppShareBtn = ({ pdfUrl, schemeName }) => {
   const { tx } = useLanguage();
   const [copied, setCopied] = useState(false);
@@ -329,7 +329,7 @@ const FlaggedBlock = ({ flagged }) => {
         </span>
       </div>
       <p className="text-[10px] text-amber-700 font-['Nunito'] leading-relaxed pl-4">
-        {flagged.map((f) => f.scheme_name).join(", ")} — लाभ जारी होने से पहले जाँच की जाएगी।
+        {flagged.map((f) => f.scheme_name).join(", ")} - लाभ जारी होने से पहले जाँच की जाएगी।
         आपका फॉर्म तैयार है।
         <span className="block opacity-80">
           These will be checked before the benefit is released. Your form is ready.
@@ -397,7 +397,7 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
           URL.revokeObjectURL(blobUrl);
           successCount++;
         } catch {
-          // Individual file failed — continue, will fallback to zip
+          // Individual file failed - continue, will fallback to zip
         }
         // 500ms stagger between downloads
         if (i < pdfUrls.length - 1) {
@@ -413,7 +413,7 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
           await api.get(`/download-all?user_id=${userId || ""}&count=${pdfUrls.length}`);
         } catch {}
       } else {
-        // Some failed — fallback to zip download
+        // Some failed - fallback to zip download
         try {
           // Authenticated zip fallback (same reason as the per-file fetch).
           const resp = await api.get(
@@ -537,7 +537,7 @@ export const ChatBubble = ({ message }) => {
         <FlaggedBlock flagged={message.flagged_for_review} />
         <RefusedBlock refused={message.refused} />
 
-        {/* PDF Download — ALL eligible forms at once */}
+        {/* PDF Download - ALL eligible forms at once */}
         {message.pdf_urls && message.pdf_urls.length > 0 ? (
           <MultiPdfDownloadBlock pdfUrls={message.pdf_urls} userId={message.user_id} backendUrl={backendUrl} />
         ) : (hasPdf || isPdfReport) && message.pdf_url ? (

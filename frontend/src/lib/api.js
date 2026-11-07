@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // The backend origin. Baked in at build time from REACT_APP_BACKEND_URL, but a
-// runtime override in localStorage ("ns_backend_url") wins — so the installed
+// runtime override in localStorage ("ns_backend_url") wins - so the installed
 // Android app can be pointed at a laptop on the LAN (or a phone's localhost via
 // `adb reverse`) without rebuilding. Set it from the browser console or the
 // in-app backend field: localStorage.setItem("ns_backend_url", "http://192.168.1.5:8001").
@@ -61,7 +61,7 @@ export const clearSession = () => {
 export const sessionRole = () => safeGet(KEYS.role) || "citizen";
 export const hasSession = () => !!safeGet(KEYS.access);
 
-// Request interceptor — attach the bearer token
+// Request interceptor - attach the bearer token
 api.interceptors.request.use((config) => {
   const token = safeGet(KEYS.access);
   if (token) config.headers["Authorization"] = `Bearer ${token}`;
@@ -92,7 +92,7 @@ const endSession = () => {
   window.location.href = "/";
 };
 
-// Response interceptor — refresh once on 401, otherwise end the session
+// Response interceptor - refresh once on 401, otherwise end the session
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -213,7 +213,7 @@ export const generateRealFilledForms = (userId, schemeNames) =>
 export const uploadAndExtract = (formData) =>
   api.post("/upload-and-extract", formData, {
     headers: { "Content-Type": "multipart/form-data" },
-    timeout: 120000, // 2 min — extraction can take time
+    timeout: 120000, // 2 min - extraction can take time
   });
 
 // ── V3 Discovery APIs ──
@@ -253,14 +253,14 @@ export const resetPortalHealth = (portalName) =>
 
 // ── Real Government Forms ──
 // getFormCatalog is defined once, further down, in its parameterised form
-// (level/state filtering) — it was declared a second time here as well, and two
+// (level/state filtering) - it was declared a second time here as well, and two
 // `export const` of one name in a module is a SyntaxError that fails the whole
 // build. The parameterised version is a superset: called with no arguments it
 // behaves exactly as this plain one did.
 
 export const getFormCatalogDetail = (schemeName) =>
   api.get(`/forms/catalog/${encodeURIComponent(schemeName)}`);
-// "What to carry to the counter" — the documents a scheme's form implies,
+// "What to carry to the counter" - the documents a scheme's form implies,
 // bilingual, with the reason for each and the alternatives the law allows.
 export const getSchemeDocuments = (schemeName) =>
   api.get(`/forms/catalog/${encodeURIComponent(schemeName)}/documents`);
@@ -330,7 +330,7 @@ export const verifyFields = (profile, schemeName) =>
 export const verifyEligibility = (profile, schemeName) =>
   api.post("/verify/eligibility", { profile, scheme_name: schemeName });
 // `kycOutcomes` are whatever the /kyc endpoints returned for this citizen.
-// Passing none is normal and never counts against them — under the Aadhaar Act
+// Passing none is normal and never counts against them - under the Aadhaar Act
 // s7 proviso a benefit cannot be refused for want of authentication. Passing
 // them can only lower the friction an honest applicant meets.
 export const verifyApplication = (profile, schemeName, userId, kycOutcomes = []) =>

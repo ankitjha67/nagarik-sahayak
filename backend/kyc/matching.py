@@ -3,7 +3,7 @@
 The temptation is to compare strings. That fails constantly and it fails in one
 direction: against the applicant. Indian names reach a form through
 transliteration, so "Mohd. Rafiq", "Mohammad Rafique" and "Md Rafiq" are one
-person. Married women's documents disagree with each other by design — a bank
+person. Married women's documents disagree with each other by design - a bank
 account opened before marriage carries a maiden name and a different surname
 from the ration card. Government records abbreviate to initials. Dates arrive in
 five formats.
@@ -32,7 +32,7 @@ _NOISE = {
 }
 
 # Common transliteration variants collapsed to one form. Not a general
-# phonetic algorithm — a curated list of the substitutions that actually
+# phonetic algorithm - a curated list of the substitutions that actually
 # generate false mismatches on Indian government forms.
 _TRANSLITERATION = [
     ("ph", "f"), ("gh", "g"), ("kh", "k"), ("bh", "b"), ("dh", "d"),
@@ -72,7 +72,7 @@ class MatchResult:
     """Outcome of one comparison.
 
     `score` is 0.0-1.0. `decisive` marks a contradiction that cannot be
-    explained by transliteration or record-keeping drift — the only case where
+    explained by transliteration or record-keeping drift - the only case where
     a caller may refuse without human review.
     """
     field: str
@@ -135,7 +135,7 @@ def _token_similarity(a: str, b: str) -> float:
     if pa == pb:
         return 0.97
     # An initial matching a full token is a legitimate abbreviation, not a
-    # mismatch — government records abbreviate constantly.
+    # mismatch - government records abbreviate constantly.
     if len(a) == 1 or len(b) == 1:
         return 0.8 if (pa[:1] == pb[:1]) else 0.0
     if pa.startswith(pb) or pb.startswith(pa):
@@ -198,9 +198,9 @@ def compare_names(claimed, verified) -> MatchResult:
         reason_hi = "वर्तनी एवं लिप्यंतरण की छूट सहित नाम मेल खाते हैं।"
     elif score >= 0.45:
         reason_en = ("Names are similar but not the same. This is common and "
-                     "usually innocent — a married name, an initial, or a "
+                     "usually innocent - a married name, an initial, or a "
                      "different transliteration. A reviewer should look.")
-        reason_hi = ("नाम समान हैं किंतु एक नहीं। यह सामान्य एवं प्रायः निर्दोष है — "
+        reason_hi = ("नाम समान हैं किंतु एक नहीं। यह सामान्य एवं प्रायः निर्दोष है - "
                      "विवाह के बाद का नाम, आद्याक्षर अथवा भिन्न लिप्यंतरण। समीक्षक "
                      "देखें।")
     else:
@@ -242,7 +242,7 @@ def compare_dates_of_birth(claimed, verified) -> MatchResult:
 
     Decisive only on a disagreement of more than a year. Inside a year the
     disagreement is usually UIDAI's year-only record or a 1 January placeholder
-    assigned when the holder did not know their birthday — refusing on that
+    assigned when the holder did not know their birthday - refusing on that
     would exclude a large share of elderly applicants.
     """
     a, b = parse_date(claimed), parse_date(verified)
@@ -317,9 +317,9 @@ def compare_pincodes(claimed, verified) -> MatchResult:
     if a[:3] == b[:3]:
         return MatchResult(
             "pincode", 0.7,
-            "PIN codes are in the same postal region — consistent with having "
+            "PIN codes are in the same postal region - consistent with having "
             "moved locally since the document was issued.",
-            "पिन कोड एक ही डाक क्षेत्र में — दस्तावेज़ जारी होने के बाद स्थानीय "
+            "पिन कोड एक ही डाक क्षेत्र में - दस्तावेज़ जारी होने के बाद स्थानीय "
             "स्थानांतरण के अनुरूप।")
     return MatchResult(
         "pincode", 0.2,

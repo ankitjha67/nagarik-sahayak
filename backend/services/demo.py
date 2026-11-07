@@ -12,11 +12,11 @@ VIDYASIRI_RESULT = {
     "scheme": "Vidyasiri Scholarship", "scheme_hi": "विद्यासिरी छात्रवृत्ति",
     "eligible": True,
     "reasons": [
-        "Child passed 10th — eligible for Post-Matric scholarship",
+        "Child passed 10th - eligible for Post-Matric scholarship",
         "Family income ₹16,000/month within ₹2,50,000/year ceiling",
         "Karnataka domicile verified",
     ],
-    "reason": "Child passed 10th — eligible for Post-Matric scholarship; "
+    "reason": "Child passed 10th - eligible for Post-Matric scholarship; "
               "Family income ₹16,000/month within ₹2,50,000/year ceiling; "
               "Karnataka domicile verified",
     "benefit": "₹12,000–₹24,000/year tuition + hostel allowance for post-10th students",

@@ -44,7 +44,7 @@ async def generate_pdf_endpoint(req: GeneratePDFRequest):
         raise HTTPException(status_code=400, detail="No eligibility results")
     pdf_id = str(uuid.uuid4())
     generate_eligibility_pdf(profile=profile, eligibility_results=results, output_path=str(PDF_DIR / f"{pdf_id}.pdf"))
-    # Encrypt the report at rest — it lists the citizen's declared income,
+    # Encrypt the report at rest - it lists the citizen's declared income,
     # category and eligibility outcome for every scheme.
     from dpdp import file_vault
     file_vault.encrypt_in_place(PDF_DIR / f"{pdf_id}.pdf")
@@ -93,7 +93,7 @@ async def serve_pdf(pdf_id: str, request: Request):
         raise HTTPException(status_code=404, detail="PDF not found")
 
     # Documents are encrypted at rest, so they cannot be streamed straight off
-    # disk — FileResponse would hand the client ciphertext. These are tens to
+    # disk - FileResponse would hand the client ciphertext. These are tens to
     # hundreds of kilobytes, so decrypting into memory is fine.
     from fastapi.responses import Response
     from dpdp import crypto, file_vault
@@ -161,7 +161,7 @@ async def download_all_zip(request: Request, pdf_ids: str = "", user_id: str = "
 
     # This endpoint takes a caller-supplied list of identifiers, so without an
     # ownership check it is a bulk-retrieval primitive over every citizen's
-    # filled forms — strictly worse than the single-document endpoint. Each id
+    # filled forms - strictly worse than the single-document endpoint. Each id
     # is checked individually against recorded ownership (DPDP s8(4)).
     from dpdp import ownership
     requester = principal_of(request).user_id

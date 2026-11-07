@@ -5,14 +5,14 @@ import { getSchemeDocuments } from "../lib/api";
 // "What to carry to the counter." The form-filling engine says what to write;
 // this says what to bring. A missing enclosure is the commonest reason an
 // application is turned away, after the citizen has already spent a day and a
-// fare to reach the office — so the documents are listed in one place, in their
+// fare to reach the office - so the documents are listed in one place, in their
 // language, with the reason for each, and the ticks are remembered on the
 // device so the list survives being closed, reopened, and used offline on the
 // day of travel.
 
 // Ticks live only in this browser, keyed per scheme. Which papers a citizen has
 // gathered is their own working note, not evidence the application needs, so it
-// never leaves the device — the same reasoning as kycStore.
+// never leaves the device - the same reasoning as kycStore.
 const tickKey = (schemeName) => `ns_docs_ticked:${schemeName}`;
 
 function loadTicked(schemeName) {
@@ -29,7 +29,7 @@ function saveTicked(schemeName, set) {
   try {
     localStorage.setItem(tickKey(schemeName), JSON.stringify([...set]));
   } catch {
-    /* private window or storage blocked — the list still works this session */
+    /* private window or storage blocked - the list still works this session */
   }
 }
 
@@ -76,8 +76,8 @@ export function DocumentChecklist({ schemeName, schemeTitle, isHindi, onClose })
   const shareOnWhatsApp = () => {
     const title = isHindi ? data.schemeNameHindi || schemeTitle : schemeTitle;
     const header = isHindi
-      ? `${title} — काउंटर पर ले जाने योग्य दस्तावेज़:`
-      : `${title} — documents to carry:`;
+      ? `${title} - काउंटर पर ले जाने योग्य दस्तावेज़:`
+      : `${title} - documents to carry:`;
     const lines = docs.map((d) => {
       const name = isHindi ? d.nameHindi : d.nameEnglish;
       const mark = ticked.has(d.key) ? "✅" : "▢";
@@ -216,7 +216,7 @@ export function DocumentChecklist({ schemeName, schemeTitle, isHindi, onClose })
                 })}
               </ul>
 
-              {/* The plain, honest notice — said once, where it will be read. */}
+              {/* The plain, honest notice - said once, where it will be read. */}
               <div className="mt-4 rounded-lg bg-blue-50 border border-blue-100 p-3 flex gap-2">
                 <Info size={14} className="text-blue-500 flex-shrink-0 mt-0.5" />
                 <p className="text-[11px] text-blue-800 font-['Nunito'] leading-snug">
@@ -227,7 +227,7 @@ export function DocumentChecklist({ schemeName, schemeTitle, isHindi, onClose })
           )}
         </div>
 
-        {/* Footer — share */}
+        {/* Footer - share */}
         {data && (
           <div className="p-4 border-t border-gray-100">
             <button

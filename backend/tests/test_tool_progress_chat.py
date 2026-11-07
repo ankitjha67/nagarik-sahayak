@@ -35,7 +35,7 @@ class TestChatScholarshipDemo:
         # Verify the first demo result is an eligible scholarship, with a
         # reason. The exact wording of the reason is demo copy and has changed
         # (it now describes the Post-Matric criteria), so the test asserts the
-        # invariant — eligible, with a non-empty scholarship reason — not a
+        # invariant - eligible, with a non-empty scholarship reason - not a
         # frozen phrase.
         vidyasiri_result = bot_msg["eligibility_results"][0]
         assert vidyasiri_result["scheme"] == "Vidyasiri Scholarship"

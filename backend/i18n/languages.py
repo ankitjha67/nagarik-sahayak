@@ -7,7 +7,7 @@ one its citizens actually deal with government in. A person applying for a
 Tamil Nadu scheme should not have to read Hindi to do it.
 
 The registry below is the full Eighth Schedule, plus English, with each
-language's endonym — the name in its own script, which is what a person looks
+language's endonym - the name in its own script, which is what a person looks
 for in a language picker. A list that says "Bengali" to someone who reads
 বাংলা is a list they cannot use.
 
@@ -38,7 +38,7 @@ class Language:
 
 LANGUAGES: tuple[Language, ...] = (
     # English is not an Eighth Schedule language, but it *is* the declared
-    # official language of these States and Union Territories — in several of
+    # official language of these States and Union Territories - in several of
     # the North-East it is the only one, because the languages people actually
     # speak there are outside the Schedule entirely. Listing the regions is
     # therefore a fact about those States, not a fallback dressed up as one.
@@ -176,7 +176,7 @@ def for_state(state: str) -> list[str]:
 # the Schedule rather than about their speakers: a Mizo speaker in Aizawl has no
 # statutory claim to a notice in Mizo. Recorded so the gap is visible in the
 # coverage report instead of showing up as "this State is fully covered by
-# English" — which is true administratively and false for the reader.
+# English" - which is true administratively and false for the reader.
 NON_SCHEDULED_REGIONAL: dict[str, tuple[str, ...]] = {
     "Mizoram": ("Mizo (Lushai)",),
     "Meghalaya": ("Khasi", "Garo"),

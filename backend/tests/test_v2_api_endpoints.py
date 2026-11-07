@@ -59,8 +59,8 @@ def complete_valid_profile(scheme_name):
     """Build a profile that satisfies a scheme's form, from the form itself.
 
     The eligibility/validity engine refuses to fill a form from an incomplete
-    or malformed profile — correctly, since a wrong value on a signed
-    government form is a false declaration — so a generation test must supply a
+    or malformed profile - correctly, since a wrong value on a signed
+    government form is a false declaration - so a generation test must supply a
     whole valid profile. Reading the required fields from the live template
     keeps the test honest as the form evolves."""
     tpl = requests.get(
@@ -111,8 +111,8 @@ class TestV2Schemes:
         """GET /api/v2/schemes returns the catalogue, with count matching the list.
 
         The catalogue grew from the original four MVP schemes to the full real
-        government-form set, so this asserts the invariant — a populated list
-        whose reported count matches it — rather than a frozen number."""
+        government-form set, so this asserts the invariant - a populated list
+        whose reported count matches it - rather than a frozen number."""
         response = requests.get(f"{BASE_URL}/api/v2/schemes")
         assert response.status_code == 200
         data = response.json()
@@ -174,7 +174,7 @@ class TestV2FormTemplates:
     def test_every_template_reports_its_field_count(self):
         """Each template in the list declares a field count and its identity.
 
-        The list view is a summary — scheme name, category, counts — and does
+        The list view is a summary - scheme name, category, counts - and does
         not carry the per-section breakdown, which the detail endpoint provides
         (see TestV2SingleFormTemplate)."""
         data = requests.get(f"{BASE_URL}/api/v2/form-templates").json()
@@ -225,7 +225,7 @@ class TestV2SingleFormTemplate:
         """PM-KISAN's form covers the applicant's landholding.
 
         The section was renamed "Land Details" (from the MVP's "Farmer
-        Details") when the real PM-KISAN form was modelled — it is the land a
+        Details") when the real PM-KISAN form was modelled - it is the land a
         farmer owns that the scheme turns on."""
         response = requests.get(f"{BASE_URL}/api/v2/form-template/PM-KISAN%20Samman%20Nidhi")
         data = response.json()
@@ -244,7 +244,7 @@ class TestV2UserProfile:
     """V2 /api/v2/user-profile/{user_id} endpoint tests"""
     
     def test_save_profile_fields(self):
-        """POST /api/v2/user-profile/{user_id} saves fields — and never the Aadhaar.
+        """POST /api/v2/user-profile/{user_id} saves fields - and never the Aadhaar.
 
         The full Aadhaar is stripped before storage (Aadhaar Act s29; see
         dpdp/aadhaar_policy): only its last four digits are kept. So the test
@@ -385,7 +385,7 @@ class TestV2GenerateFilledForms:
         if not TEST_USER_ID:
             pytest.skip("No test user_id available")
         
-        # Supply a whole valid profile for the scheme — the engine refuses to
+        # Supply a whole valid profile for the scheme - the engine refuses to
         # fill a form from incomplete or malformed data.
         requests.post(
             f"{BASE_URL}/api/v2/user-profile/{TEST_USER_ID}",
@@ -441,7 +441,7 @@ class TestPDFDownload:
         data = gen_response.json()
         pdf_url = data["pdf_urls"][0]["pdf_url"]
 
-        # Download the PDF as its owner — the ownership header is what the real
+        # Download the PDF as its owner - the ownership header is what the real
         # app's client always sends; without it the route returns 401.
         response = requests.get(f"{BASE_URL}{pdf_url}", headers=auth_headers())
         assert response.status_code == 200
@@ -452,7 +452,7 @@ class TestPDFDownload:
         """A PDF id with no ownership record returns 404 to an authenticated caller.
 
         The route answers 404 (not 403) for an unowned artefact so that it is
-        indistinguishable from one that never existed — no existence oracle."""
+        indistinguishable from one that never existed - no existence oracle."""
         response = requests.get(
             f"{BASE_URL}/api/pdf/nonexistent-uuid-12345", headers=auth_headers())
         assert response.status_code == 404

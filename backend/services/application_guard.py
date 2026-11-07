@@ -2,18 +2,18 @@
 
 Composes the independent checks into one verdict:
 
-  1. validation.py         — is the data objectively valid?
-  2. eligibility_engine.py — does the applicant meet the scheme's stated rules?
-  3. fraud_detection.py    — does this application look abusive?
-  4. kyc/                   — what identity evidence, if any, backs it?
+  1. validation.py         - is the data objectively valid?
+  2. eligibility_engine.py - does the applicant meet the scheme's stated rules?
+  3. fraud_detection.py    - does this application look abusive?
+  4. kyc/                   - what identity evidence, if any, backs it?
 
 Only (1) and (2) can stop an application, and both give the citizen a concrete,
 translated reason. (3) never refuses on its own; it routes to a human. See the
 design stance documented in fraud_detection.py for why.
 
 (4) is evidence, never a gate. A citizen who has verified nothing must still be
-able to apply — the Aadhaar Act s7 proviso says a benefit cannot be refused for
-want of authentication — so identity evidence only ever moves the risk score,
+able to apply - the Aadhaar Act s7 proviso says a benefit cannot be refused for
+want of authentication - so identity evidence only ever moves the risk score,
 and only ever downward for an honest applicant. The one exception is a
 contradiction that cannot be a spelling difference, which raises the score and
 routes to a reviewer; it still does not refuse.
@@ -140,15 +140,15 @@ async def evaluate_application(
     scheme_name = scheme.get("schemeName", "Unknown scheme")
     fields = scheme.get("extractedFields", []) or []
 
-    # 1. Data validity — blocks only on objectively impossible values.
+    # 1. Data validity - blocks only on objectively impossible values.
     v = validate_profile(profile, fields)
     validation = v.as_dict()
 
-    # 2. Scheme eligibility — deterministic, explainable, per-rule.
+    # 2. Scheme eligibility - deterministic, explainable, per-rule.
     e = evaluate_scheme(profile, scheme)
     eligibility = e.as_dict()
 
-    # 3. Fraud signals — advisory. Computed even when the application is
+    # 3. Fraud signals - advisory. Computed even when the application is
     #    blocked, so that repeated invalid attempts remain visible to reviewers.
     risk = {}
     if check_fraud:
@@ -162,7 +162,7 @@ async def evaluate_application(
     reasons_hi: list[str] = []
 
     if v.has_invalid_values:
-        # Something submitted is actually wrong — a failed checksum, an
+        # Something submitted is actually wrong - a failed checksum, an
         # impossible date. Report only those, not the fields still blank.
         outcome = GateOutcome.BLOCKED_INVALID_DATA
         for f in v.errors:
@@ -173,7 +173,7 @@ async def evaluate_application(
                 reasons_hi.append(f.message_hi)
     elif v.missing_required:
         # The form is merely unfinished. This is not a refusal, and must not be
-        # phrased as one — the citizen is told what is still needed.
+        # phrased as one - the citizen is told what is still needed.
         outcome = GateOutcome.INCOMPLETE
         for f in v.missing_required:
             reasons_en.append(f.message_en)
@@ -215,7 +215,7 @@ def audit_record(user_id: str, result: GateResult) -> dict:
 
     A citizen refused a benefit is entitled to know why; a reviewer needs to see
     what the system saw at decision time. Identifiers are deliberately excluded
-    — this is a decision log, not a copy of the applicant's personal data.
+    - this is a decision log, not a copy of the applicant's personal data.
     """
     from datetime import datetime, timezone
 

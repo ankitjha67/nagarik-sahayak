@@ -17,7 +17,7 @@ from field_rules import (
 from data.gov_forms import get_by_name, get_catalog, all_profile_keys
 
 
-# Trimmed from the real OCR output of pmkisan.gov.in/Documents/Kcc.pdf —
+# Trimmed from the real OCR output of pmkisan.gov.in/Documents/Kcc.pdf -
 # retains the noise (stray glyphs, broken tables) that real scans produce.
 REAL_OCR_SAMPLE = """--- Page 1 (OCR) ---
 ANNEXURE-II

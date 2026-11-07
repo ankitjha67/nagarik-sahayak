@@ -7,9 +7,9 @@ canonical keyword map, with no LLM involved.
 
 It serves two roles:
 
-1. **Fallback** — when no LLM key is configured, or the LLM call fails, this
+1. **Fallback** - when no LLM key is configured, or the LLM call fails, this
    still produces a usable field list so the app keeps working.
-2. **Enrichment** — its canonical `profileKey` mapping is applied to LLM output
+2. **Enrichment** - its canonical `profileKey` mapping is applied to LLM output
    too, so the same real-world concept ("Name of Applicant", "Applicant Name",
    "आवेदक का नाम") always lands on one profile key and answers are reused
    across schemes.
@@ -150,7 +150,7 @@ NOISE_PATTERNS = re.compile(
 PAGE_MARKER = re.compile(r"^\s*-{2,}.*?-{2,}\s*$")
 
 # Signals that a document is an actual fillable form rather than prose
-# (guidelines, FAQs, circulars — which government portals publish far more of).
+# (guidelines, FAQs, circulars - which government portals publish far more of).
 FORM_KEYWORDS = re.compile(
     r"application\s+form|form\s+no|annexure|affix\s+.{0,20}photograph"
     r"|signature\s+of\s+(the\s+)?(applicant|candidate)|declaration\s+by"
@@ -158,8 +158,11 @@ FORM_KEYWORDS = re.compile(
     re.IGNORECASE,
 )
 
-# Fill markers: dotted leaders, underscores, boxes — a strong signal that the
+# Fill markers: dotted leaders, underscores, boxes - a strong signal that the
 # preceding text is a field label on a blank form.
+# The character class intentionally includes an em dash (—) and en dash (–):
+# these detect dash fill-lines in EXTERNAL government form PDFs, so they are
+# matched input, not text this project emits. (Do not "de-em-dash" this line.)
 FILL_MARKER = re.compile(r"[.．_—–\-]{3,}|\.{2,}\s*$|\[\s*\]|\(\s*\)|□|☐")
 
 # Section headers: "A. Particulars of the applicant", "PART-B", "SECTION 3"
@@ -231,7 +234,7 @@ def _is_probable_label(line: str) -> bool:
     words = stripped.split()
     if len(words) > 14:
         return False
-    # Needs at least some letters — OCR table fragments are often pure symbols.
+    # Needs at least some letters - OCR table fragments are often pure symbols.
     letters = sum(ch.isalpha() for ch in stripped)
     if letters < 3:
         return False
@@ -352,7 +355,7 @@ def extract_fields_from_text(text: str, max_fields: int = 60) -> list[dict]:
             continue
 
         if spec is None:
-            # Unrecognised but structurally a field — keep it generically, but
+            # Unrecognised but structurally a field - keep it generically, but
             # only if it reads like a label rather than a clause. Without this,
             # declaration/nomination forms yield keys like
             # "i_hereby_nominate_the_person_persons_mentioned".

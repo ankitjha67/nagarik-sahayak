@@ -1,4 +1,4 @@
-"""V2.0 API routes — real form templates, smart profiler, filled PDF generation."""
+"""V2.0 API routes - real form templates, smart profiler, filled PDF generation."""
 import json
 import logging
 import time as _time
@@ -94,7 +94,7 @@ def _ensure_local_source(official_pdf_url: str) -> str:
             return ""
         cached.write_bytes(resp.content)
         return str(cached)
-    except Exception as e:  # noqa: BLE001 — never let a dead link deny a form
+    except Exception as e:  # noqa: BLE001 - never let a dead link deny a form
         logger.warning(f"Could not fetch official form {official_pdf_url}: {e}")
         return ""
 
@@ -227,7 +227,7 @@ async def smart_profiler(req: dict = {}):
     """Given the forms a citizen has chosen, say what still has to be collected.
 
     Returns every field the forms ask for, split into what is already known,
-    what is still needed (required *and* optional — the aim is to store all of a
+    what is still needed (required *and* optional - the aim is to store all of a
     form's details, not only the mandatory ones), and the next question to ask,
     localised and with its type and options. Transient fields such as the
     Aadhaar number are reported separately and never counted as "missing": they
@@ -280,7 +280,7 @@ async def answer_field(req: dict = {}):
     Body: {user_id, profileKey, value, scheme_names: [...]}
 
     A malformed answer is rejected with a message in both languages and nothing
-    is stored — the same question comes back so the citizen can correct it. An
+    is stored - the same question comes back so the citizen can correct it. An
     absent answer to an optional field is accepted as "skip". Transient fields
     (the Aadhaar number) are validated and echoed back for immediate use but are
     deliberately not persisted.
@@ -433,7 +433,7 @@ async def generate_real_filled_forms(req: dict = {}):
                 continue
             if gate.risk.get("requires_human_review"):
                 # Raise a case so a person actually sees this. enqueue() returns
-                # None rather than raising if the queue is down — the citizen
+                # None rather than raising if the queue is down - the citizen
                 # still gets their form; only the review record is lost.
                 from services import review_queue
                 case_id = await review_queue.enqueue(user_id, gate)
@@ -452,14 +452,14 @@ async def generate_real_filled_forms(req: dict = {}):
         await ownership.record_owner(pid, user_id, ownership.ArtefactKind.PDF)
         fill_method = "generated"
 
-        # Fill onto the real published government PDF when one exists — a local
+        # Fill onto the real published government PDF when one exists - a local
         # upload or the official URL, fetched and cached on first use. Only if
         # there is no live form to fill do we synthesise a generic one.
         source_pdf_path = _ensure_local_source(ft.officialPdfUrl or "")
 
         # fill_profile (built above, before the gate) carries the transient
         # Aadhaar for this one document. The fill engine prints only the masked
-        # form — last four digits — never the full number (Aadhaar Act s29(4)).
+        # form - last four digits - never the full number (Aadhaar Act s29(4)).
         fill_detail: dict = {}
         if source_pdf_path:
             fill_result = fill_pdf_form(
@@ -469,7 +469,7 @@ async def generate_real_filled_forms(req: dict = {}):
             if fill_result.get("success"):
                 fill_method = fill_result.get("method", "filled")
                 # What went on the page, and what the form has no slot for and
-                # so must be written by hand — told to the citizen rather than
+                # so must be written by hand - told to the citizen rather than
                 # dropped silently.
                 fill_detail = {
                     "filled_count": fill_result.get("filled_count", 0),

@@ -1,4 +1,4 @@
-"""Profiler Agent — collects user profile one question at a time, then runs eligibility + PDF generation."""
+"""Profiler Agent - collects user profile one question at a time, then runs eligibility + PDF generation."""
 import re
 import json
 import logging

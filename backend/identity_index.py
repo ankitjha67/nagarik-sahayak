@@ -48,7 +48,7 @@ def _salt() -> bytes:
     if not salt:
         if not _MISSING_SALT_WARNED:
             logger.warning(
-                "IDENTITY_HASH_SALT is not set — identity fingerprints are using "
+                "IDENTITY_HASH_SALT is not set - identity fingerprints are using "
                 "a default key and are NOT protected against enumeration. Set a "
                 "long random value in production."
             )
@@ -67,7 +67,7 @@ def _canonical(value, field: str) -> str:
     if not text:
         return ""
     if field == "ration_card_number":
-        # Alphanumeric, case-insensitive — ration card formats vary by state.
+        # Alphanumeric, case-insensitive - ration card formats vary by state.
         return "".join(ch for ch in text if ch.isalnum()).lower()
     digits = "".join(ch for ch in text if ch.isdigit())
     if field == "mobile_number":

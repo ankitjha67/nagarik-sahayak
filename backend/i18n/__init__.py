@@ -1,10 +1,10 @@
 """Multilingual support across the Eighth Schedule.
 
-    languages.py — the 22 scheduled languages plus English, with endonyms,
+    languages.py - the 22 scheduled languages plus English, with endonyms,
                    scripts, direction, and the States each is official in
-    catalog.py   — interface strings, per language, each marked with how much
+    catalog.py   - interface strings, per language, each marked with how much
                    weight it can bear
-    resolve.py   — lookup and bundling; a fallback is never silent
+    resolve.py   - lookup and bundling; a fallback is never silent
 
 The rule the package exists to enforce: the app may serve a language it cannot
 fully translate, but it must always say so. Silently rendering English while

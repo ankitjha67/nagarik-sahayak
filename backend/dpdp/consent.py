@@ -10,7 +10,7 @@ service alerts, and the record has to be able to show that.
 
 Second, section 6(4) requires withdrawal to be **as easy as giving**. So
 withdrawal is one call with the same shape as granting, and it does not require
-a reason. Withdrawing does not delete the consent row — the history of having
+a reason. Withdrawing does not delete the consent row - the history of having
 consented and then withdrawn is itself the evidence a Data Fiduciary must be
 able to produce, and destroying it would defeat the audit the Act contemplates.
 """
@@ -32,9 +32,9 @@ NOTICE_VERSION = "1.0"
 
 class RequestType:
     """Section 11–14 rights."""
-    ACCESS = "access"            # s11 — summary of data and processing
-    CORRECTION = "correction"    # s12 — correct or complete
-    ERASURE = "erasure"          # s12 — erase
+    ACCESS = "access"            # s11 - summary of data and processing
+    CORRECTION = "correction"    # s12 - correct or complete
+    ERASURE = "erasure"          # s12 - erase
     GRIEVANCE = "grievance"      # s13
     NOMINATION = "nomination"    # s14
 
@@ -71,7 +71,7 @@ async def grant(user_id: str, purposes: list[str], *, language: str = "hi",
 
 
 async def withdraw(user_id: str, purposes: list[str] | None = None) -> dict:
-    """Withdraw consent. No reason required — s6(4) makes this a right.
+    """Withdraw consent. No reason required - s6(4) makes this a right.
 
     Passing no purposes withdraws all of them, because a citizen who wants out
     should not have to enumerate what they once agreed to.
@@ -164,7 +164,7 @@ async def access_summary(user_id: str) -> dict:
     """The summary section 11 entitles a citizen to.
 
     Section 11(1) requires a summary of the personal data being processed and
-    the processing activities undertaken — not a raw dump. It also requires the
+    the processing activities undertaken - not a raw dump. It also requires the
     identities of other Data Fiduciaries the data has been shared with, which is
     why third-party disclosure is listed explicitly rather than left implicit.
     """

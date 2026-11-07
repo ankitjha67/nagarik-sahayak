@@ -265,7 +265,7 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
         </div>
         {fetchingUrl && (
           <p className="text-[10px] text-gray-400 font-['Nunito'] text-center mt-1.5">
-            Scanned forms are read with OCR — this can take up to a minute.
+            Scanned forms are read with OCR - this can take up to a minute.
           </p>
         )}
         {uploadResult && (
@@ -280,7 +280,7 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
               <div className="flex items-start gap-1.5">
                 <FileText size={14} className="mt-0.5 flex-shrink-0" />
                 <span>
-                  <strong>{uploadResult.scheme}</strong> — {uploadResult.totalFields} fields extracted
+                  <strong>{uploadResult.scheme}</strong> - {uploadResult.totalFields} fields extracted
                   {uploadResult.method === "ocr" && (
                     <span className="block text-[10px] opacity-75">
                       Read from a scanned form using OCR

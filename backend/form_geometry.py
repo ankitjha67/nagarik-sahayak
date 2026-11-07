@@ -2,7 +2,7 @@
 
 A printed Indian government form is a table. The value for "District" belongs
 inside one specific cell, and a value that runs past that cell's border lands
-on top of the next field — which on a scholarship form means the applicant's
+on top of the next field - which on a scholarship form means the applicant's
 college name printed across the Class, Session and Admission No. columns.
 
 Knowing where the cell borders are is therefore the difference between a form
@@ -20,8 +20,8 @@ The method is deliberately simple and has no OpenCV dependency:
 4. Merge adjacent runs into single lines, then take every pair of neighbouring
    rules as a candidate cell.
 
-It degrades honestly. A form with no detectable grid — a plain typed letter,
-or a scan too poor to threshold — yields no cells, and the caller falls back to
+It degrades honestly. A form with no detectable grid - a plain typed letter,
+or a scan too poor to threshold - yields no cells, and the caller falls back to
 bounding by the next printed word. That is worse but not wrong, and it is
 reported rather than assumed.
 """
@@ -107,7 +107,7 @@ class Cell:
 
 
 def _normalise_token(token: str) -> str:
-    """Lower-case alphanumerics only — the same reduction the matcher uses."""
+    """Lower-case alphanumerics only - the same reduction the matcher uses."""
     return re.sub(r"[^0-9a-z\u0900-\u097f]", "", str(token).lower())
 
 
@@ -128,7 +128,7 @@ def _spans_full_height(mask, tolerance: int = 2) -> bool:
 
     A printed column divider is drawn from one rule to the next, so it touches
     both. A capital letter in an 11-point row occupies about three quarters of
-    the row's height — enough to pass a fractional test, which is how the
+    the row's height - enough to pass a fractional test, which is how the
     strokes of "Amount of Loan required" came to be read as four column
     dividers, chopping the row into slivers and hiding the empty box beside it.
     Letters leave a gap above and below; a rule does not.
@@ -170,11 +170,11 @@ def _bridge_segments(segments, x_gap: float = 2.0, max_gap: float = 60.0):
 
     A ruled line does not stop for one row and start again below it. Where the
     same x carries a segment above a gap and another below it, the gap is ink
-    the threshold missed — faint print, a fold, a compression artefact — and
+    the threshold missed - faint print, a fold, a compression artefact - and
     bridging it recovers the cell.
 
     Only ever between two segments at the same x, so a divider that genuinely
-    ends — the Class / Session columns, which exist for two rows and no more —
+    ends - the Class / Session columns, which exist for two rows and no more -
     is never extended into rows it does not belong to.
 
     Without this the Address row had no detected border on either side, formed
@@ -239,7 +239,7 @@ def detect_rules(page, scale: float = RENDER_SCALE):
     try:
         import numpy as np
     except ImportError:
-        logger.info("numpy not installed — grid detection unavailable")
+        logger.info("numpy not installed - grid detection unavailable")
         return [], []
 
     try:
@@ -253,7 +253,7 @@ def detect_rules(page, scale: float = RENDER_SCALE):
     try:
         matrix = pymupdf.Matrix(scale, scale)
         pix = page.get_pixmap(matrix=matrix, colorspace=pymupdf.csGRAY, alpha=False)
-    except Exception:  # noqa: BLE001 — a page that will not render has no grid
+    except Exception:  # noqa: BLE001 - a page that will not render has no grid
         logger.warning("Could not rasterise a page for grid detection")
         return [], []
 
@@ -285,7 +285,7 @@ def detect_rules(page, scale: float = RENDER_SCALE):
     # Both earlier attempts failed on the same form. Down the whole page, scan
     # skew walks a "vertical" line several pixels sideways and no single column
     # of pixels holds it. In fixed 12%-of-page bands, a divider that exists in
-    # only one 25-point row — the Class / Session / Admission No. columns —
+    # only one 25-point row - the Class / Session / Admission No. columns -
     # never fills enough of a 92-point band to register, so the row came back
     # as one undivided cell and a value written in it ran across three columns.
     #
@@ -298,7 +298,7 @@ def detect_rules(page, scale: float = RENDER_SCALE):
             continue
         # Raw ink, not the skew-widened copy. Widening ORs each pixel two
         # columns sideways, which turns the stroke of a letter into a
-        # full-height column — that is how "Amount of Loan required" came to be
+        # full-height column - that is how "Amount of Loan required" came to be
         # read as four column dividers. Inside a single row the skew is under a
         # pixel anyway, so there is nothing to compensate for.
         band = ink[row_top:row_bottom, :]
@@ -366,8 +366,8 @@ def _is_scan_noise(token: str) -> bool:
         return True
     # Mostly punctuation: "--ll." is a speck between two rules, and bounding a
     # value against it left three points of writing room beside a perfectly
-    # good IFSC label. Length is not the test — ":,.!F-'" is seven characters
-    # of nothing — so the ratio decides, with a looser bar for short tokens
+    # good IFSC label. Length is not the test - ":,.!F-'" is seven characters
+    # of nothing - so the ratio decides, with a looser bar for short tokens
     # where one stray mark is proportionally larger.
     # An initialism is punctuation-heavy and perfectly real: "B.A.", "M.Sc.".
     if re.fullmatch(r"(?:[A-Za-z]\.){2,}", stripped):
@@ -385,13 +385,13 @@ def cell_below(cells: list[Cell], cell: Cell, tolerance: float = 3.0,
                prefer=None) -> Cell | None:
     """The cell directly beneath this one in the same column.
 
-    A column-header row — "Name of the College/School | Class | Session |
-    Admission No." — has no room beside its headings and a blank row under
+    A column-header row - "Name of the College/School | Class | Session |
+    Admission No." - has no room beside its headings and a blank row under
     them. That blank row is where a person writes, and finding it is the
     difference between a value crammed illegibly beside a heading and one
     sitting in its own box.
     """
-    # A candidate must sit under this cell — inside its span — and, when a
+    # A candidate must sit under this cell - inside its span - and, when a
     # label is given, actually overlap it. Requiring half the *header's* width
     # was too coarse: "Session | Admission No." share one printed header box,
     # so the session's own column below it covers only 39% of that box and was
@@ -405,7 +405,7 @@ def cell_below(cells: list[Cell], cell: Cell, tolerance: float = 3.0,
     ]
     if not below:
         return None
-    # Lined up against `prefer` — the label itself — when one is given.
+    # Lined up against `prefer` - the label itself - when one is given.
     return max(below,
                key=lambda c: min(c.x1, target.x1) - max(c.x0, target.x0))
 
@@ -426,7 +426,7 @@ def _is_content(token: str) -> bool:
     alnum = sum(c.isalnum() for c in stripped)
     if alnum >= 2:
         return True
-    # A lone character counts only if that is all it is — "1" or "A" in a grid.
+    # A lone character counts only if that is all it is - "1" or "A" in a grid.
     return alnum == 1 and stripped.isalnum()
 
 
@@ -451,13 +451,13 @@ def _synthesised_below(header: Cell, horizontals, words) -> Cell | None:
 
     Bounded by the two horizontal rules under the heading and by the heading's
     own column, so the region can never be wider than the column it belongs to
-    — a missing border loosens the evidence, it must not loosen the bounds.
+    - a missing border loosens the evidence, it must not loosen the bounds.
     """
     below = sorted(y for y in (horizontals or []) if y > header.y1 + 1)
     if len(below) < 2:
         return None
     # The region must begin where the heading's own cell ends. Taking the next
-    # two rules regardless let it skip a whole row — on the Kisan Credit Card
+    # two rules regardless let it skip a whole row - on the Kisan Credit Card
     # form, past the "Amount of Loan required" row and into "Name of the
     # Applicant", where writing a loan amount is a false statement on a signed
     # declaration.
@@ -466,7 +466,7 @@ def _synthesised_below(header: Cell, horizontals, words) -> Cell | None:
     # Gold/Silver/Bronze sub-heading that occupies other columns and leaves
     # this one clear, so skipping is right there. On the Kisan Credit Card form
     # the strip carries the "Amount of Loan required" label itself, so skipping
-    # it would put the value in the next field's box — a false statement on a
+    # it would put the value in the next field's box - a false statement on a
     # signed declaration.
     # The strip between the heading and the first rule below it must be clear
     # too, or the region begins past something already printed.
@@ -494,7 +494,7 @@ def row_is_blank(cells: list[Cell], row_top: float, row_bottom: float,
 
     This is what separates a column-header row from an ordinary label. Under
     "Name of the College/School | Class | Session | Admission No." the whole
-    next row is empty — it is the data row for those headings. Under "Amount of
+    next row is empty - it is the data row for those headings. Under "Amount of
     Loan required" the next row says "Name of the Applicant", which is a
     different field in a different section, and writing the loan amount there
     put a wrong number on a signed declaration.
@@ -512,7 +512,7 @@ def row_is_blank(cells: list[Cell], row_top: float, row_bottom: float,
 # ── Comb fields: one character to a box ──────────────────────────────────
 #
 # A great many Indian government forms record a number as a row of small
-# squares — twelve for an Aadhaar, ten for a mobile, sixteen for an account.
+# squares - twelve for an Aadhaar, ten for a mobile, sixteen for an account.
 # Writing "39281746503921" as one string across them produces a form a clerk
 # will reject: the digits do not line up with the boxes, and a data-entry
 # operator keying from the squares reads nonsense.
@@ -525,8 +525,8 @@ def row_is_blank(cells: list[Cell], row_top: float, row_bottom: float,
 # Thirty points was too tight. The Daman & Diu form prints its date of birth as
 # eight squares of thirty-three points each, unmistakable to the eye and
 # rejected here, so the field went unplaced on a form that draws a box per
-# digit. What makes a comb recognisable is not smallness but *repetition* —
-# many adjacent boxes of the same width — and that is already tested for. The
+# digit. What makes a comb recognisable is not smallness but *repetition* -
+# many adjacent boxes of the same width - and that is already tested for. The
 # cap is now backed by the shape test below rather than doing the work alone.
 MAX_COMB_BOX_WIDTH = 42.0
 
@@ -542,7 +542,7 @@ MAX_COMB_ASPECT = 1.8
 # cells that happen to be narrow is not.
 COMB_WIDTH_TOLERANCE = 0.28
 
-# Fewer boxes than this is not a comb — two or three narrow cells side by side
+# Fewer boxes than this is not a comb - two or three narrow cells side by side
 # happen by accident all over a form.
 MIN_COMB_BOXES = 4
 
@@ -584,7 +584,7 @@ def find_combs(cells: list[Cell], words, min_boxes: int = MIN_COMB_BOXES
 def _split_uneven(run: list[Cell], min_boxes: int) -> list[list[Cell]]:
     """Break a run wherever the box width changes, and keep the long parts.
 
-    Two combs printed side by side — a date as DD MM YYYY, say — are adjacent
+    Two combs printed side by side - a date as DD MM YYYY, say - are adjacent
     but differently grouped, and treating them as one long comb would spread a
     value across both.
     """
@@ -607,7 +607,7 @@ def comb_for(cells: list[Cell], label_rect, words,
              max_drop: float = 30.0) -> list[Cell] | None:
     """The comb this label writes into, if there is one.
 
-    Looked for on the label's own row first, then just below it — the two
+    Looked for on the label's own row first, then just below it - the two
     places a form puts one. Bounded by `max_drop` so a comb further down the
     page, belonging to another field, is never claimed.
     """
@@ -637,12 +637,12 @@ def blank_cell_right_of(cells: list[Cell], label_rect, words,
 
     This is the ordinary shape of a form: a label in one cell, its box in the
     next. Finding it settles the question that "beside or below?" otherwise
-    leaves open — "Amount of Loan required" has a wide empty box beside it and
+    leaves open - "Amount of Loan required" has a wide empty box beside it and
     a blank-looking cell beneath it in the *next section*, and only the first
     is the field's own.
 
     Two things are measured from the label's **cell**, not from its text. A
-    short label in a wide cell — "Full Name" in 160 points — leaves the box a
+    short label in a wide cell - "Full Name" in 160 points - leaves the box a
     long way from the words, so measuring from the text missed it entirely.
     And the box must share the cell's top and bottom: the photograph panel on
     the Haryana form is blank, starts right where the "Game/Sport" cell ends,
@@ -669,7 +669,7 @@ def option_cell_right_of(cells: list[Cell], label_rect, words,
     """An adjacent cell whose only content is this field's own choices.
 
     "Yes/No" printed in the cell beside a question is not an empty box and not
-    a label — it is the answer cell, with the choices offered. Writing the
+    a label - it is the answer cell, with the choices offered. Writing the
     answer in the space left over is what a person does, and treating the cell
     as occupied left every such question blank.
 
@@ -696,7 +696,7 @@ def option_cell_right_of(cells: list[Cell], label_rect, words,
         if not inside:
             continue
         # Every printed word must be one of the offered choices, or part of
-        # one — "Yes/No" arrives as a single token on many forms.
+        # one - "Yes/No" arrives as a single token on many forms.
         joined = _normalise_token("".join(w[4] for w in inside))
         if not joined or not all(o in joined for o in wanted):
             continue
@@ -711,7 +711,7 @@ def header_data_cell(cells: list[Cell], label_rect, words,
                      max_depth: int = 1, horizontals=None) -> Cell | None:
     """The blank cell a column heading writes into, if this label is one.
 
-    Two conditions, and both are needed. The cell below must be blank — and so
+    Two conditions, and both are needed. The cell below must be blank - and so
     must every other cell on that row, because a row that carries any label of
     its own belongs to a different field. Dropping a value into the first blank
     cell it found put the loan amount on the "Name of the Applicant" line of
@@ -726,7 +726,7 @@ def header_data_cell(cells: list[Cell], label_rect, words,
     # The label's row must actually look like a row of headings: two or more
     # cells, every one of them carrying text. A row that is one label beside an
     # empty box is an ordinary field, and the blank cell under it belongs to
-    # whatever comes next — on the Kisan Credit Card form, to "Name of the
+    # whatever comes next - on the Kisan Credit Card form, to "Name of the
     # Applicant" in the following section. Writing a loan amount there is a
     # false statement on a signed declaration, so coverage gives way to
     # correctness here: the field is reported unplaced instead.
@@ -761,7 +761,7 @@ def colon_anchor(cells: list[Cell], label_rect, words,
            P.G. Diploma, Graduation, Post-graduation course.
                                     :-______________________________________
 
-    — three lines of label, and the answer goes on the rule after the ":-",
+    - three lines of label, and the answer goes on the rule after the ":-",
     which is on none of them. Reading only the label's own row found no space
     at all and reported a field unplaced that the form gives half a line for.
 
@@ -823,7 +823,7 @@ def writable_gaps(cells: list[Cell], label_rect, words, page_width: float,
        form marks a label, so "8. Mobile No: | Email ID:" is two fields on one
        row and the space past "Email ID:" belongs to the email. Without this
        the mobile number was written on top of the email address.
-    2. the right border of the printed cell — the line a clerk sees, and
+    2. the right border of the printed cell - the line a clerk sees, and
        crossing it is what "spilling over" means;
     3. the printed words already on the row, so a value never lands on a hint
        like "(Enclose Certificate)";

@@ -166,7 +166,7 @@ class TestHonestQuality:
     def test_unverifiable_orthography_warns_the_reader(self, code):
         """Bodo, Kashmiri, Manipuri and Santali are written in scripts this
         system cannot check. The text ships, because a citizen is entitled to
-        their language — but it ships saying so, since a wrong sentence here
+        their language - but it ships saying so, since a wrong sentence here
         looks exactly like a right one to the only person who could tell."""
         cov = coverage(code)
         assert cov["quality"] == Quality.LOW_CONFIDENCE.value
@@ -258,8 +258,8 @@ class TestSuggestion:
         assert resolve.suggest(state="West Bengal")["recommended"] == "bn"
 
     def test_a_low_confidence_state_language_is_offered_but_flagged(self):
-        """Jharkhand has Santali speakers. Santali is offered — withholding it
-        would be deciding for them that Hindi is close enough — and the caller
+        """Jharkhand has Santali speakers. Santali is offered - withholding it
+        would be deciding for them that Hindi is close enough - and the caller
         is told to show the standing warning with it."""
         s = resolve.suggest(state="Jharkhand")
         assert "sat" in s["availableFromRanked"]
@@ -293,7 +293,7 @@ class TestStateLanguageCoverage:
     def test_every_state_with_schemes_has_a_language_it_can_be_read_in(self):
         """Not necessarily an Indian one. English is the declared official
         language of Arunachal Pradesh, Meghalaya, Mizoram and Nagaland, so
-        serving them in English is correct rather than a shortfall — but the
+        serving them in English is correct rather than a shortfall - but the
         State must resolve to *something*, or a citizen who reaches a scheme
         there has no readable interface at all."""
         from data.gov_forms import catalog_states

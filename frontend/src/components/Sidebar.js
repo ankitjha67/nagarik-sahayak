@@ -142,7 +142,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           </button>
 
           {/* Identity verification. Described as optional in the label itself,
-              not only inside the page — a menu entry that reads like a required
+              not only inside the page - a menu entry that reads like a required
               step turns people away before they ever open it. */}
           <button
             onClick={() => { onClose(); navigate("/identity"); }}
@@ -156,7 +156,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
                 Verify Identity
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                Optional — speeds up your claim
+                Optional - speeds up your claim
               </span>
             </div>
           </button>
@@ -178,7 +178,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               </span>
             </div>
           </button>
-          {/* Reviewer console — departmental staff sign in with their own
+          {/* Reviewer console - departmental staff sign in with their own
               credentials on the page itself. */}
           <button
             onClick={() => { onClose(); navigate("/review"); }}
@@ -192,7 +192,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
                 Review Queue
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                Staff only — flagged applications
+                Staff only - flagged applications
               </span>
             </div>
           </button>

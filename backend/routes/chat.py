@@ -69,7 +69,7 @@ def get_bot_response_with_mcp(content: str, language: str = "hi") -> dict:
             else:
                 resp = tool_result["result_text"]
         else:
-            resp = "मुझे जानकारी नहीं मिली — कृपया अलग शब्दों में पूछें।"
+            resp = "मुझे जानकारी नहीं मिली - कृपया अलग शब्दों में पूछें।"
         return {
             "content": resp,
             "tool_calls": [{
@@ -103,10 +103,10 @@ async def send_chat_message(req: ChatMessageRequest):
         demo = demo_stage_response(req.user_id)
         # Record the citizen as the owner of each demo PDF. Every other
         # generation path does this; the demo flow did not, so its forms were
-        # generated on disk but unreachable — the download route denies access
+        # generated on disk but unreachable - the download route denies access
         # to an artefact with no ownership record (it returns 404, so an
         # unowned document is indistinguishable from a missing one). Without
-        # this the headline demo — "your filled form is ready, download it" —
+        # this the headline demo - "your filled form is ready, download it" -
         # always 404s.
         from dpdp import ownership
         for item in demo.get("pdf_urls", []):
@@ -168,7 +168,7 @@ async def transcribe_audio(request: Request, audio: UploadFile | None = File(Non
     """A voice turn in the chat.
 
     Audio goes through the speech registry (any engine the deployment has,
-    with fallback — see stt/registry.py). A browser that recognised speech
+    with fallback - see stt/registry.py). A browser that recognised speech
     itself sends `text` instead of audio (provider "client"). The recording
     is kept encrypted, like every other document a citizen gives us.
     """

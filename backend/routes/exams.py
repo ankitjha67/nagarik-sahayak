@@ -1,4 +1,4 @@
-"""Exam routes — exposes V3 exam pipeline data via REST API."""
+"""Exam routes - exposes V3 exam pipeline data via REST API."""
 import asyncio
 import logging
 from datetime import date, timedelta
@@ -106,7 +106,7 @@ async def list_exams(
 
 @api_router.get("/exams/alerts")
 async def exam_alerts(days_ahead: int = 30):
-    """Get upcoming exam alerts — deadlines, admit cards, results within N days."""
+    """Get upcoming exam alerts - deadlines, admit cards, results within N days."""
     days_ahead = max(1, min(days_ahead, 365))
 
     def _work():

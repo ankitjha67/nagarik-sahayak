@@ -1,4 +1,4 @@
-"""V3 Bridge — single point of contact between the FastAPI app and the
+"""V3 Bridge - single point of contact between the FastAPI app and the
 GovScheme V3 crawler/exam pipeline (SQLite-backed, lives under /src).
 
 All V3 SQLite calls are synchronous; callers must wrap them with

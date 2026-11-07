@@ -1,7 +1,7 @@
 """LLM routes.
 
   GET  /llm/providers     what text-generation engines this deployment has (public)
-  POST /llm/complete      run a prompt through the registry (admin — spends tokens)
+  POST /llm/complete      run a prompt through the registry (admin - spends tokens)
 
 The LLM is optional: the app's form extraction and chat work without it. This
 surface lets an operator plug in NVIDIA NIM or any major provider and confirm

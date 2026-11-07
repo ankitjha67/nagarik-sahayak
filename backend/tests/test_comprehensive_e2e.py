@@ -162,7 +162,7 @@ class TestProfilerFlow:
         print(f"✓ PDF URL: {pdf_url}")
         
         # The completed profiler scores the whole catalogue (the original demo
-        # pinned one scheme — Vidyasiri — to the top, but that scheme has since
+        # pinned one scheme - Vidyasiri - to the top, but that scheme has since
         # been replaced by the real government-form set). The integration
         # contract is what is asserted: every result is well-formed and at
         # least one scheme comes back eligible for this low-income profile.
@@ -183,7 +183,7 @@ class TestEligibilityRules:
     (Vidyasiri), which has since been replaced by the real government-form
     catalogue. The income thresholds themselves are now exercised directly
     against the catalogue in tests/test_catalog_levels.py and
-    tests/test_gov_forms.py; what is asserted here is the integration contract —
+    tests/test_gov_forms.py; what is asserted here is the integration contract -
     the chat profiler completes and hands back a scored catalogue."""
 
     @pytest.fixture
@@ -309,7 +309,7 @@ class TestPDFDownload:
         """GET /api/pdf/{invalid_id} returns 404 to an authenticated caller.
 
         An authenticated request for an id with no ownership record is answered
-        404 — indistinguishable from one that never existed."""
+        404 - indistinguishable from one that never existed."""
         phone = f"99886{int(time.time()) % 100000:05d}"
         requests.post(f"{BASE_URL}/api/auth/send-otp", json={"phone": phone})
         caller = requests.post(f"{BASE_URL}/api/auth/verify-otp",

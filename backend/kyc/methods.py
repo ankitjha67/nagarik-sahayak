@@ -1,4 +1,4 @@
-"""Catalogue of KYC methods — what each proves, and what it actually costs.
+"""Catalogue of KYC methods - what each proves, and what it actually costs.
 
 Two things this module refuses to do.
 
@@ -6,7 +6,7 @@ Two things this module refuses to do.
 marked ``IMPLEMENTED`` runs here and now with nothing but this repository. One
 marked ``NEEDS_CREDENTIALS`` has working code but is inert until an API key is
 configured. One marked ``NEEDS_LICENCE`` cannot be switched on with a key at
-all — it requires becoming a regulated entity (a KUA/AUA under the Aadhaar Act,
+all - it requires becoming a regulated entity (a KUA/AUA under the Aadhaar Act,
 or an entity a bank will onboard). Presenting the third as though it were the
 first is how an app ends up telling a citizen their identity is "verified" when
 nothing was checked.
@@ -35,7 +35,7 @@ class Assurance(int, Enum):
     """How strongly an identity claim has been established.
 
     Ordered, so ``a >= Assurance.VERIFIED`` is meaningful. The numbers are
-    ordinal only — SUBSTANTIAL is not "twice" ASSERTED.
+    ordinal only - SUBSTANTIAL is not "twice" ASSERTED.
     """
     NONE = 0          # nothing checked
     ASSERTED = 1      # citizen typed it; format/checksum valid, source unchecked
@@ -78,7 +78,7 @@ class Availability(str, Enum):
 
 
 class Channel(str, Enum):
-    """How the citizen reaches the method — the exclusion axis that matters."""
+    """How the citizen reaches the method - the exclusion axis that matters."""
     SELF_ONLINE = "self_online"      # needs a device and connectivity
     SELF_OFFLINE = "self_offline"    # a file or card, no live connection needed
     ASSISTED = "assisted"            # a CSC operator, bank mitra or officer does it
@@ -172,7 +172,7 @@ METHODS: tuple[KycMethod, ...] = (
         channel=Channel.SELF_OFFLINE,
         establishes=DEMOGRAPHIC_FIELDS + ("aadhaar_number_last4",),
         legal_basis="Aadhaar Act s8A and the Aadhaar (Sharing of Information) "
-                    "Regulations — offline verification, no AUA/KUA appointment "
+                    "Regulations - offline verification, no AUA/KUA appointment "
                     "required. The full Aadhaar number is never present in the "
                     "file, only its last four digits.",
         what_it_proves_en="Name, date of birth, gender and address exactly as UIDAI "
@@ -198,7 +198,7 @@ METHODS: tuple[KycMethod, ...] = (
         availability=Availability.IMPLEMENTED,
         channel=Channel.SELF_OFFLINE,
         establishes=DEMOGRAPHIC_FIELDS + ("aadhaar_number_last4",),
-        legal_basis="Aadhaar Act s8A — offline verification of the QR printed on "
+        legal_basis="Aadhaar Act s8A - offline verification of the QR printed on "
                     "the e-Aadhaar letter and the PVC card.",
         what_it_proves_en="The same UIDAI-signed demographic record as the offline "
                           "XML, read from the QR code on your Aadhaar letter or card.",
@@ -216,7 +216,7 @@ METHODS: tuple[KycMethod, ...] = (
                     "इस कारण नागरिक को मना नहीं किया जाना चाहिए।",
     ),
 
-    # ── Aadhaar, online — requires being a regulated entity ──────────────
+    # ── Aadhaar, online - requires being a regulated entity ──────────────
     KycMethod(
         key="aadhaar_otp_ekyc",
         name_en="Aadhaar OTP e-KYC",
@@ -235,10 +235,10 @@ METHODS: tuple[KycMethod, ...] = (
         requirements_en="An Aadhaar-linked mobile number in the citizen's possession.",
         requirements_hi="नागरिक के पास आधार से जुड़ा मोबाइल नंबर।",
         excludes_en="Fails for anyone whose linked mobile has changed, lapsed or "
-                    "belongs to a relative — common among migrant workers and "
+                    "belongs to a relative - common among migrant workers and "
                     "elderly applicants.",
         excludes_hi="जिनका जुड़ा मोबाइल बदल गया, बंद हो गया अथवा किसी संबंधी का है, "
-                    "उनके लिए विफल — प्रवासी श्रमिकों एवं वृद्धजनों में सामान्य।",
+                    "उनके लिए विफल - प्रवासी श्रमिकों एवं वृद्धजनों में सामान्य।",
         cost_note="Requires UIDAI KUA appointment or a licensed intermediary; "
                   "per-transaction charges apply.",
     ),
@@ -278,7 +278,7 @@ METHODS: tuple[KycMethod, ...] = (
             "income_certificate_number", "domicile_certificate_number",
             "birth_certificate_number", "udid_number", "ration_card_number"),
         legal_basis="IT Act s4 and the Information Technology (Preservation and "
-                    "Retention) Rules — a DigiLocker issued document is at par with "
+                    "Retention) Rules - a DigiLocker issued document is at par with "
                     "the original. Requires registration as a Requester Organisation "
                     "with a client ID and secret.",
         what_it_proves_en="Documents pulled straight from the issuing department, so "
@@ -307,7 +307,7 @@ METHODS: tuple[KycMethod, ...] = (
         availability=Availability.NEEDS_CREDENTIALS,
         channel=Channel.SELF_ONLINE,
         establishes=("bank_account_number", "ifsc_code", "name"),
-        legal_basis="Not an identity check under any statute — a payment-rail "
+        legal_basis="Not an identity check under any statute - a payment-rail "
                     "confirmation that the account exists and whose name it carries. "
                     "Needs a bank or payment aggregator relationship.",
         what_it_proves_en="That the account number and IFSC are real and that the name "
@@ -318,10 +318,10 @@ METHODS: tuple[KycMethod, ...] = (
                           "जाने से रोकता है।",
         requirements_en="An account number and IFSC code.",
         requirements_hi="खाता संख्या एवं आईएफएससी कोड।",
-        excludes_en="Names differ legitimately — a married woman's account may carry "
+        excludes_en="Names differ legitimately - a married woman's account may carry "
                     "her maiden name, and transliteration varies. A mismatch must "
                     "raise a review, never an automatic refusal.",
-        excludes_hi="नाम वैध रूप से भिन्न हो सकते हैं — विवाहित महिला के खाते में "
+        excludes_hi="नाम वैध रूप से भिन्न हो सकते हैं - विवाहित महिला के खाते में "
                     "कुँवारेपन का नाम हो सकता है, लिप्यंतरण भी भिन्न होता है। असमानता "
                     "पर समीक्षा हो, स्वतः अस्वीकृति कभी नहीं।",
         config_keys=("PENNY_DROP_API_URL", "PENNY_DROP_API_KEY"),
@@ -368,9 +368,9 @@ METHODS: tuple[KycMethod, ...] = (
         requirements_en="A voter ID card.",
         requirements_hi="मतदाता पहचान पत्र।",
         excludes_en="Excludes everyone under 18 and anyone whose name was struck off "
-                    "or never added — which disproportionately affects migrants.",
+                    "or never added - which disproportionately affects migrants.",
         excludes_hi="18 वर्ष से कम आयु के सभी तथा जिनका नाम हटा दिया गया या कभी "
-                    "जोड़ा ही नहीं गया, वे बाहर — इससे प्रवासी सर्वाधिक प्रभावित।",
+                    "जोड़ा ही नहीं गया, वे बाहर - इससे प्रवासी सर्वाधिक प्रभावित।",
         config_keys=("EPIC_VERIFY_API_URL", "EPIC_VERIFY_API_KEY"),
     ),
     KycMethod(
@@ -393,7 +393,7 @@ METHODS: tuple[KycMethod, ...] = (
         config_keys=("DL_VERIFY_API_URL", "DL_VERIFY_API_KEY"),
     ),
 
-    # ── Human routes — the ones that must never be switched off ──────────
+    # ── Human routes - the ones that must never be switched off ──────────
     KycMethod(
         key="video_kyc",
         name_en="Video KYC",
@@ -435,11 +435,11 @@ METHODS: tuple[KycMethod, ...] = (
                           "देखा।",
         requirements_en="A visit to a CSC with your original documents.",
         requirements_hi="मूल दस्तावेज़ों सहित सीएससी पर उपस्थिति।",
-        excludes_en="Depends on the operator's honesty, so it is scored — a single "
+        excludes_en="Depends on the operator's honesty, so it is scored - a single "
                     "operator attesting an implausible number of applications is "
                     "exactly what the fraud engine watches for. It must still be "
                     "offered, because for many applicants it is the only route.",
-        excludes_hi="संचालक की ईमानदारी पर निर्भर, अतः इसका स्कोर रखा जाता है — एक ही "
+        excludes_hi="संचालक की ईमानदारी पर निर्भर, अतः इसका स्कोर रखा जाता है - एक ही "
                     "संचालक द्वारा असंभव संख्या में सत्यापन पर धोखाधड़ी इंजन की दृष्टि "
                     "रहती है। फिर भी यह विकल्प रहना चाहिए, क्योंकि कई आवेदकों हेतु "
                     "यही एकमात्र मार्ग है।",
@@ -479,7 +479,7 @@ METHODS: tuple[KycMethod, ...] = (
         availability=Availability.IMPLEMENTED,
         channel=Channel.SELF_OFFLINE,
         establishes=(),
-        legal_basis="No statutory verification — the document is stored encrypted and "
+        legal_basis="No statutory verification - the document is stored encrypted and "
                     "placed before a human reviewer.",
         what_it_proves_en="Nothing on its own. It puts a readable document in front of "
                           "a reviewer, who decides.",
@@ -487,9 +487,9 @@ METHODS: tuple[KycMethod, ...] = (
                           "रखता है, निर्णय वही करता है।",
         requirements_en="A photo or scan of any accepted identity document.",
         requirements_hi="किसी भी स्वीकृत पहचान दस्तावेज़ का फ़ोटो अथवा स्कैन।",
-        excludes_en="Excludes nobody, which is the point — it is the floor beneath "
+        excludes_en="Excludes nobody, which is the point - it is the floor beneath "
                     "every other method.",
-        excludes_hi="किसी को बाहर नहीं करता, यही इसका उद्देश्य है — यह हर अन्य विधि "
+        excludes_hi="किसी को बाहर नहीं करता, यही इसका उद्देश्य है - यह हर अन्य विधि "
                     "के नीचे का आधार है।",
     ),
     KycMethod(
@@ -502,9 +502,9 @@ METHODS: tuple[KycMethod, ...] = (
         establishes=(),
         legal_basis="Format and checksum validation only. Recorded as self-declared "
                     "and never presented as verified.",
-        what_it_proves_en="Only that the number is well formed — an Aadhaar passes its "
+        what_it_proves_en="Only that the number is well formed - an Aadhaar passes its "
                           "checksum, an IFSC matches the bank code pattern.",
-        what_it_proves_hi="केवल यह कि संख्या का प्रारूप सही है — आधार का चेकसम सही है, "
+        what_it_proves_hi="केवल यह कि संख्या का प्रारूप सही है - आधार का चेकसम सही है, "
                           "आईएफएससी बैंक कोड प्रारूप से मेल खाता है।",
         requirements_en="Nothing beyond the number itself.",
         requirements_hi="संख्या के अतिरिक्त कुछ नहीं।",

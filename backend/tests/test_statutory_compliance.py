@@ -2,7 +2,7 @@
 
 The Aadhaar tests carry the most weight here. Section 29(4) and the
 Authentication Regulations carry criminal liability rather than a penalty, so
-"we mask it in most places" is not a defence — the tests assert that the unmasked
+"we mask it in most places" is not a defence - the tests assert that the unmasked
 path does not exist at all, not merely that it is not currently called.
 """
 from datetime import datetime, timedelta, timezone

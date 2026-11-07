@@ -1,4 +1,4 @@
-"""Retention and erasure — sections 8(6) and 12.
+"""Retention and erasure - sections 8(6) and 12.
 
 Section 8(6) obliges a Data Fiduciary to erase personal data once the purpose is
 no longer served or consent is withdrawn, unless another law requires retention.
@@ -6,7 +6,7 @@ Section 12 gives the citizen the right to demand that erasure directly.
 
 Two decisions worth stating, because both cut against the obvious reading:
 
-**Erasure is per-field, not per-row.** Retention periods differ by purpose — a
+**Erasure is per-field, not per-row.** Retention periods differ by purpose - a
 mobile number supports alerts the citizen still wants long after the Aadhaar
 that supported one application should be gone. Deleting whole rows on the
 earliest expiry would destroy data the citizen expects to keep; keeping whole
@@ -16,7 +16,7 @@ Neither is defensible, so expiry is evaluated field by field.
 **Erasure is never automatic in the request path.** A compliance sweep that
 silently deletes an in-progress application because a clock ran over would harm
 the citizen more than the retention breach it cured. Expiry is *reported* by the
-engine and *executed* by an explicit operation — a scheduled job or the
+engine and *executed* by an explicit operation - a scheduled job or the
 citizen's own section 12 request.
 """
 from __future__ import annotations
@@ -31,7 +31,7 @@ from dpdp import registry
 logger = logging.getLogger(__name__)
 
 # Retained despite erasure: the Act's own carve-out for data another law
-# requires. Kept deliberately narrow — it is the obvious place for an
+# requires. Kept deliberately narrow - it is the obvious place for an
 # over-broad exception to quietly defeat the right.
 LEGAL_HOLD_FIELDS = frozenset({
     # Needed to authenticate the person and to honour a later grievance or
@@ -64,7 +64,7 @@ def fields_for_withdrawn_purposes(profile: dict, consented: set[str]) -> list[st
     """Fields whose every purpose has lost consent.
 
     A field serving several purposes survives while any one of them still has
-    consent — erasing it would break a service the citizen still wants.
+    consent - erasing it would break a service the citizen still wants.
     """
     out = []
     for key, value in (profile or {}).items():
@@ -115,7 +115,7 @@ async def erase_fields(user_id: str, fields: list[str], *, reason: str = "") -> 
             erased.append(f)
 
     # Identity fingerprints are derived from the profile, so they must be
-    # recomputed — leaving a digest of an erased Aadhaar would keep the citizen
+    # recomputed - leaving a digest of an erased Aadhaar would keep the citizen
     # matchable by a value they asked to have removed.
     # Written through profile_store so an erasure cannot silently downgrade an
     # encrypted row to plaintext.

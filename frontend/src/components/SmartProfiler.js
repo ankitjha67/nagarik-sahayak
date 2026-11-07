@@ -60,7 +60,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
         }
         const warning = forThisField.find((f) => f.severity === "warning");
         if (warning) {
-          // Advisory only — the answer is still saved. Some warnings (a zero
+          // Advisory only - the answer is still saved. Some warnings (a zero
           // income, for instance) are perfectly legitimate for the poorest
           // applicants and must never block them.
           setFieldWarning(warning.message_hi || warning.message_en);
@@ -177,7 +177,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
           <DownloadAllButton pdfUrls={pdfResults.pdf_urls} backendUrl={backendUrl} userId={userId} />
         )}
 
-        {/* Forms held for verification. The applicant still receives the form —
+        {/* Forms held for verification. The applicant still receives the form -
             they are told it is being checked, not that they were refused. */}
         {flagged.length > 0 && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
@@ -285,7 +285,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
     );
   }
 
-  // Active Profiling — asking questions
+  // Active Profiling - asking questions
   const progress = profilerState.progress;
   const nextQ = profilerState.nextQuestion;
 

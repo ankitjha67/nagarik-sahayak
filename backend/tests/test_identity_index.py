@@ -3,7 +3,7 @@
 Three properties matter:
 
   * Two applicants using the same identifier produce the same digest, however
-    they typed it — otherwise a fraudster evades detection with a space.
+    they typed it - otherwise a fraudster evades detection with a space.
   * The stored digest does not reveal the identifier, and is not enumerable
     without the secret salt.
   * Looking up shared identifiers is a counted query, not a scan of every user.
@@ -67,7 +67,7 @@ class TestFingerprint:
         assert len(digest) == 64 and all(c in "0123456789abcdef" for c in digest)
 
     def test_salt_changes_every_digest(self, monkeypatch):
-        """Rotating the salt invalidates stored digests — hence the backfill."""
+        """Rotating the salt invalidates stored digests - hence the backfill."""
         before = fingerprint("234567890124", "aadhaar_number")
         monkeypatch.setenv("IDENTITY_HASH_SALT", "a-completely-different-salt")
         assert fingerprint("234567890124", "aadhaar_number") != before

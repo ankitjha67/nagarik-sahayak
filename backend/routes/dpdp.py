@@ -1,4 +1,4 @@
-"""DPDP Act routes — citizen rights, consent, and compliance reporting.
+"""DPDP Act routes - citizen rights, consent, and compliance reporting.
 
 Split by audience, because the two have opposite access rules:
 
@@ -46,7 +46,7 @@ def _require_self(request: Request, user_id: str) -> None:
 async def privacy_notice():
     """The section 5 notice: what is collected, why, and how to exercise rights.
 
-    Public and unauthenticated — a person is entitled to read this *before*
+    Public and unauthenticated - a person is entitled to read this *before*
     deciding whether to hand over anything.
     """
     return {
@@ -110,7 +110,7 @@ async def grant_consent(user_id: str, request: Request, req: dict):
 
 @api_router.post("/dpdp/consent/{user_id}/withdraw")
 async def withdraw_consent(user_id: str, request: Request, req: dict | None = None):
-    """Withdraw consent (s6(4)) — no reason required, all purposes by default."""
+    """Withdraw consent (s6(4)) - no reason required, all purposes by default."""
     _require_self(request, user_id)
     try:
         return await consent_service.withdraw(user_id, (req or {}).get("purposes"))
@@ -161,7 +161,7 @@ async def erase(user_id: str, request: Request, req: dict | None = None):
     """Section 12 erasure.
 
     Body: {"fields": [...]} to erase specific fields, or {"all": true}.
-    Erasing everything is deliberately explicit — it is irreversible, and a
+    Erasing everything is deliberately explicit - it is irreversible, and a
     citizen who meant to remove one wrong value should not lose their whole
     record to a default.
     """
@@ -193,7 +193,7 @@ async def erase(user_id: str, request: Request, req: dict | None = None):
 
 @api_router.get("/dpdp/compliance/registry")
 async def compliance_registry(request: Request):
-    """The record of processing — every declared field and its basis."""
+    """The record of processing - every declared field and its basis."""
     _require_admin(request)
     return {
         "notice_version": consent_service.NOTICE_VERSION,
@@ -364,7 +364,7 @@ async def accessibility_statement():
             "English correctly.",
             "Semantic landmarks and a skip link to the main content.",
             "Every icon-only control carries an accessible name.",
-            "Status is never conveyed by colour alone — an icon and text "
+            "Status is never conveyed by colour alone - an icon and text "
             "accompany every colour cue.",
             "Visible keyboard focus on all interactive elements.",
             "Minimum body text size raised for legibility.",
@@ -597,6 +597,6 @@ async def accepted_identity_documents():
         "rule_en": "Any one of these is enough. You do not need Aadhaar to "
                    "apply.",
         "rule_hi": "इनमें से कोई एक पर्याप्त है। आवेदन के लिए आधार आवश्यक नहीं है।",
-        "basis": "Aadhaar Act 2016, proviso to s7 — a person without Aadhaar "
+        "basis": "Aadhaar Act 2016, proviso to s7 - a person without Aadhaar "
                  "must be offered an alternative means of identification.",
     }

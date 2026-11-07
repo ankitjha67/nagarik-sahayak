@@ -1,4 +1,4 @@
-"""Notification preference routes — user-level alert settings and exam subscriptions."""
+"""Notification preference routes - user-level alert settings and exam subscriptions."""
 import json
 import logging
 from fastapi import HTTPException
@@ -61,7 +61,7 @@ async def update_notification_preferences(user_id: str, req: dict):
             prefs[key] = bool(req[key])
     if "email" in req:
         email = str(req["email"]).strip()[:254]
-        # Light validation — empty clears the address
+        # Light validation - empty clears the address
         if email and ("@" not in email or "." not in email.split("@")[-1]):
             raise HTTPException(status_code=400, detail="Invalid email address")
         prefs["email"] = email
@@ -85,7 +85,7 @@ async def list_exam_subscriptions(user_id: str):
     except AttributeError:
         # Prisma client not regenerated with the new model yet
         return {"subscriptions": [], "count": 0,
-                "error": "ExamSubscription model not available — run `prisma generate`"}
+                "error": "ExamSubscription model not available - run `prisma generate`"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -140,7 +140,7 @@ async def create_exam_subscription(user_id: str, req: dict):
     except AttributeError:
         raise HTTPException(
             status_code=503,
-            detail="ExamSubscription model not available — run `prisma generate`",
+            detail="ExamSubscription model not available - run `prisma generate`",
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -163,7 +163,7 @@ async def delete_exam_subscription(user_id: str, subscription_id: str):
     except AttributeError:
         raise HTTPException(
             status_code=503,
-            detail="ExamSubscription model not available — run `prisma generate`",
+            detail="ExamSubscription model not available - run `prisma generate`",
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -8,15 +8,15 @@ This document is written to be executed by other engineers and coding agents. Pa
 
 ## 0. Executive summary
 
-**What the product is today.** A citizen gives their details once, in any of 22 scheduled languages; the engine finds the Central and State schemes they qualify for (57 curated schemes, 30+ States/UTs), screens the application for fraud and errors, tells them which documents to carry, collects every field the chosen form needs (one validated question at a time), and **fills the real published government PDF** — the department's own form, not a look-alike. Aadhaar is never stored or printed in full. DPDP Act 2023 obligations (consent, notice, ownership of generated documents, encryption at rest, data-principal requests) are implemented in code, with tests.
+**What the product is today.** A citizen gives their details once, in any of 22 scheduled languages; the engine finds the Central and State schemes they qualify for (57 curated schemes, 30+ States/UTs), screens the application for fraud and errors, tells them which documents to carry, collects every field the chosen form needs (one validated question at a time), and **fills the real published government PDF** - the department's own form, not a look-alike. Aadhaar is never stored or printed in full. DPDP Act 2023 obligations (consent, notice, ownership of generated documents, encryption at rest, data-principal requests) are implemented in code, with tests.
 
-**Where it stands.** Backend suite: **2232 tests passing**. This session's adversarial pass found **34 defects** (20 of them 500s on malformed input, 9 validation gaps that would have misprinted a form, 5 input-shape holes) — all fixed and regression-tested. The remaining open items are design-level (no session authentication, a mock OTP) and are the first work packages below.
+**Where it stands.** Backend suite: **2232 tests passing**. This session's adversarial pass found **34 defects** (20 of them 500s on malformed input, 9 validation gaps that would have misprinted a form, 5 input-shape holes) - all fixed and regression-tested. The remaining open items are design-level (no session authentication, a mock OTP) and are the first work packages below.
 
-**The positioning that fits UMANG.** UMANG does not host third-party frontends: it integrates *department backends over APIs* and builds the citizen UI itself to its own design guidelines, and it stores no citizen data ([UMANG Department Onboarding](https://web.umang.gov.in/landing/partner-departments)). UMANG already offers scheme *discovery* through myScheme and its "askUMANG" assistant. So the pitch is not "another scheme finder". It is **Application Readiness as a Service**: a consent-driven backend API that, given a citizen's profile, returns (a) what they qualify for, (b) what is missing, (c) what to carry, and (d) the department's form, filled — the step that today ends at a CSC counter or a paid agent. That is the capability UMANG, myScheme, State portals and CSCs lack, and it is exactly the shape NeGD empanels under API Setu's "API as a service" guideline ([NeGD, May 2025](https://negd.gov.in/wp-content/uploads/2025/06/Guidelines-for-Onboarding-for-API-as-a-service-provider-v15-Rev-1-1.pdf)).
+**The positioning that fits UMANG.** UMANG does not host third-party frontends: it integrates *department backends over APIs* and builds the citizen UI itself to its own design guidelines, and it stores no citizen data ([UMANG Department Onboarding](https://web.umang.gov.in/landing/partner-departments)). UMANG already offers scheme *discovery* through myScheme and its "askUMANG" assistant. So the pitch is not "another scheme finder". It is **Application Readiness as a Service**: a consent-driven backend API that, given a citizen's profile, returns (a) what they qualify for, (b) what is missing, (c) what to carry, and (d) the department's form, filled - the step that today ends at a CSC counter or a paid agent. That is the capability UMANG, myScheme, State portals and CSCs lack, and it is exactly the shape NeGD empanels under API Setu's "API as a service" guideline ([NeGD, May 2025](https://negd.gov.in/wp-content/uploads/2025/06/Guidelines-for-Onboarding-for-API-as-a-service-provider-v15-Rev-1-1.pdf)).
 
 **Two tracks, run in parallel.**
-- **Track A — a State department pilot.** A State social-welfare or education department adopts the service for 3–5 of its schemes; it then onboards onto UMANG through the *department* path (Apply → Share API → Integrate → Audit → Go Live), with the department as the service owner. This is the fastest route to a UMANG listing and the only one open to a company younger than three fiscal years.
-- **Track B — API Setu empanelment.** Meet NeGD's provider criteria (§2.1 below) and publish the API on API Setu, where UMANG, myScheme and any department can subscribe. Udyam (MSME) registration waives the ₹10 crore turnover bar; the three-year incorporation and certification bars do not go away and must be planned for or met through a partner.
+- **Track A - a State department pilot.** A State social-welfare or education department adopts the service for 3–5 of its schemes; it then onboards onto UMANG through the *department* path (Apply → Share API → Integrate → Audit → Go Live), with the department as the service owner. This is the fastest route to a UMANG listing and the only one open to a company younger than three fiscal years.
+- **Track B - API Setu empanelment.** Meet NeGD's provider criteria (§2.1 below) and publish the API on API Setu, where UMANG, myScheme and any department can subscribe. Udyam (MSME) registration waives the ₹10 crore turnover bar; the three-year incorporation and certification bars do not go away and must be planned for or met through a partner.
 
 ---
 
@@ -78,19 +78,19 @@ Tests: `tests/test_route_hardening.py` (33 live), `tests/test_form_intake.py` (2
 
 ## 2. What GoI integration actually requires
 
-### 2.1 API Setu "API as a service" empanelment — provider eligibility (NeGD, §VII and Annexure I)
+### 2.1 API Setu "API as a service" empanelment - provider eligibility (NeGD, §VII and Annexure I)
 
 | Requirement | Threshold | Our status |
 |---|---|---|
-| Entity | Indian company / LLP / partnership, **≥3 completed fiscal years**, PAN + GST registered | Depends on the operating company — plan for it |
-| Turnover | Avg **₹10 crore** over last 3 FY — **MSME (Udyam) registered firms exempt** | Register as MSME |
+| Entity | Indian company / LLP / partnership, **≥3 completed fiscal years**, PAN + GST registered | Depends on the operating company - plan for it |
+| Turnover | Avg **₹10 crore** over last 3 FY - **MSME (Udyam) registered firms exempt** | Register as MSME |
 | Profitability | PBT-positive for 3 FY (CA-certified) | Depends on company |
-| Certifications | **Any 3 of**: ISO 9001:2015, ISO/IEC 27001:2022, ISO/IEC 20000-1:2018, ISO 22301:2019, SOC 2 Type II | Not held — budget 6–9 months; ISO 27001 + 9001 + 20000-1 is the usual trio |
-| Procurement order | Comply with OM F.7/10/2021-PPD (Public Procurement Order 4 — land-border-country restrictions, incl. OEM) | Attestation |
+| Certifications | **Any 3 of**: ISO 9001:2015, ISO/IEC 27001:2022, ISO/IEC 20000-1:2018, ISO 22301:2019, SOC 2 Type II | Not held - budget 6–9 months; ISO 27001 + 9001 + 20000-1 is the usual trio |
+| Procurement order | Comply with OM F.7/10/2021-PPD (Public Procurement Order 4 - land-border-country restrictions, incl. OEM) | Attestation |
 | Experience | 3 years delivering/operating RESTful APIs and API-management platforms, with work orders | Depends on company |
 | Blacklisting / litigation / conflict of interest | Undertakings | Attestation |
 | IPR | Code and docs developed under empanelment vest with NeGD; NDA + integrity pact | Legal decision before applying |
-| Process | Registration → API documentation → compliance/security/privacy review → sandbox testing → SLA/DPA contract → publication; rolling submissions to partners.apisetu@digitalindia.gov.in | — |
+| Process | Registration → API documentation → compliance/security/privacy review → sandbox testing → SLA/DPA contract → publication; rolling submissions to partners.apisetu@digitalindia.gov.in | - |
 
 ### 2.2 API onboarding criterion (Annexure VI) and KPI scoring (Annexure VII)
 
@@ -129,8 +129,8 @@ Apply online → share API → integrate with UMANG → testing/audit → go liv
 | Surface | What it gives us | Access path | Confidence |
 |---|---|---|---|
 | **DigiLocker (requester)** | Pull Aadhaar (masked), PAN, DL, marksheets, caste/income certificates with consent → zero-typing intake | Register on API Setu → API key → host APIs → integrate → audit → live; official-domain email, India-hosted server, explicit consent per document; **no sandbox** ([DigiLocker onboarding FAQ](https://www.digilocker.gov.in/assets/FAQ%20DL%20EL_onboarding.pdf), [Requester terms, June 2025](https://cf-media.api-setu.in/resources/DigiLocker-Terms-of-User-Requester-june-2025.pdf)) | High |
-| **myScheme (API Setu Service API)** | Live scheme catalog, non-user-specific | Subscribe on the API Setu marketplace; publisher approval required ([API Setu docs](https://docs.apisetu.gov.in/document-central/explore-apisetu/Overview.html)) | Medium — eligibility API not publicly documented |
-| **Bhashini** | GoI-endorsed translation (NMT), ASR, TTS for 22 languages, replacing our low-confidence machine translations | Register, get user-id + ULCA key, pipeline id; inference at the Dhruva API ([ULCA on GitHub](https://github.com/bhashini-dibd/ulca)) | Medium — endpoints from community sources; confirm on the Bhashini portal |
+| **myScheme (API Setu Service API)** | Live scheme catalog, non-user-specific | Subscribe on the API Setu marketplace; publisher approval required ([API Setu docs](https://docs.apisetu.gov.in/document-central/explore-apisetu/Overview.html)) | Medium - eligibility API not publicly documented |
+| **Bhashini** | GoI-endorsed translation (NMT), ASR, TTS for 22 languages, replacing our low-confidence machine translations | Register, get user-id + ULCA key, pipeline id; inference at the Dhruva API ([ULCA on GitHub](https://github.com/bhashini-dibd/ulca)) | Medium - endpoints from community sources; confirm on the Bhashini portal |
 | **eSign** | Aadhaar-based signature on the filled form | Licensed ESP (ASP agreement) | Known |
 | **UIDAI eKYC / Auth** | Online Aadhaar verification | AUA/KUA licence or sub-AUA under a licensed partner | Known; keep offline QR/XML as default |
 
@@ -140,7 +140,7 @@ Apply online → share API → integrate with UMANG → testing/audit → go liv
 
 Prioritised by (citizen value × GoI fit × feasibility). P0 = required to be allowed in the room; P1 = the pitch; P2 = citizen delight; P3 = department value.
 
-**P0 — Trustworthy to run**
+**P0 - Trustworthy to run**
 1. Real authentication: OTP via a licensed SMS gateway (DLT-registered), short-lived JWT + refresh, RBAC (citizen / VLE operator / department reviewer / admin), MFA for admin. Every endpoint authorises on the token, never on a body field.
 2. API gateway hygiene: per-user and per-IP rate limits, quotas, body-size limits, graceful 429, semver, deprecation policy, OpenAPI 3.0 YAML, `/Heartbeat`.
 3. CI with the full suite against an ephemeral Mongo; static analysis (ruff, bandit, semgrep); dependency audit.
@@ -148,22 +148,22 @@ Prioritised by (citizen value × GoI fit × feasibility). P0 = required to be al
 5. Observability + tamper-evident audit: structured logs, 180-day retention, hash-chained audit trail, metrics (uptime, P95/P99, error rate), KPI export in NeGD's shape.
 6. Security pack: AES-256-GCM at rest, TLS 1.3 at the edge, VAPT and OWASP API Top 10 remediation, IRP with the 6-hour CERT-In runbook, DPDP evidence pack.
 
-**P1 — The pitch**
-7. **Sovereign mode**: a build flag under which no request leaves the data centre — rule engine only, Bhashini for language, no third-party analytics. (The product already works without an LLM key; make it a guarantee.)
+**P1 - The pitch**
+7. **Sovereign mode**: a build flag under which no request leaves the data centre - rule engine only, Bhashini for language, no third-party analytics. (The product already works without an LLM key; make it a guarantee.)
 8. **DigiLocker-first intake**: "Fetch from DigiLocker" replaces typing for every field a pulled document can answer; the intake loop asks only for what remains. The strongest single demo for UMANG.
 9. **Live catalog from myScheme**: nightly sync of scheme metadata; our curated layer adds the form, the field model and the rules on top.
 10. **Bhashini translation**: replace low-confidence machine translations with Bhashini NMT; voice intake (ASR) and read-back (TTS) in the citizen's language. Keep the legal notice en/hi human-reviewed, as now.
-11. **Application Readiness API v1** (the UMANG-facing contract): `POST /readiness` — profile + consent in; eligibility, gaps, documents, risk, filled-form job out. OpenAPI YAML, sandbox, SDKs.
+11. **Application Readiness API v1** (the UMANG-facing contract): `POST /readiness` - profile + consent in; eligibility, gaps, documents, risk, filled-form job out. OpenAPI YAML, sandbox, SDKs.
 12. **Assisted (VLE/CSC) mode**: an operator serves many citizens with per-citizen consent capture, operator attribution in the audit trail, and a printable receipt.
 
-**P2 — Citizen delight**
-13. Proactive entitlement alerts ("you turned 60 → old-age pension"; "Class 10 result published → NSP scholarship window"), SMS/WhatsApp (MyGov channel) — opt-in.
+**P2 - Citizen delight**
+13. Proactive entitlement alerts ("you turned 60 → old-age pension"; "Class 10 result published → NSP scholarship window"), SMS/WhatsApp (MyGov channel) - opt-in.
 14. Application status tracking where a department exposes it; otherwise a "what happens next" timeline.
 15. Document-gap routing: for each missing certificate, where to get it (nearest tehsil/CSC via open data) and what it costs.
 16. Offline-first PWA; IVR/USSD fallback for feature phones.
 
-**P3 — Department value**
-17. Department console: uptake by district/scheme, drop-off points, top rejection reasons, duplicate-claim signals — the analytics a Secretary wants and myScheme does not give.
+**P3 - Department value**
+17. Department console: uptake by district/scheme, drop-off points, top rejection reasons, duplicate-claim signals - the analytics a Secretary wants and myScheme does not give.
 18. Grievance → CPGRAMS hand-off with the application reference attached.
 19. Leakage detection across schemes (the fraud engine already models shared accounts/Aadhaar; expose it as a department report, never as a citizen-facing refusal).
 
@@ -182,9 +182,9 @@ Conventions for every package:
 **Scope.** FastAPI dependency `current_user()` (JWT, ≤60 min, refresh tokens, revocation list in Mongo); roles `citizen|operator|reviewer|admin`; MFA (TOTP) for admin; SMS gateway adapter (interface + DLT-compliant provider + mock for tests); `verify-otp` returns 401 on a wrong code; delete the demo-mode toggle from production builds; every route that takes `user_id` derives it from the token (operators may act for a citizen only with a recorded consent); remove the `X-User-Id` header path from downloads in favour of the token.
 **Files.** `backend/routes/auth.py`, `routes/*.py`, `config.py`, new `backend/auth/` (jwt.py, deps.py, sms.py), `frontend/src/lib/api.js` (Authorization header), tests.
 **Acceptance.** Unauthenticated calls to every non-public route → 401; cross-citizen access → 403; token expiry honoured; all existing tests updated and green; demo flows run only under `DEMO_MODE=1` builds and are excluded from the production image.
-**Depends on.** —. **Effort.** L. **Risk.** Breaks every integration test's auth assumptions — budget for it.
+**Depends on.** -. **Effort.** L. **Risk.** Breaks every integration test's auth assumptions - budget for it.
 
-> **Agent brief.** You are adding real authentication to a FastAPI + Prisma (MongoDB) backend in `backend/`. Today routes accept `user_id` in the request body and trust it; PDF downloads check an unauthenticated `X-User-Id` header against `dpdp/ownership.py`. Build `backend/auth/` with JWT access tokens (≤60 min) + refresh tokens + server-side revocation, a `current_user` dependency, and roles (citizen/operator/reviewer/admin; TOTP MFA for admin). Replace body/header identity everywhere with the dependency; operators acting for a citizen must present a consent record. Add an SMS adapter interface with a mock used by tests and one real DLT-compliant provider behind env config; `verify-otp` must return 401 on a wrong code. Remove the global demo toggle from production (keep it behind `DEMO_MODE` for the demo build only). Update `frontend/src/lib/api.js` to send the bearer token. Never persist, log or echo a full Aadhaar; legal text stays en/hi only. All of `backend/tests` must pass (`python -m pytest tests/ -q`; live tests read `REACT_APP_BACKEND_URL`) — update the tests that assumed body-trusted ids. Write tests for 401/403 on every route.
+> **Agent brief.** You are adding real authentication to a FastAPI + Prisma (MongoDB) backend in `backend/`. Today routes accept `user_id` in the request body and trust it; PDF downloads check an unauthenticated `X-User-Id` header against `dpdp/ownership.py`. Build `backend/auth/` with JWT access tokens (≤60 min) + refresh tokens + server-side revocation, a `current_user` dependency, and roles (citizen/operator/reviewer/admin; TOTP MFA for admin). Replace body/header identity everywhere with the dependency; operators acting for a citizen must present a consent record. Add an SMS adapter interface with a mock used by tests and one real DLT-compliant provider behind env config; `verify-otp` must return 401 on a wrong code. Remove the global demo toggle from production (keep it behind `DEMO_MODE` for the demo build only). Update `frontend/src/lib/api.js` to send the bearer token. Never persist, log or echo a full Aadhaar; legal text stays en/hi only. All of `backend/tests` must pass (`python -m pytest tests/ -q`; live tests read `REACT_APP_BACKEND_URL`) - update the tests that assumed body-trusted ids. Write tests for 401/403 on every route.
 
 ### WP-02 · API contract: versioning, limits, OpenAPI YAML (P0)
 **Scope.** Middleware for body-size limit (256 KB default; multipart upload limit separate), per-user/IP rate limiting with quotas and 429 + `Retry-After`; `/api/v2/heartbeat` (200, cheap); semver header and URL policy, 90-day deprecation notice mechanism, two live versions; curated `openapi.yaml` (3.0) generated from the app + reviewed descriptions/examples; changelog file.
@@ -226,7 +226,7 @@ Conventions for every package:
 **Files.** `backend/config.py`, `services/chat.py`, `routes/chat.py`, `server.py`, tests.
 **Effort.** S–M.
 
-> **Agent brief.** Add a `SOVEREIGN_MODE` flag to `backend/config.py`. When set: no LLM calls (the rule-based paths in `services/chat.py`, `eligibility_engine.py`, `services/profiler.py` already work without an LLM key — make that the only path), no `agnost` analytics, and an explicit outbound allow-list (Bhashini, DigiLocker, API Setu, the configured SMS gateway). Add a startup self-check that aborts if any other egress is configured, and a test (monkeypatch `requests`/`httpx`) proving no call leaves the allow-list during a full intake → fill flow. Document it in README.
+> **Agent brief.** Add a `SOVEREIGN_MODE` flag to `backend/config.py`. When set: no LLM calls (the rule-based paths in `services/chat.py`, `eligibility_engine.py`, `services/profiler.py` already work without an LLM key - make that the only path), no `agnost` analytics, and an explicit outbound allow-list (Bhashini, DigiLocker, API Setu, the configured SMS gateway). Add a startup self-check that aborts if any other egress is configured, and a test (monkeypatch `requests`/`httpx`) proving no call leaves the allow-list during a full intake → fill flow. Document it in README.
 
 ### WP-08 · myScheme catalog sync (P1)
 **Scope.** Adapter for the myScheme Service API on API Setu (subscribe; store credentials via secrets); nightly sync of scheme metadata into a `scheme_source` layer; our curated layer (`data/gov_forms.py`) becomes an overlay that adds form, fields, rules; diff report; UI shows provenance. Until API access is approved: a fixture-driven adapter with the same interface.
@@ -239,9 +239,9 @@ Conventions for every package:
 
 ### WP-10 · DigiLocker-first intake (P1)
 **Scope.** Requester integration (OAuth, consent per document, India-hosted callback); map issued documents to profile keys (Aadhaar → masked + last-4 + DOB/gender/address; PAN; DL; marksheets → `last_exam_percentage`, `roll_number`, `institution_name`; income/caste certificates); the intake loop (`form_intake.intake_state`) treats fetched values as `known` with a `source: digilocker` provenance; UI "Fetch from DigiLocker" step before any typing; store only what the form needs, with the consent artefact id.
-**Depends on.** DigiLocker requester approval (no sandbox — plan a staged rollout). **Effort.** L.
+**Depends on.** DigiLocker requester approval (no sandbox - plan a staged rollout). **Effort.** L.
 
-> **Agent brief.** Integrate DigiLocker as a *requester* in `backend/` so a citizen can fetch issued documents instead of typing. Implement the OAuth flow and per-document consent, map pulled documents to the canonical profile keys used in `backend/data/gov_forms.py` (see `services/form_intake.py` for how known/missing is computed) and store values through `dpdp/profile_store.py` with a provenance field `{source:"digilocker", doc_type, fetched_at, consent_id}`. The full Aadhaar number must never be persisted — only the masked form and last four, exactly as `dpdp/aadhaar_policy.py` enforces. Add a frontend step "Fetch from DigiLocker" ahead of the question loop in `frontend/src/components/SmartProfiler.js`. Use a mock DigiLocker server for tests (there is no official sandbox). Keep all tests green.
+> **Agent brief.** Integrate DigiLocker as a *requester* in `backend/` so a citizen can fetch issued documents instead of typing. Implement the OAuth flow and per-document consent, map pulled documents to the canonical profile keys used in `backend/data/gov_forms.py` (see `services/form_intake.py` for how known/missing is computed) and store values through `dpdp/profile_store.py` with a provenance field `{source:"digilocker", doc_type, fetched_at, consent_id}`. The full Aadhaar number must never be persisted - only the masked form and last four, exactly as `dpdp/aadhaar_policy.py` enforces. Add a frontend step "Fetch from DigiLocker" ahead of the question loop in `frontend/src/components/SmartProfiler.js`. Use a mock DigiLocker server for tests (there is no official sandbox). Keep all tests green.
 
 ### WP-11 · Bhashini language services (P1)
 **Scope.** Bhashini NMT adapter behind `i18n/resolve.py` to replace entries marked low-confidence (keep human-reviewed en/hi legal text untouched); ASR for voice intake (`routes/chat.py` transcribe path) and TTS read-back; caching; graceful fallback to current bundles when Bhashini is unavailable; quality flag now says "Bhashini-translated".
@@ -260,7 +260,7 @@ Conventions for every package:
 **Effort.** M.
 
 ### WP-15 · Department console and leakage report (P3)
-**Scope.** Aggregated, k-anonymised analytics by district/scheme (uptake, drop-off by question, rejection reasons, duplicate-claim signals from `fraud_detection`); reviewer queue already exists (`services/review_queue.py`) — add the dashboard; CPGRAMS hand-off stub.
+**Scope.** Aggregated, k-anonymised analytics by district/scheme (uptake, drop-off by question, rejection reasons, duplicate-claim signals from `fraud_detection`); reviewer queue already exists (`services/review_queue.py`) - add the dashboard; CPGRAMS hand-off stub.
 **Effort.** M.
 
 ### WP-16 · Document-gap routing and IVR/USSD (P2)
@@ -272,12 +272,12 @@ Conventions for every package:
 ## 5. Sequencing and dispatch
 
 ### 5.1 Milestones
-- **M0 — Trustworthy (4–6 weeks):** WP-01, WP-02, WP-03, WP-04, WP-05 core, WP-07. Exit: real auth, CI green, async fill, no PII egress.
-- **M1 — Pilot-ready (6–8 weeks):** WP-06, WP-09 (readiness API + sandbox), WP-12, WP-13. Exit: a State department can run a 3-scheme pilot; VAPT clean. Start Track A conversations with this.
-- **M2 — API Setu-ready (8–12 weeks, partly parallel):** WP-08, WP-10, WP-11, remaining WP-05 (DR drill, KPI feed). Exit: Annexure VI checklist complete; file the Request for Onboarding; certifications in progress.
-- **M3 — Scale (ongoing):** WP-14, WP-15, WP-16.
+- **M0 - Trustworthy (4–6 weeks):** WP-01, WP-02, WP-03, WP-04, WP-05 core, WP-07. Exit: real auth, CI green, async fill, no PII egress.
+- **M1 - Pilot-ready (6–8 weeks):** WP-06, WP-09 (readiness API + sandbox), WP-12, WP-13. Exit: a State department can run a 3-scheme pilot; VAPT clean. Start Track A conversations with this.
+- **M2 - API Setu-ready (8–12 weeks, partly parallel):** WP-08, WP-10, WP-11, remaining WP-05 (DR drill, KPI feed). Exit: Annexure VI checklist complete; file the Request for Onboarding; certifications in progress.
+- **M3 - Scale (ongoing):** WP-14, WP-15, WP-16.
 
-Parallelism: WP-01/02/03 first (everything depends on auth and CI). WP-04, WP-05, WP-07 can run concurrently with them on separate branches. WP-08/10/11 are blocked on external approvals — **file the API Setu, DigiLocker and Bhashini requests this week**, they are the long pole.
+Parallelism: WP-01/02/03 first (everything depends on auth and CI). WP-04, WP-05, WP-07 can run concurrently with them on separate branches. WP-08/10/11 are blocked on external approvals - **file the API Setu, DigiLocker and Bhashini requests this week**, they are the long pole.
 
 ### 5.2 Running the stack locally (what worked in this session)
 ```bash
@@ -298,11 +298,11 @@ Each package's **Agent brief** is self-contained. Start one Claude Code session 
 ---
 
 ## Sources
-- UMANG Department Onboarding — https://web.umang.gov.in/landing/partner-departments
-- NeGD, *Guidelines for Onboarding for API as a service provider* (v15 Rev 1, May 2025) — https://negd.gov.in/wp-content/uploads/2025/06/Guidelines-for-Onboarding-for-API-as-a-service-provider-v15-Rev-1-1.pdf
-- API Setu documentation overview — https://docs.apisetu.gov.in/document-central/explore-apisetu/Overview.html
-- myScheme (about) — https://www.myscheme.gov.in/hi/about
-- DigiLocker partner onboarding FAQ — https://www.digilocker.gov.in/assets/FAQ%20DL%20EL_onboarding.pdf
-- DigiLocker Terms of Use (Requester), June 2025 — https://cf-media.api-setu.in/resources/DigiLocker-Terms-of-User-Requester-june-2025.pdf
-- ULCA (Bhashini) on GitHub — https://github.com/bhashini-dibd/ulca
-- PIB on UMANG integration — https://www.pib.gov.in/PressReleasePage.aspx?PRID=1627711
+- UMANG Department Onboarding - https://web.umang.gov.in/landing/partner-departments
+- NeGD, *Guidelines for Onboarding for API as a service provider* (v15 Rev 1, May 2025) - https://negd.gov.in/wp-content/uploads/2025/06/Guidelines-for-Onboarding-for-API-as-a-service-provider-v15-Rev-1-1.pdf
+- API Setu documentation overview - https://docs.apisetu.gov.in/document-central/explore-apisetu/Overview.html
+- myScheme (about) - https://www.myscheme.gov.in/hi/about
+- DigiLocker partner onboarding FAQ - https://www.digilocker.gov.in/assets/FAQ%20DL%20EL_onboarding.pdf
+- DigiLocker Terms of Use (Requester), June 2025 - https://cf-media.api-setu.in/resources/DigiLocker-Terms-of-User-Requester-june-2025.pdf
+- ULCA (Bhashini) on GitHub - https://github.com/bhashini-dibd/ulca
+- PIB on UMANG integration - https://www.pib.gov.in/PressReleasePage.aspx?PRID=1627711

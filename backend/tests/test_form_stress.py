@@ -9,7 +9,7 @@ wrong box*.
 The shapes covered are the ones Indian government forms actually use, and the
 ones that have broken this filler at least once each:
 
-  * comb fields — one character to a square, for Aadhaar and account numbers
+  * comb fields - one character to a square, for Aadhaar and account numbers
   * two fields sharing one printed row
   * a column-header row over a blank data row
   * a label whose box is far from its text
@@ -59,7 +59,7 @@ def in_box(written, box, slack=3.0):
 @pytest.fixture(scope="module")
 def comb_form(tmp_path_factory):
     """One form, built once, shared by every test that reads it and none
-    that writes to it — filling always writes to a temporary copy."""
+    that writes to it - filling always writes to a temporary copy."""
     path = str(tmp_path_factory.mktemp("comb") / "comb.pdf")
     return aadhaar_comb_form(path)
 
@@ -135,7 +135,7 @@ class TestCombFields:
         report, written = fill(path, profile, self.FIELDS)
         item = written.get("mobile_number")
         if item is not None:
-            # Placed somewhere else on the row — but never cut short.
+            # Placed somewhere else on the row - but never cut short.
             assert not item.get("comb_boxes")
             assert item["text"] == "98123456789999"
         else:
@@ -146,7 +146,7 @@ class TestCombFields:
         """A comb for a name leaves an empty box where the space goes.
 
         Stripping it the way an Aadhaar's separators are stripped wrote
-        "SnehaFernandes" across the Daman & Diu form — one character to a
+        "SnehaFernandes" across the Daman & Diu form - one character to a
         square, perfectly aligned, and not the applicant's name.
         """
         path, _ = comb_form
@@ -188,7 +188,7 @@ class TestLayoutShapes:
         return path, boxes
 
     def test_two_fields_in_one_row_do_not_collide(self, tmp_path):
-        """"Mobile No: | Email ID:" — the space past the second label belongs
+        """"Mobile No: | Email ID:" - the space past the second label belongs
         to the second field, and writing the first there put a phone number on
         top of an email address."""
         path, boxes = self._form(tmp_path, lambda b: b.two_fields_in_a_row(
@@ -255,7 +255,7 @@ class TestLayoutShapes:
 
         Item 15 of the Haryana form is running text below the last table, and
         it wraps: the line carrying the answer slot ends in "Yes/No" with the
-        question mark on the *next* line. Both facts — no cell, no "?" — once
+        question mark on the *next* line. Both facts - no cell, no "?" - once
         made the filler drop a question the citizen had answered.
         """
         def build(b):
@@ -318,7 +318,7 @@ class TestDegradesHonestly:
 
         Everything was written in the base-14 "helv", which is encoded in
         Latin-1 and has no Devanagari glyph. PyMuPDF does not refuse such a
-        string — it draws a middle dot per character. So a citizen who gave
+        string - it draws a middle dot per character. So a citizen who gave
         their name in Hindi, in an app built for exactly that, got
         "······ ·····" on the official form, in the right box, at the right
         width, with nothing anywhere reporting a problem.
@@ -514,7 +514,7 @@ class TestInvariants:
 
     def test_no_aadhaar_reaches_the_page_in_full(self, comb_form):
         """s29(4) makes publishing an Aadhaar number an offence, and a comb
-        writes the digits one at a time — which must not become a loophole."""
+        writes the digits one at a time - which must not become a loophole."""
         from dpdp.aadhaar_policy import contains_full_aadhaar
 
         path, _ = comb_form

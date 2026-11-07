@@ -1,4 +1,4 @@
-"""Malformed input must get a 4xx, never a 500 — and never leak an Aadhaar.
+"""Malformed input must get a 4xx, never a 500 - and never leak an Aadhaar.
 
 Found by an adversarial probe of the live API. Every case here once answered
 500 (a Prisma validation error on a user id that was not an ObjectId, a string

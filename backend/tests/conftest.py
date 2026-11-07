@@ -89,7 +89,7 @@ def _memory_auth_store():
     try:
         from auth import tokens
         from auth.store import MemorySessionStore, set_store
-    except Exception:  # noqa: BLE001 — a test that cannot import auth is not using it
+    except Exception:  # noqa: BLE001 - a test that cannot import auth is not using it
         yield
         return
     set_store(MemorySessionStore())

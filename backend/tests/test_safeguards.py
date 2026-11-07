@@ -9,7 +9,7 @@ A welfare system that blocks a destitute widow because her declared income is
 zero has failed more seriously than one that lets a questionable file reach a
 human reviewer. The false-positive tests below encode that.
 
-No real Aadhaar number appears in this file — valid ones are generated from the
+No real Aadhaar number appears in this file - valid ones are generated from the
 checksum function itself.
 """
 import pytest
@@ -400,7 +400,7 @@ class TestApplicationGuard:
 
     @pytest.mark.asyncio
     async def test_fraud_signal_issues_form_but_flags_it(self):
-        """Suspicion must not deny the form — only route it for checking."""
+        """Suspicion must not deny the form - only route it for checking."""
         from services.application_guard import GateOutcome, evaluate_application
         scheme = get_by_name("Indira Gandhi National Old Age Pension")
         g = await evaluate_application(

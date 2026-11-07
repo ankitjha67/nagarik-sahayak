@@ -395,7 +395,7 @@ class ExamStorageAgent:
         ]
         active_links = [(name, url) for name, url in links if url]
         if active_links:
-            lines.append("## ðŸ”— Important Links")
+            lines.append("## ðŸ”- Important Links")
             lines.append("")
             for name, url in active_links:
                 lines.append(f"- [{name}]({url})")

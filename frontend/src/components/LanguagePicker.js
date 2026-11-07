@@ -10,7 +10,7 @@ import { useLanguage } from "../lib/i18n";
 // scheduled languages now have text, but "Draft" and "Unchecked" mean different
 // things and the badge is the only place a reader learns which one they are
 // getting. A language with no entries at all would still be listed and marked
-// "Not yet available" rather than hidden — a Santali speaker who finds their
+// "Not yet available" rather than hidden - a Santali speaker who finds their
 // language absent concludes the app does not know Santali exists.
 
 function QualityBadge({ quality, percent }) {

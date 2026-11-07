@@ -1,4 +1,4 @@
-"""Aadhaar handling policy — Aadhaar Act 2016 and the UIDAI regulations.
+"""Aadhaar handling policy - Aadhaar Act 2016 and the UIDAI regulations.
 
 Two obligations drive everything in this module, and both carry criminal
 liability rather than a penalty, which is why Aadhaar is handled differently
@@ -6,13 +6,13 @@ from every other field in the application.
 
 **Non-storage.** Under the Authentication Regulations, an entity that is not a
 Requesting Entity or KUA must not store the Aadhaar number at all. This
-application is not one, so it must not keep the number — even though the
+application is not one, so it must not keep the number - even though the
 government forms it fills genuinely ask for it.
 
 The resolution is to treat Aadhaar as *transient*: accepted in a request, used
 in memory to fill a form the citizen is about to download, and then discarded.
-What persists is only the last four digits — enough for the citizen to recognise
-which number they gave — and the keyed fingerprint the fraud engine needs, which
+What persists is only the last four digits - enough for the citizen to recognise
+which number they gave - and the keyed fingerprint the fraud engine needs, which
 is one-way and not an Aadhaar number.
 
 **No public display.** Section 29(4) forbids publishing or displaying an Aadhaar
@@ -48,7 +48,7 @@ def mask(value) -> str:
     """UIDAI-permitted masked form: XXXX XXXX 1234.
 
     Anything that is not a 12-digit number is returned fully masked rather than
-    passed through — a malformed value may still be someone's identifier, and
+    passed through - a malformed value may still be someone's identifier, and
     echoing it back would defeat the point.
     """
     digits = digits_of(value)

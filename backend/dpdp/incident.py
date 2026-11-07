@@ -1,4 +1,4 @@
-"""Cyber incident and data breach handling — CERT-In 2022 and DPDP s8(5).
+"""Cyber incident and data breach handling - CERT-In 2022 and DPDP s8(5).
 
 Two regimes apply to the same event and they are not the same obligation, which
 is the thing most implementations get wrong:
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 # CERT-In Directions 2022, direction (i).
 CERT_IN_DEADLINE_HOURS = 6
-# CERT-In Directions 2022, direction (iv) — rolling window, stored in India.
+# CERT-In Directions 2022, direction (iv) - rolling window, stored in India.
 LOG_RETENTION_DAYS = 180
 
 

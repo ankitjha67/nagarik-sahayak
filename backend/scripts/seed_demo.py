@@ -3,7 +3,7 @@
 
 Each demo citizen has a complete, realistic profile and a known phone number.
 In a DEMO_MODE build you sign in as any of them with that number and OTP 123456
-and land straight in the app with data for the whole flow — the eligible
+and land straight in the app with data for the whole flow - the eligible
 schemes, the intake answers already filled, the document checklist, KYC, the
 filled PDF and the DPDP screens. Together they cover the main outcomes: women's
 schemes, old-age and widow pensions, scholarships, farmer support, a girl-child
@@ -17,7 +17,7 @@ and review paths can be seen too.
     python scripts/seed_demo.py --remove  # delete all demo citizens
 
 Profiles are stored through the same path the app uses, so the full Aadhaar is
-never persisted — only its last four and a keyed fingerprint — and the blob is
+never persisted - only its last four and a keyed fingerprint - and the blob is
 encrypted at rest. Every Aadhaar here is synthetic with a valid checksum and
 belongs to nobody. Needs the server's environment (MONGO_URL,
 DATA_ENCRYPTION_KEY, IDENTITY_HASH_SALT); the server itself need not be running.
@@ -149,7 +149,7 @@ def roster() -> list[dict]:
                 bank_name="State Bank of India", branch_name="Rohini"),
         },
         {
-            "n": 8, "phone": "9000000008", "use_case": "INELIGIBLE / flagged — tests the refusal and review path",
+            "n": 8, "phone": "9000000008", "use_case": "INELIGIBLE / flagged - tests the refusal and review path",
             "schemes": "BPL claim contradicted by income + income-tax status",
             "profile": _base(
                 name="Rekha Agarwal", father_husband_name="Vinod Agarwal",
@@ -219,7 +219,7 @@ async def run(only: int | None, remove: bool) -> int:
         print("Seeding demo citizens (sign in with the phone + OTP 123456 in a DEMO_MODE build):\n")
         for c in citizens:
             action = await _upsert(prisma, Json, identity_index, profile_store, TERMS_VERSION, c)
-            print(f"  [{action:9}] #{c['n']}  {c['phone']}  {c['profile']['name']:16} — {c['use_case']}")
+            print(f"  [{action:9}] #{c['n']}  {c['phone']}  {c['profile']['name']:16} - {c['use_case']}")
         print(f"\n{len(citizens)} demo citizen(s) ready. Pick any phone above, OTP 123456, "
               f"and the app opens with a complete profile for that use case.")
         return 0
@@ -236,9 +236,9 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.list:
-        print("Demo roster (phone — name — use case); OTP 123456 in a DEMO_MODE build:\n")
+        print("Demo roster (phone - name - use case); OTP 123456 in a DEMO_MODE build:\n")
         for c in roster():
-            print(f"  #{c['n']}  {c['phone']}  {c['profile']['name']:16} — {c['use_case']}")
+            print(f"  #{c['n']}  {c['phone']}  {c['profile']['name']:16} - {c['use_case']}")
             print(f"        schemes: {c['schemes']}")
         return 0
     return asyncio.run(run(args.only, args.remove))

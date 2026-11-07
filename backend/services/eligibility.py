@@ -1,4 +1,4 @@
-"""Eligibility matching — Prisma-backed and in-memory sync variants."""
+"""Eligibility matching - Prisma-backed and in-memory sync variants."""
 import re
 import json
 import logging
@@ -60,28 +60,28 @@ async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dic
             limit_yearly = int(limit_lakh * 100000)
             if income_yearly > limit_yearly:
                 eligible = False
-                reasons.append(f"सालाना आय ₹{income_yearly:,} — सीमा ₹{limit_yearly:,}/वर्ष (₹{limit_lakh} लाख) से अधिक")
+                reasons.append(f"सालाना आय ₹{income_yearly:,} - सीमा ₹{limit_yearly:,}/वर्ष (₹{limit_lakh} लाख) से अधिक")
             else:
-                reasons.append(f"सालाना आय ₹{income_yearly:,} — सीमा ₹{limit_yearly:,}/वर्ष के अंदर — पात्र")
+                reasons.append(f"सालाना आय ₹{income_yearly:,} - सीमा ₹{limit_yearly:,}/वर्ष के अंदर - पात्र")
 
         if "karnataka" in criteria_text:
             if state and "karnataka" not in state:
                 eligible = False
-                reasons.append(f"राज्य {profile.get('state', '')} — कर्नाटक निवासी आवश्यक")
+                reasons.append(f"राज्य {profile.get('state', '')} - कर्नाटक निवासी आवश्यक")
             else:
-                reasons.append("कर्नाटक निवासी — पात्र")
+                reasons.append("कर्नाटक निवासी - पात्र")
 
         if "10th" in criteria_text or "10th pass" in criteria_text:
-            reasons.append("10वीं पास या समकक्ष — आवश्यक")
+            reasons.append("10वीं पास या समकक्ष - आवश्यक")
         if "12th pass" in criteria_text:
-            reasons.append("12वीं पास — आवश्यक")
+            reasons.append("12वीं पास - आवश्यक")
         if "bpl" in criteria_text:
-            reasons.append("बीपीएल श्रेणी — आवश्यक")
+            reasons.append("बीपीएल श्रेणी - आवश्यक")
         if "no pucca house" in criteria_text:
-            reasons.append("कोई पक्का मकान नहीं — आवश्यक")
+            reasons.append("कोई पक्का मकान नहीं - आवश्यक")
 
         if not reasons:
-            reasons.append("मानदंड मैच — विस्तार के लिए कार्यालय से संपर्क करें")
+            reasons.append("मानदंड मैच - विस्तार के लिए कार्यालय से संपर्क करें")
 
         results.append({
             "scheme": scheme.name, "scheme_hi": scheme.name, "scheme_id": scheme.id,

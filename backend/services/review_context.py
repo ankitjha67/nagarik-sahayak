@@ -1,7 +1,7 @@
 """Applicant context for reviewers, assembled at read time.
 
 The ReviewCase table stores no personal data by design. But a reviewer cannot
-adjudicate "is this application legitimate?" from a risk score alone — they need
+adjudicate "is this application legitimate?" from a risk score alone - they need
 to see who applied and what the flagged signal actually refers to.
 
 This module resolves that context live, on each authorised read, rather than
@@ -13,7 +13,7 @@ denormalising it into the queue. Two consequences that matter:
   citizen has since corrected a typo, the reviewer sees the correction.
 
 Identifiers are masked. A reviewer needs to confirm *which* number was used and
-whether two applicants share it — both of which last-four digits answer — not to
+whether two applicants share it - both of which last-four digits answer - not to
 read the full number.
 """
 from __future__ import annotations
@@ -46,7 +46,7 @@ def mask_identifier(value, kind: str = "generic") -> str:
     """Show only enough of an identifier to compare and verify it.
 
     Returns "" for empty input so callers can distinguish "not supplied" from
-    "supplied but hidden" — the difference matters when the flag is about a
+    "supplied but hidden" - the difference matters when the flag is about a
     missing document.
     """
     digits = "".join(ch for ch in str(value or "") if ch.isalnum())
@@ -97,7 +97,7 @@ def explain_signal(signal: dict) -> dict:
     """Attach the reviewer-facing meaning of a risk signal.
 
     A code and a weight tell a reviewer nothing actionable. What they need is
-    what the signal claims, and — just as importantly — the innocent explanation
+    what the signal claims, and - just as importantly - the innocent explanation
     they should rule out before treating it as fraud.
     """
     code = signal.get("code", "")
@@ -117,7 +117,7 @@ SIGNAL_GUIDANCE: dict[str, dict[str, str]] = {
     "identity_verified": {
         "means": "The applicant produced an identity document that was checked, "
                  "so their identity rests on more than the form they filled in.",
-        "innocent": "Not a suspicion at all — this signal lowers the risk score. "
+        "innocent": "Not a suspicion at all - this signal lowers the risk score. "
                     "It appears here so a reviewer can see what evidence exists, "
                     "not so it can be second-guessed.",
         "check": "Read the assurance level in the identity panel. VERIFIED means "
@@ -127,7 +127,7 @@ SIGNAL_GUIDANCE: dict[str, dict[str, str]] = {
     "identity_document_contradicted": {
         "means": "A document the applicant supplied disagrees with their form on "
                  "a point that cannot be a spelling or transliteration "
-                 "difference — in practice, a date of birth off by years.",
+                 "difference - in practice, a date of birth off by years.",
         "innocent": "The wrong document may have been uploaded, or it may belong "
                     "to a relative with a similar name. A name or gender "
                     "mismatch NEVER reaches this signal, precisely because those "
@@ -159,7 +159,7 @@ SIGNAL_GUIDANCE: dict[str, dict[str, str]] = {
     },
     "mobile_shared_widely": {
         "means": "One mobile number appears across many applications.",
-        "innocent": "Very common and usually legitimate — one handset per "
+        "innocent": "Very common and usually legitimate - one handset per "
                     "household, or a Common Service Centre operator filing for "
                     "many citizens.",
         "check": "Only pursue if combined with a shared bank account. On its own "
@@ -189,7 +189,7 @@ SIGNAL_GUIDANCE: dict[str, dict[str, str]] = {
     "velocity_high": {
         "means": "An elevated number of applications in 24 hours.",
         "innocent": "Assisted filing, or one person applying for several schemes "
-                    "in a single sitting — which the app actively encourages.",
+                    "in a single sitting - which the app actively encourages.",
         "check": "Usually benign. Check only if paired with a shared account.",
     },
     "age_dob_mismatch": {
@@ -244,7 +244,7 @@ SIGNAL_GUIDANCE: dict[str, dict[str, str]] = {
     "threshold_age_unverified": {
         "means": "Age sits exactly on the eligibility threshold with no date of "
                  "birth supplied to corroborate it.",
-        "innocent": "Very common — many older citizens hold no birth record at all.",
+        "innocent": "Very common - many older citizens hold no birth record at all.",
         "check": "Accept any recognised age proof; do not refuse for lack of a "
                  "birth certificate alone.",
     },
@@ -256,7 +256,7 @@ def build_identity_context(case: dict) -> dict:
 
     A reviewer looking at a flagged case needs to know whether the applicant is
     someone who produced a UIDAI-signed document or someone who typed a number
-    into a form — those warrant different amounts of scrutiny, and without this
+    into a form - those warrant different amounts of scrutiny, and without this
     panel the reviewer cannot tell them apart.
 
     Absence is reported as a neutral state. "Self-declared" is the normal
@@ -279,8 +279,8 @@ def build_identity_context(case: dict) -> dict:
     }
     summary["verificationIsOptional"] = True
     summary["reviewer_note"] = (
-        "No identity check was completed. That is a normal, lawful state — a "
-        "benefit cannot be refused for want of authentication — so weigh this "
+        "No identity check was completed. That is a normal, lawful state - a "
+        "benefit cannot be refused for want of authentication - so weigh this "
         "case on its other evidence."
         if not outcomes else
         "Weigh the assurance level: a checked UIDAI signature is stronger "

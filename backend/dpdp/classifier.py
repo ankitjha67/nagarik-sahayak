@@ -1,7 +1,7 @@
 """Personal data detection and redaction.
 
-The detection core of the DPDP engine. Everything else — the leak scanner, the
-analytics redactor, the response middleware — asks this module one question:
+The detection core of the DPDP engine. Everything else - the leak scanner, the
+analytics redactor, the response middleware - asks this module one question:
 *does this value or text contain personal data, and of what kind?*
 
 Precision matters more than recall here, and the reason is specific. A detector
@@ -13,8 +13,8 @@ every incidental 12-digit string while keeping every real Aadhaar.
 
 Categories follow the DPDP Act's own framing: it does not define "sensitive
 personal data" as a separate tier the way GDPR does, but it does treat some
-processing — children's data (s9), and anything used to decide a person's
-entitlement (s8(3)) — as carrying heightened duty. `Sensitivity` encodes that.
+processing - children's data (s9), and anything used to decide a person's
+entitlement (s8(3)) - as carrying heightened duty. `Sensitivity` encodes that.
 """
 from __future__ import annotations
 
@@ -40,14 +40,14 @@ class PIICategory(str, Enum):
     ADDRESS = "address"
     FINANCIAL = "financial"          # income, land holding
     CASTE_CATEGORY = "caste_category"
-    CHILD_DATA = "child_data"        # s9 — heightened duty
+    CHILD_DATA = "child_data"        # s9 - heightened duty
     HEALTH = "health"
     BIOMETRIC = "biometric"
 
 
 class Sensitivity(str, Enum):
     """How much harm disclosure would do, which sets handling duty."""
-    CRITICAL = "critical"   # Aadhaar, bank, biometric — enables impersonation or theft
+    CRITICAL = "critical"   # Aadhaar, bank, biometric - enables impersonation or theft
     HIGH = "high"           # caste, health, child data, income
     MODERATE = "moderate"   # name, address, contact
     LOW = "low"             # language preference, district
@@ -118,7 +118,7 @@ def _redact(value: str, keep: int = 4) -> str:
 
 
 def detect_in_text(text: str, location: str = "") -> list[Detection]:
-    """Find personal data inside free text — a log line, an LLM prompt, a note."""
+    """Find personal data inside free text - a log line, an LLM prompt, a note."""
     if not text:
         return []
     found: list[Detection] = []
@@ -161,8 +161,8 @@ def detect_in_text(text: str, location: str = "") -> list[Detection]:
 def detect_in_object(obj, path: str = "$") -> list[Detection]:
     """Walk a dict/list structure, classifying by field name *and* by value.
 
-    Field names are the stronger signal — `annual_income` is financial data
-    whatever it contains — so both are used and the field-name rule wins.
+    Field names are the stronger signal - `annual_income` is financial data
+    whatever it contains - so both are used and the field-name rule wins.
     """
     from dpdp.registry import category_for_field
 

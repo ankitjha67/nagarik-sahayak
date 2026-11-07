@@ -1,7 +1,7 @@
 """Ownership checks for citizen-generated artefacts.
 
 Before this existed, /api/pdf/{id} served any filled application form to anyone
-holding the identifier — Aadhaar, bank account and declared income included —
+holding the identifier - Aadhaar, bank account and declared income included -
 with no check that the requester was the applicant. The identifiers are UUID4s,
 so the exposure was not trivially enumerable, but "hard to guess" is not an
 access control, and section 8(4) requires reasonable security safeguards rather
@@ -28,7 +28,7 @@ async def record_owner(artefact_id: str, user_id: str, kind: str = ArtefactKind.
     """Note who an artefact belongs to. Best-effort: never blocks generation.
 
     If this write fails the artefact still exists but has no owner, and
-    `is_owner` will then refuse it to everyone — failing closed, which is the
+    `is_owner` will then refuse it to everyone - failing closed, which is the
     right direction for a document containing an Aadhaar.
     """
     if not artefact_id or not user_id:

@@ -2,10 +2,10 @@
 
 Two data paths feed FormTemplate:
 
-* **Catalog seed** (default, always safe) — writes the curated, hand-verified
+* **Catalog seed** (default, always safe) - writes the curated, hand-verified
   field definitions from `data/gov_forms.py`. Needs no network and no LLM key,
   so a fresh deployment is immediately usable.
-* **Live refresh** (opt-in) — downloads the scheme's real government PDF and
+* **Live refresh** (opt-in) - downloads the scheme's real government PDF and
   re-extracts its fields (OCR + LLM or rule-based). Used to pick up changes when
   a ministry republishes a form.
 
@@ -112,7 +112,7 @@ async def seed_from_catalog(overwrite: bool = False) -> dict:
             if existing and not overwrite:
                 skipped += 1
             else:
-                # The catalog entry is not a Prisma payload — it carries
+                # The catalog entry is not a Prisma payload - it carries
                 # snake_case keys (official_pdf_url, is_scanned) and raw lists
                 # where the client needs Json(). Passing it straight through
                 # made every seed fail into the errors list, silently, on a
@@ -176,7 +176,7 @@ async def refresh_from_live_pdf(scheme_name: str) -> dict:
             "success": True, "scheme": entry["schemeName"], "pdf_url": pdf_url,
             "kept_curated": True,
             "reason": f"live extraction found {len(live_fields)} fields vs "
-                      f"{baseline} curated — keeping curated",
+                      f"{baseline} curated - keeping curated",
             "live_field_count": len(live_fields),
             "curated_field_count": baseline,
             "extraction_method": extracted.get("_extraction_method"),
@@ -229,7 +229,7 @@ async def verify_catalog_urls() -> dict:
                 })
                 continue
             try:
-                # Range request keeps this cheap — we only need the magic bytes.
+                # Range request keeps this cheap - we only need the magic bytes.
                 resp = await client.get(url, headers={**headers, "Range": "bytes=0-1023"})
                 is_pdf = resp.content[:4].startswith(PDF_MAGIC)
                 results.append({

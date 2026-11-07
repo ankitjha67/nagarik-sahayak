@@ -1,7 +1,7 @@
 """Build government-form-shaped PDFs with known geometry, for testing.
 
 The two real forms in the fixtures directory are what the filler was developed
-against, and between them they do not contain a single comb field — the row of
+against, and between them they do not contain a single comb field - the row of
 small squares that records an Aadhaar number one digit to a box on a very large
 number of Indian forms. Nor can a downloaded PDF be varied: you cannot ask it
 for a missing border, or half a degree more skew, to see where the detector
@@ -58,7 +58,7 @@ class FormBuilder:
     def labelled_row(self, y: float, label: str, name: str,
                      x0: float = 40, split: float = 200, x1: float = 550,
                      height: float = 20) -> None:
-        """A label in one cell and its empty box in the next — the common case."""
+        """A label in one cell and its empty box in the next - the common case."""
         self.cell(x0, y, split, y + height, label=label)
         self.cell(split, y, x1, y + height, name=name)
 
@@ -66,7 +66,7 @@ class FormBuilder:
                             right: str, right_name: str,
                             x0: float = 40, x1: float = 550,
                             height: float = 20) -> None:
-        """"Mobile No: | Email ID:" — two fields sharing one printed row."""
+        """"Mobile No: | Email ID:" - two fields sharing one printed row."""
         mid = (x0 + x1) / 2
         self.cell(x0, y, x0 + 90, y + height, label=left)
         self.cell(x0 + 90, y, mid, y + height, name=left_name)
@@ -103,7 +103,7 @@ class FormBuilder:
         """Write the page.
 
         `rotate` skews it the way a sheet sits crooked on a scanner bed, and
-        `flatten` throws the text layer away entirely, leaving an image — the
+        `flatten` throws the text layer away entirely, leaving an image - the
         state a great many published forms are actually in.
         """
         if rotate or flatten:

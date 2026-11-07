@@ -10,8 +10,8 @@ they are true; a register that grades everything COMPLIANT is worthless, and the
 most dangerous entry here is the one nobody wrote down.
 
 Sources are cited so each entry can be checked against the instrument rather
-than trusted. Where an obligation turns on a fact only the operator knows —
-whether this is run by or for the State, for instance — the entry says so
+than trusted. Where an obligation turns on a fact only the operator knows -
+whether this is run by or for the State, for instance - the entry says so
 instead of guessing.
 """
 from __future__ import annotations
@@ -67,7 +67,7 @@ OBLIGATIONS: tuple[Obligation, ...] = (
         "Aadhaar Act 2016", "s29(4)",
         "No Aadhaar number shall be published, displayed or posted publicly, "
         "except as specified by regulations. UIDAI permits only masked display "
-        "— first 8 digits replaced, last 4 visible.",
+        "- first 8 digits replaced, last 4 visible.",
         S.COMPLIANT, E.CRIMINAL,
         evidence="dpdp/aadhaar_policy.py masks on every display path; "
                  "pdf_generator never emits an unmasked number.",

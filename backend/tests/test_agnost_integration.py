@@ -18,7 +18,7 @@ class TestAnalyticsStatus:
 
         Whether analytics is *enabled* depends on a deployment secret
         (AGNOST_WRITE_KEY) rather than on the code, so the test asserts the
-        contract — a boolean flag and the dashboard URL — not a specific
+        contract - a boolean flag and the dashboard URL - not a specific
         on/off value that would only hold where the key is configured."""
         response = requests.get(f"{BASE_URL}/api/analytics/status")
         assert response.status_code == 200

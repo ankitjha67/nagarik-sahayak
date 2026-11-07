@@ -245,7 +245,7 @@ export default function PrivacyPage({ userId }) {
 
       <div className="max-w-md mx-auto px-4 pt-4">
         {/* Terms not yet accepted. Placed above consent because a person
-            should learn what the service is — and is not — before agreeing to
+            should learn what the service is - and is not - before agreeing to
             what it does with their data. */}
         {termsStatus?.needs_acceptance && terms && (
           <div
@@ -328,7 +328,7 @@ export default function PrivacyPage({ userId }) {
           </div>
         )}
 
-        {/* s6 — consent, per purpose */}
+        {/* s6 - consent, per purpose */}
         <Section icon={Lock} titleHi="आपकी अनुमतियाँ" title="Your permissions"
                  defaultOpen>
           <p className="text-[11px] text-gray-500 font-['Nunito'] mb-3">
@@ -392,7 +392,7 @@ export default function PrivacyPage({ userId }) {
           )}
         </Section>
 
-        {/* s11 — access */}
+        {/* s11 - access */}
         <Section icon={Eye} titleHi="मेरा डेटा देखें" title="See what we hold about you">
           {myData ? (
             <div>
@@ -434,7 +434,7 @@ export default function PrivacyPage({ userId }) {
           )}
         </Section>
 
-        {/* s11(1)(c) — who else receives it */}
+        {/* s11(1)(c) - who else receives it */}
         <Section icon={Users} titleHi="आपका डेटा किसके साथ साझा होता है"
                  title="Who else receives your data">
           {(notice?.shared_with || []).map((r, i) => (
@@ -448,7 +448,7 @@ export default function PrivacyPage({ userId }) {
           ))}
         </Section>
 
-        {/* s5 — the notice itself */}
+        {/* s5 - the notice itself */}
         <Section icon={FileText} titleHi="गोपनीयता सूचना" title="Privacy notice">
           <p className="text-xs text-gray-700 font-['Nunito'] leading-relaxed">
             {notice?.summary_hi}
@@ -461,7 +461,7 @@ export default function PrivacyPage({ userId }) {
           </p>
         </Section>
 
-        {/* s13 — grievance */}
+        {/* s13 - grievance */}
         <Section icon={MessageSquareWarning} titleHi="शिकायत दर्ज करें"
                  title="Raise a grievance">
           <textarea
@@ -538,14 +538,14 @@ export default function PrivacyPage({ userId }) {
           )}
         </Section>
 
-        {/* s14 — nomination */}
+        {/* s14 - nomination */}
         <Section icon={UserPlus} titleHi="नामित व्यक्ति"
                  title="Nominate someone to act for you">
           <p className="text-[11px] text-gray-600 font-['Nunito'] mb-3 leading-relaxed">
             {tx("privacy.nomineeExplain")}
             
             <span className="block text-[10px] text-gray-500 mt-0.5">
-              They gain access only after death or incapacity is verified —
+              They gain access only after death or incapacity is verified -
               never on their own say-so.
             </span>
           </p>
@@ -609,7 +609,7 @@ export default function PrivacyPage({ userId }) {
           )}
         </Section>
 
-        {/* s12 — erasure. Destructive, so it is last and gated behind a
+        {/* s12 - erasure. Destructive, so it is last and gated behind a
             confirmation that states plainly what will be lost. */}
         <Section icon={Trash2} titleHi="मेरा डेटा मिटाएं" title="Erase my data">
           {!confirmErase ? (

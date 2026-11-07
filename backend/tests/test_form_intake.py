@@ -1,4 +1,4 @@
-"""Tests for form intake — collecting every detail a form needs, then filling.
+"""Tests for form intake - collecting every detail a form needs, then filling.
 
 The intake brain is pure: it takes a form's fields and whatever is stored about
 a citizen and works out what to ask next, validates each answer, and decides
@@ -6,9 +6,9 @@ when the form can be filled. These run with no server, database or network.
 
 Two behaviours matter most and are easy to regress:
 
-* The Aadhaar number is *transient* — asked for at fill time, used once, never
+* The Aadhaar number is *transient* - asked for at fill time, used once, never
   stored. A naive loop would ask for it forever, because the store strips it.
-* Absence is not invalidity — an unfinished form is not a rejected one, so a
+* Absence is not invalidity - an unfinished form is not a rejected one, so a
   blank optional answer is a valid "skip" and only a malformed value is refused.
 """
 import sys
@@ -59,7 +59,7 @@ def test_a_known_field_is_not_asked_again():
 
 def test_required_asked_before_optional():
     # With every required field answered, the next question must be an optional
-    # one — required are never skipped ahead of.
+    # one - required are never skipped ahead of.
     required = {fi.field_key(f) for f in _fields() if f.get("required")}
     profile = {k: _plausible(k) for k in required}
     state = fi.intake_state(profile, _fields())

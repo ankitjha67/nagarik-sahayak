@@ -3,11 +3,11 @@
 Each entry pairs a live government PDF URL with a curated, hand-verified field
 definition. The curated fields serve three purposes:
 
-1. **Offline/demo operation** — the app is fully functional with no LLM key and
+1. **Offline/demo operation** - the app is fully functional with no LLM key and
    no network access, because every catalog scheme already has its fields.
-2. **Extraction fallback** — if a live PDF is unreachable (government URLs rot
+2. **Extraction fallback** - if a live PDF is unreachable (government URLs rot
    often) or OCR quality is poor, we still have usable field definitions.
-3. **Quality baseline** — LLM extraction of a catalog scheme is merged against
+3. **Quality baseline** - LLM extraction of a catalog scheme is merged against
    these fields so a bad LLM run cannot regress a known-good form.
 
 `source_verified` records the date the `official_pdf_url` was last confirmed to
@@ -41,7 +41,7 @@ def _f(name, en, hi, ftype="text", required=True, section="", profile_key=None, 
 
 
 def identity_fields(section="Applicant Details", omit=()):
-    """Name / Aadhaar / DOB / gender / category — present on nearly every form.
+    """Name / Aadhaar / DOB / gender / category - present on nearly every form.
 
     `omit` drops fields a particular form does not ask for. Not every form
     wants a caste category, and asking for one the form has no box for is
@@ -100,7 +100,7 @@ def income_field(section="Economic Details", required=True):
 
 # ── The catalog ──────────────────────────────────────────────────────────
 # official_pdf_url values below were verified live (HTTP 200 + %PDF) on the
-# date in source_verified. `is_scanned` marks forms known to be image-only —
+# date in source_verified. `is_scanned` marks forms known to be image-only -
 # these require OCR, which the extractor enables automatically.
 
 GOV_FORM_CATALOG: list[dict] = [
@@ -457,7 +457,7 @@ GOV_FORM_CATALOG: list[dict] = [
         "descriptionHindi": "केंद्रीय विद्यालय में प्रवेश। सीटें प्राथमिकता श्रेणी और लॉटरी द्वारा आवंटित की जाती हैं।",
         "officialWebsite": "https://kvsangathan.nic.in/",
         # The PDF held here was not the admission form. It is a *recruitment*
-        # form — "PM SHRI Kendriya Vidyalaya ITBP, Karera", one school, asking
+        # form - "PM SHRI Kendriya Vidyalaya ITBP, Karera", one school, asking
         # for Post Applied For, Teaching Experience and B.Ed/CTET
         # qualifications. A parent seeking a Class 1 place would have been
         # handed a teacher's job application with their child's details
@@ -501,7 +501,7 @@ GOV_FORM_CATALOG: list[dict] = [
         # Attributed to Goa until the form itself was read: the PDF this entry
         # links to is published by the UT Administration of Dadra & Nagar
         # Haveli and Daman & Diu, Directorate of Education, Moti Daman, and
-        # says so on its letterhead. The error cost twice over — a Goa resident
+        # says so on its letterhead. The error cost twice over - a Goa resident
         # was shown a scheme and handed a form another administration would
         # reject, and a resident of the UT that actually runs it was never
         # shown it at all, because the eligibility rule below said "Goa".
@@ -542,11 +542,11 @@ GOV_FORM_CATALOG: list[dict] = [
             #
             # Gender stays a field but is made optional below, not omitted: the
             # eligibility rule gates on girl-student status, so the value must
-            # be collectable — the chat profiler asks only name/age/income/
+            # be collectable - the chat profiler asks only name/age/income/
             # state, so a field dropped here is a field the engine can never
             # see, and the rule would strand the scheme at INCOMPLETE forever.
             # The printed form has no gender box (it is headed "To be filled by
-            # Girl Student only"), so it is not required to be written — it is
+            # Girl Student only"), so it is not required to be written - it is
             # reported for the citizen, and the engine reads it from the
             # profile.
             *identity_fields(section="Student Details",
@@ -569,8 +569,8 @@ GOV_FORM_CATALOG: list[dict] = [
             _f("roll_number", "Roll / Enrollment Number", "रोल / नामांकन संख्या",
                section="Academic Details", profile_key="roll_number", required=False),
             # Optional here, unlike on other forms. This one records marks in
-            # a six-row table — S.S.C.E, H.S.S.C.E, Diploma, Graduation,
-            # Post-Graduation, Doctorate — each with its own board, marks and
+            # a six-row table - S.S.C.E, H.S.S.C.E, Diploma, Graduation,
+            # Post-Graduation, Doctorate - each with its own board, marks and
             # percentage. One profile number cannot say which row it belongs
             # to, so the filler reports it and the citizen completes the table
             # themselves. Marked required, it read as a failure every run.
@@ -589,8 +589,8 @@ GOV_FORM_CATALOG: list[dict] = [
         "descriptionHindi": "हरियाणा में निवासरत विधवा या निराश्रित महिलाओं के लिए मासिक पेंशन।",
         "officialWebsite": "https://saralharyana.gov.in/",
         # Held as an official *form* until it was read end to end: the PDF is
-        # the Antyodaya-SARAL information sheet — eligibility, the list of
-        # documents to bring, and the fee — with not one field to fill on
+        # the Antyodaya-SARAL information sheet - eligibility, the list of
+        # documents to bring, and the fee - with not one field to fill on
         # either of its two pages. Applying is done on the SARAL portal or at
         # a CSC counter, so there is no form to pre-fill, and offering one
         # would send a citizen to a counter with a leaflet.
@@ -691,7 +691,7 @@ GOV_FORM_CATALOG: list[dict] = [
             # The printed form asks for all of these and the catalog did not
             # model any of them, so they came out blank on every application
             # and nothing reported the gap. Found by auditing the form's own
-            # labels against the catalog — see scripts/audit_forms.py.
+            # labels against the catalog - see scripts/audit_forms.py.
             _f("father_occupation", "Father's Occupation", "पिता का व्यवसाय",
                section="Applicant Details", profile_key="father_occupation",
                required=False),
@@ -710,7 +710,7 @@ GOV_FORM_CATALOG: list[dict] = [
                required=False),
             # The achievements grid has its own "Event" column, and event is
             # not the same question as sport: an athlete's sport is Athletics
-            # and their event is the 100m. So it is a field in its own right —
+            # and their event is the 100m. So it is a field in its own right -
             # sharing sport_name's key would have made the catalog ask one
             # question twice and answer the other never.
             #
@@ -739,7 +739,7 @@ def _all_sources() -> list[dict]:
     """Concatenate the three catalog files.
 
     Imported lazily inside the function because central_schemes and
-    state_schemes import the field builders from this module — a top-level
+    state_schemes import the field builders from this module - a top-level
     import either way would be circular.
     """
     from data.central_schemes import CENTRAL_SCHEMES
@@ -751,7 +751,7 @@ def get_catalog(level: str | None = None, state: str | None = None) -> list[dict
     """Return the catalog with computed totalFields.
 
     `level` filters to "Central" or "State"; `state` filters to schemes a
-    resident of that State can claim — which means Central schemes *plus* that
+    resident of that State can claim - which means Central schemes *plus* that
     State's own, because a citizen of Bihar is entitled to both. Filtering a
     State's residents down to only State schemes would hide most of the money
     available to them.
@@ -781,7 +781,7 @@ def get_by_name(scheme_name: str) -> dict | None:
     for entry in get_catalog():
         if entry["schemeName"].lower() == target:
             return entry
-    # Substring fallback — handles "PM-KISAN" matching "PM-KISAN Samman Nidhi"
+    # Substring fallback - handles "PM-KISAN" matching "PM-KISAN Samman Nidhi"
     for entry in get_catalog():
         if target and (target in entry["schemeName"].lower()
                        or entry["schemeName"].lower() in target):

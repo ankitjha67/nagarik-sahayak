@@ -71,7 +71,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   // "" means show everything. A named State shows that State's schemes *plus*
-  // every Central one — filtering a Bihar user down to Bihar-only schemes would
+  // every Central one - filtering a Bihar user down to Bihar-only schemes would
   // hide most of what they can claim, and hide it silently.
   const [stateFilter, setStateFilter] = useState(
     () => localStorage.getItem("ns_state_filter") || ""
@@ -91,7 +91,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
   const [reloadKey, setReloadKey] = useState(0);
 
   // Screen the citizen's stored profile against every scheme so the list can
-  // answer the question people actually have — "what am I entitled to?" —
+  // answer the question people actually have - "what am I entitled to?" -
   // instead of leaving them to read criteria and guess.
   useEffect(() => {
     if (!userId) return;
@@ -131,7 +131,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
       const v2 = v2Res.status === "fulfilled" ? (v2Res.value.data.schemes || []) : [];
       const v3 = v3Res.status === "fulfilled" ? (v3Res.value.data.schemes || []) : [];
       // Both curated sources failing means the list is broken (offline / backend
-      // unreachable), not that the citizen has no schemes — show a retry, not "0".
+      // unreachable), not that the citizen has no schemes - show a retry, not "0".
       const coreFailed = v1Res.status === "rejected" && v2Res.status === "rejected";
       // Merge: V2 (curated, has forms) first, then V1 not in V2, then V3 discovered
       const v2Names = new Set(v2.map(s => s.name));
@@ -330,7 +330,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
           </div>
         )}
 
-        {/* Eligibility summary — what this citizen actually qualifies for */}
+        {/* Eligibility summary - what this citizen actually qualifies for */}
         {checkingEligibility ? (
           <div className="bg-white rounded-xl p-4 border border-gray-100 mb-5 flex items-center gap-2">
             <Loader2 size={14} className="animate-spin text-[#FF9933]" />
@@ -454,7 +454,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
                 {isExpanded && (
                   <div className="px-5 pb-5 border-t border-gray-50 animate-fade-in-up">
                     {/* Why this citizen does or does not qualify. A bare verdict
-                        is not actionable — the specific unmet condition is. */}
+                        is not actionable - the specific unmet condition is. */}
                     {(() => {
                       const e = eligibility[scheme.title];
                       if (!e) return null;
@@ -534,7 +534,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
 
                     {/* Action Links */}
                     <div className="flex gap-2 mt-4 flex-wrap">
-                      {/* "What to carry to the counter" — only for schemes that
+                      {/* "What to carry to the counter" - only for schemes that
                           have a real form in the catalog, since the checklist
                           is derived from that form's fields. catalogMeta holds
                           exactly those, keyed by scheme title. */}

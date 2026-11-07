@@ -1,4 +1,4 @@
-"""Report routes — Excel downloads and notification dispatch."""
+"""Report routes - Excel downloads and notification dispatch."""
 import asyncio
 import logging
 import tempfile
@@ -119,7 +119,7 @@ async def send_scheme_alert(req: dict | None = None):
         db = mods["SchemeDatabase"](agent_config.db_path)
         runs = db.get_run_history(limit=1)
         if not runs:
-            return {"error": "No crawl runs recorded yet — run a discovery crawl first"}
+            return {"error": "No crawl runs recorded yet - run a discovery crawl first"}
 
         run = runs[0]
         # Reconstruct a DailyRunReport from the persisted run row

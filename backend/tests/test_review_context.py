@@ -4,7 +4,7 @@ Two guarantees are under test:
 
   * A reviewer can see enough to adjudicate a flag.
   * They cannot see more than that. Full identifiers never leave the backend,
-    and fields outside the disclosable set are withheld — the review console is
+    and fields outside the disclosable set are withheld - the review console is
     for deciding one flagged application, not a general window into a citizen's
     file.
 """
@@ -28,7 +28,7 @@ FULL_PROFILE = {
     "gender": "Female",
     "district": "Sitapur",
     "annual_income": 42000,
-    # Not in DISCLOSABLE_FIELDS — must not be surfaced.
+    # Not in DISCLOSABLE_FIELDS - must not be surfaced.
     "ifsc_code": "SBIN0001234",
     "address_line": "House 42, Ward 3, Rampur",
     "email": "kamla@example.com",
@@ -142,7 +142,7 @@ class TestApplicantContext:
 
 class TestSignalGuidance:
     def test_every_guided_signal_is_complete(self):
-        """Half-written guidance is worse than none — it misleads a reviewer."""
+        """Half-written guidance is worse than none - it misleads a reviewer."""
         for code, g in SIGNAL_GUIDANCE.items():
             assert g.get("means"), f"{code} missing 'means'"
             assert g.get("innocent"), f"{code} missing 'innocent'"

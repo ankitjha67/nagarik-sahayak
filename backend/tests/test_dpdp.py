@@ -3,7 +3,7 @@
 The properties under test are the ones a regulator or a citizen would actually
 rely on:
 
-  * personal data is detected accurately — and *not* over-detected, because a
+  * personal data is detected accurately - and *not* over-detected, because a
     scanner that cries wolf gets switched off and then protects nobody;
   * every field the application stores is declared with a purpose and a
     retention period;
@@ -60,7 +60,7 @@ class TestPIIDetection:
         assert any(d.category == category for d in detect_in_text(text))
 
     def test_bank_account_needs_a_cue_word(self):
-        """Without a cue, any long number would match — too noisy to be useful."""
+        """Without a cue, any long number would match - too noisy to be useful."""
         assert not any(d.category == PIICategory.BANK_ACCOUNT
                        for d in detect_in_text("order 50100234567890 shipped"))
         assert any(d.category == PIICategory.BANK_ACCOUNT
