@@ -85,6 +85,10 @@ export default function SchemesPage({ userId, language = "hi" }) {
   // The scheme whose "documents to carry" sheet is open, or null. Held as the
   // catalog name so the sheet can fetch by it.
   const [docChecklistFor, setDocChecklistFor] = useState(null);
+  // Distinguish "backend unreachable" from "genuinely no schemes": the former
+  // must offer a retry, not a misleading empty state that reads as "0 schemes".
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Screen the citizen's stored profile against every scheme so the list can
   // answer the question people actually have — "what am I entitled to?" —
@@ -116,15 +120,19 @@ export default function SchemesPage({ userId, language = "hi" }) {
   }, [userId]);
 
   useEffect(() => {
+    setLoadError(false);
     // Load curated (V1+V2) and crawler-discovered (V3) schemes, merge results
-    Promise.all([
-      getSchemes().catch(() => ({ data: [] })),
-      getV2Schemes().catch(() => ({ data: { schemes: [] } })),
-      getDiscoveredSchemes({ limit: 100 }).catch(() => ({ data: { schemes: [] } })),
+    Promise.allSettled([
+      getSchemes(),
+      getV2Schemes(),
+      getDiscoveredSchemes({ limit: 100 }),
     ]).then(([v1Res, v2Res, v3Res]) => {
-      const v1 = v1Res.data || [];
-      const v2 = v2Res.data.schemes || [];
-      const v3 = v3Res.data.schemes || [];
+      const v1 = v1Res.status === "fulfilled" ? (v1Res.value.data || []) : [];
+      const v2 = v2Res.status === "fulfilled" ? (v2Res.value.data.schemes || []) : [];
+      const v3 = v3Res.status === "fulfilled" ? (v3Res.value.data.schemes || []) : [];
+      // Both curated sources failing means the list is broken (offline / backend
+      // unreachable), not that the citizen has no schemes — show a retry, not "0".
+      const coreFailed = v1Res.status === "rejected" && v2Res.status === "rejected";
       // Merge: V2 (curated, has forms) first, then V1 not in V2, then V3 discovered
       const v2Names = new Set(v2.map(s => s.name));
       const curatedNames = new Set([...v2Names, ...v1.map(s => s.title)]);
@@ -160,6 +168,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
           })),
       ];
       setSchemes(merged);
+      setLoadError(coreFailed);
     });
 
     // The curated schemes come from the Scheme table, which may predate the
@@ -179,7 +188,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
       setCatalogMeta(meta);
       setCatalogStates(stateRes.data.states || []);
     });
-  }, []);
+  }, [reloadKey]);
 
   // Where a scheme sits, from the scheme itself or the form catalog. Anything
   // with no level recorded counts as Central: showing a scheme that may not
@@ -352,6 +361,21 @@ export default function SchemesPage({ userId, language = "hi" }) {
                 : (isHindi ? "केवल पात्र योजनाएं देखने के लिए टैप करें" : "Tap to show only these")}
             </p>
           </button>
+        ) : loadError && schemes.length === 0 ? (
+          <div className="bg-red-50 rounded-xl p-4 border border-red-100 mb-5 flex items-center gap-3">
+            <p className="text-sm text-red-700 font-['Mukta'] font-semibold flex-1">
+              {isHindi
+                ? "योजनाएं लोड नहीं हो सकीं। कृपया अपना कनेक्शन जांचें।"
+                : "Couldn't load schemes. Please check your connection."}
+            </p>
+            <button
+              data-testid="schemes-retry-btn"
+              onClick={() => setReloadKey(k => k + 1)}
+              className="px-3 py-1.5 bg-[#000080] text-white rounded-lg text-xs font-semibold hover:bg-[#000060] transition-colors flex-shrink-0"
+            >
+              {isHindi ? "पुनः प्रयास करें" : "Retry"}
+            </button>
+          </div>
         ) : (
           <div className="bg-[#FFF0E0] rounded-xl p-4 border border-orange-100 mb-5 animate-fade-in-up">
             <p className="text-sm text-[#000080] font-['Mukta'] font-semibold">
