@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, BarChart3, ExternalLink, Zap, Globe, GraduationCap, Download, ShieldCheck, BadgeCheck } from "lucide-react";
+import { useLanguage } from "../lib/i18n";
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const { code } = useLanguage();
+  const hi = code === "hi";
   const [analyticsStatus, setAnalyticsStatus] = useState(null);
   const [demoOn, setDemoOn] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -54,7 +57,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
         }`}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <span className="text-base font-bold text-[#000080] font-['Mukta']">Menu</span>
+          <span className="text-base font-bold text-[#000080] font-['Mukta']">{hi ? "मेन्यू" : "Menu"}</span>
           <button
             data-testid="sidebar-close-btn"
             onClick={onClose}
@@ -79,10 +82,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-semibold text-[#000080] font-['Nunito']">Analytics Dashboard</span>
+                <span className="text-sm font-semibold text-[#000080] font-['Nunito']">{hi ? "एनालिटिक्स डैशबोर्ड" : "Analytics Dashboard"}</span>
                 <ExternalLink size={12} className="text-gray-400 flex-shrink-0" />
               </div>
-              <span className="text-xs text-gray-400 font-['Nunito']">App usage &amp; insights</span>
+              <span className="text-xs text-gray-400 font-['Nunito']">{hi ? "ऐप उपयोग और जानकारी" : "App usage & insights"}</span>
             </div>
             {analyticsStatus?.enabled && (
               <span data-testid="analytics-active-badge" className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
@@ -98,9 +101,9 @@ export const Sidebar = ({ isOpen, onClose }) => {
               <Zap size={18} className={demoOn ? "text-amber-500" : "text-gray-400"} />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">Demo Mode</span>
+              <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">{hi ? "डेमो मोड" : "Demo Mode"}</span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                {demoOn ? "Stage-ready" : "Off"}
+                {demoOn ? (hi ? "तैयार" : "Stage-ready") : (hi ? "बंद" : "Off")}
               </span>
             </div>
             <button
@@ -133,10 +136,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
-                Scheme Discovery
+                {hi ? "योजना खोज" : "Scheme Discovery"}
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                Crawl portals, view health
+                {hi ? "पोर्टल क्रॉल करें, स्थिति देखें" : "Crawl portals, view health"}
               </span>
             </div>
           </button>
@@ -153,10 +156,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
-                Verify Identity
+                {hi ? "पहचान सत्यापित करें" : "Verify Identity"}
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                Optional - speeds up your claim
+                {hi ? "वैकल्पिक - आपका दावा तेज़ करता है" : "Optional - speeds up your claim"}
               </span>
             </div>
           </button>
@@ -171,10 +174,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
-                Exam Alerts
+                {hi ? "परीक्षा अलर्ट" : "Exam Alerts"}
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                Deadlines, admit cards, results
+                {hi ? "समय-सीमा, प्रवेश पत्र, परिणाम" : "Deadlines, admit cards, results"}
               </span>
             </div>
           </button>
@@ -189,10 +192,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
-                Review Queue
+                {hi ? "समीक्षा सूची" : "Review Queue"}
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                Staff only - flagged applications
+                {hi ? "केवल स्टाफ - चिह्नित आवेदन" : "Staff only - flagged applications"}
               </span>
             </div>
           </button>

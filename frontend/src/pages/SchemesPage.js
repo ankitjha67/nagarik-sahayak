@@ -64,6 +64,24 @@ const CATEGORY_COLORS = {
   general: { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" },
 };
 
+// Scheme categories come from the backend in English; render them in the
+// chosen language so the filter chips and card badges are not mixed-language.
+const CATEGORY_HI = {
+  agriculture: "कृषि",
+  health: "स्वास्थ्य",
+  savings: "बचत",
+  housing: "आवास",
+  education: "शिक्षा",
+  startup: "स्टार्टअप",
+  finance: "वित्त",
+  general: "सामान्य",
+};
+const catLabel = (cat, hindi) => {
+  if (!cat) return "";
+  if (hindi) return CATEGORY_HI[cat] || cat;
+  return cat.charAt(0).toUpperCase() + cat.slice(1);
+};
+
 export default function SchemesPage({ userId, language = "hi" }) {
   const [schemes, setSchemes] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
@@ -324,7 +342,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
                     : "bg-white text-gray-600 border border-gray-200"
                 }`}
               >
-                {cat} ({schemes.filter(s => s.category === cat).length})
+                {catLabel(cat, isHindi)} ({schemes.filter(s => s.category === cat).length})
               </button>
             ))}
           </div>
@@ -419,7 +437,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
                       <Badge
                         className={`${colors.bg} ${colors.text} ${colors.border} border text-[10px] font-semibold px-2 py-0.5`}
                       >
-                        {scheme.category}
+                        {catLabel(scheme.category, isHindi)}
                       </Badge>
                       {(() => {
                         const e = eligibility[scheme.title];
