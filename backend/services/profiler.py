@@ -38,9 +38,6 @@ STATE_ALIASES = {
     "jk": "jammu and kashmir", "ap": "andhra pradesh", "up": "uttar pradesh",
     "mp": "madhya pradesh", "tn": "tamil nadu", "wb": "west bengal",
 }
-# Below this, an "annual household income" is almost certainly a mistake
-# (a digit typo, or an answer meant for another question) rather than real.
-MIN_PLAUSIBLE_INCOME = 1000
 
 
 def get_next_missing_field(profile: dict) -> Optional[str]:
@@ -71,8 +68,12 @@ def parse_profile_answer(field: str, text: str):
         if not nums:
             return None, "कृपया आय राशि संख्या में बताएं।"
         income = int(nums[0])
-        if income < MIN_PLAUSIBLE_INCOME:
-            return None, "कृपया अपनी सालाना आय रुपये में बताएं (उदाहरण: 120000)।"
+        if income < 0:
+            return None, "कृपया सही आय बताएं।"
+        # A low or zero income is NOT rejected: the poorest applicants are
+        # exactly who these schemes are for, and blocking them would be the
+        # worst failure. Implausibly low values are flagged (not blocked) as a
+        # review warning by validation.validate_income instead.
         return income, None
     elif field == "state":
         raw = text.strip()

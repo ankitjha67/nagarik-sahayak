@@ -357,6 +357,13 @@ def validate_income(value, field_name="annual_income") -> ValidationResult:
         r.add(Severity.WARNING, "income_zero", field_name,
               "Zero income declared — an income certificate will be required.",
               "शून्य आय घोषित — आय प्रमाण पत्र आवश्यक होगा।")
+    elif 0 < amount < 1000:
+        # ₹45 "annual income" is almost always a typo or an answer meant for a
+        # different question. Flag for review — never block, since a genuinely
+        # tiny income must still reach the scheme meant to help.
+        r.add(Severity.WARNING, "income_implausible_low", field_name,
+              "Declared annual income is unusually low; please confirm the amount.",
+              "घोषित वार्षिक आय असामान्य रूप से कम है; कृपया राशि की पुष्टि करें।")
     elif amount > 100_000_000:
         r.add(Severity.WARNING, "income_implausible", field_name,
               "Declared income is unusually high; please confirm the amount.",

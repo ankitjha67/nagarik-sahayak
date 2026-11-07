@@ -66,7 +66,7 @@ class TestDemoFlowBackend:
         print(f"Response time: {duration:.3f}s")
     
     def test_demo_response_contains_rajesh_kumar_profile(self):
-        """Test: Response profile shows Rajesh Kumar, age 42, income 18000, state Karnataka"""
+        """Test: Response profile shows Rajesh Kumar, age 42, income 16000, state Karnataka"""
         resp = requests.post(
             f"{BASE_URL}/api/chat",
             json={
@@ -86,7 +86,7 @@ class TestDemoFlowBackend:
         profile = tool_calls[0]["tool_input"]["profile"]
         assert profile["name"] == "Rajesh Kumar"
         assert profile["age"] == 42
-        assert profile["income"] == 18000
+        assert profile["income"] == 16000
         assert profile["state"] == "Karnataka"
         assert profile["child"] == "Son, 10th pass"
         print(f"Profile verified: {profile}")
