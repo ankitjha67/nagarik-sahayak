@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { CheckCheck, Check as CheckIcon, FileSearch, FileText, Check, X, Languages, Play, Pause, ShieldCheck, ShieldX, Download, FileDown, Loader2, Search, ClipboardCheck, FileOutput, Volume2, VolumeX, Share2, XCircle } from "lucide-react";
 import api from "../lib/api";
+import { toast } from "sonner";
 import { useLanguage } from "../lib/i18n";
 
 function escapeHtml(str) {
@@ -338,6 +339,22 @@ const FlaggedBlock = ({ flagged }) => {
   );
 };
 
+// Fetch a protected PDF through the api client (so the bearer token and 401
+// refresh are attached) and trigger a browser download. A plain <a href> to
+// /api/pdf/{id} sends no Authorization header and 401s.
+async function downloadPdfBlob(pdfPath, fileName) {
+  const resp = await api.get(pdfPath.replace(/^\/api/, ""), { responseType: "blob" });
+  const blobUrl = URL.createObjectURL(resp.data);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = fileName;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(blobUrl);
+}
+
 const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
   const { tx } = useLanguage();
   const [downloading, setDownloading] = useState(false);
@@ -361,12 +378,14 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
       let successCount = 0;
       for (let i = 0; i < pdfUrls.length; i++) {
         const pdfItem = pdfUrls[i];
-        const url = `${backendUrl}${pdfItem.pdf_url}`;
         const fileName = `${(pdfItem.scheme_name || "Form").replace(/\s+/g, "_")}_Form.pdf`;
         try {
-          const resp = await fetch(url);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const blob = await resp.blob();
+          // /api/pdf/{id} is auth-protected: a bare fetch sends no bearer token
+          // and 401s. Go through the api client so the token (and 401 refresh)
+          // are attached. pdf_url is "/api/...", and api's baseURL already ends
+          // in "/api", so strip the leading "/api".
+          const resp = await api.get(pdfItem.pdf_url.replace(/^\/api/, ""), { responseType: "blob" });
+          const blob = resp.data;
           const blobUrl = URL.createObjectURL(blob);
           const link = document.createElement("a");
           link.href = blobUrl;
@@ -395,11 +414,13 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
         } catch {}
       } else {
         // Some failed — fallback to zip download
-        const zipUrl = `${backendUrl}/api/download-all-zip?pdf_ids=${encodeURIComponent(pdfIds.join(","))}&user_id=${encodeURIComponent(userId || "")}`;
         try {
-          const resp = await fetch(zipUrl);
-          if (!resp.ok) throw new Error(`ZIP HTTP ${resp.status}`);
-          const blob = await resp.blob();
+          // Authenticated zip fallback (same reason as the per-file fetch).
+          const resp = await api.get(
+            `/download-all-zip?pdf_ids=${encodeURIComponent(pdfIds.join(","))}&user_id=${encodeURIComponent(userId || "")}`,
+            { responseType: "blob" }
+          );
+          const blob = resp.data;
           const blobUrl = URL.createObjectURL(blob);
           const link = document.createElement("a");
           link.href = blobUrl;
@@ -521,10 +542,11 @@ export const ChatBubble = ({ message }) => {
           <MultiPdfDownloadBlock pdfUrls={message.pdf_urls} userId={message.user_id} backendUrl={backendUrl} />
         ) : (hasPdf || isPdfReport) && message.pdf_url ? (
           <div className="mt-2.5 space-y-2">
-            <a
-              href={`${backendUrl}${message.pdf_url}`}
+            <button
+              type="button"
+              onClick={() => downloadPdfBlob(message.pdf_url, "Application_Form.pdf").catch(() => toast.error(tx("download.failed")))}
               data-testid="pdf-download-btn"
-              className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#FF9933] to-[#FF8000] hover:from-[#FF8800] hover:to-[#E67300] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
+              className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#FF9933] to-[#FF8000] hover:from-[#FF8800] hover:to-[#E67300] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
             >
               <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
                 <FileDown size={18} />
@@ -534,7 +556,7 @@ export const ChatBubble = ({ message }) => {
                 <span className="text-[10px] opacity-90 font-['Nunito']">Pre-filled Application Form</span>
               </div>
               <Download size={16} className="ml-auto opacity-80" />
-            </a>
+            </button>
             <WhatsAppShareBtn pdfUrl={`${backendUrl}${message.pdf_url}`} schemeName={
               message.eligibility_results?.find(r => r.eligible)?.scheme || "Government Scheme"
             } />
@@ -573,14 +595,13 @@ export const TypingIndicator = () => {
     </div>
   </div>
 );
+};
 
 const TOOL_STEPS = [
   { icon: Search, text: "Reading Vidyasiri Scholarship PDF...", textHi: "विद्यासिरी छात्रवृत्ति PDF पढ़ रहे हैं..." },
   { icon: ClipboardCheck, text: "Checking eligibility criteria...", textHi: "पात्रता मानदंड जांच रहे हैं..." },
   { icon: FileOutput, text: "Generating filled application form...", textHi: "भरा हुआ आवेदन फॉर्म तैयार कर रहे हैं..." },
 ];
-
-};
 
 export const ToolProgressIndicator = () => {
   const { tx } = useLanguage();

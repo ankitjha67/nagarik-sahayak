@@ -19,6 +19,29 @@ PROFILER_QUESTIONS = {
     "state": "आप किस राज्य में रहते हैं?",
 }
 
+# India's 28 states + 8 union territories. Used to reject nonsense ("45",
+# a district, a typo) in the state field, which otherwise flowed straight
+# onto the application form. Common aliases map to the canonical name.
+INDIAN_STATES = {
+    "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh",
+    "goa", "gujarat", "haryana", "himachal pradesh", "jharkhand", "karnataka",
+    "kerala", "madhya pradesh", "maharashtra", "manipur", "meghalaya", "mizoram",
+    "nagaland", "odisha", "punjab", "rajasthan", "sikkim", "tamil nadu",
+    "telangana", "tripura", "uttar pradesh", "uttarakhand", "west bengal",
+    "andaman and nicobar islands", "chandigarh",
+    "dadra and nagar haveli and daman and diu", "delhi", "jammu and kashmir",
+    "ladakh", "lakshadweep", "puducherry",
+}
+STATE_ALIASES = {
+    "orissa": "odisha", "pondicherry": "puducherry", "ncr": "delhi",
+    "new delhi": "delhi", "uttaranchal": "uttarakhand", "j&k": "jammu and kashmir",
+    "jk": "jammu and kashmir", "ap": "andhra pradesh", "up": "uttar pradesh",
+    "mp": "madhya pradesh", "tn": "tamil nadu", "wb": "west bengal",
+}
+# Below this, an "annual household income" is almost certainly a mistake
+# (a digit typo, or an answer meant for another question) rather than real.
+MIN_PLAUSIBLE_INCOME = 1000
+
 
 def get_next_missing_field(profile: dict) -> Optional[str]:
     for f in PROFILE_FIELDS:
@@ -48,14 +71,19 @@ def parse_profile_answer(field: str, text: str):
         if not nums:
             return None, "कृपया आय राशि संख्या में बताएं।"
         income = int(nums[0])
-        if income < 0:
-            return None, "कृपया सही आय बताएं।"
+        if income < MIN_PLAUSIBLE_INCOME:
+            return None, "कृपया अपनी सालाना आय रुपये में बताएं (उदाहरण: 120000)।"
         return income, None
     elif field == "state":
-        state = text.strip()
-        if len(state) < 2:
+        raw = text.strip()
+        if len(raw) < 2:
             return None, "कृपया अपने राज्य का नाम बताएं।"
-        return state, None
+        key = re.sub(r'\s+', ' ', raw.lower()).strip()
+        key = STATE_ALIASES.get(key, key)
+        if key not in INDIAN_STATES:
+            return None, "कृपया भारत के किसी राज्य या केंद्र शासित प्रदेश का नाम बताएं (उदाहरण: बिहार / Bihar)।"
+        # Store the canonical Title Case name so the form reads cleanly.
+        return key.title(), None
     return None, "Invalid field"
 
 

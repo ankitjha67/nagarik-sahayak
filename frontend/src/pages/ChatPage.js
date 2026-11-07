@@ -42,7 +42,12 @@ export default function ChatPage({ userId, language = "hi" }) {
     if (userId) {
       getChatHistory(userId)
         .then((r) => {
-          setMessages(r.data || []);
+          const history = r.data || [];
+          setMessages(history);
+          // A reload must show the existing conversation. Messages only render
+          // in a non-idle mode, so restore "chat" when history isn't empty —
+          // otherwise the thread loads into state but nothing is drawn.
+          if (history.length > 0) setV2Mode("chat");
           setInitialLoad(false);
         })
         .catch(() => setInitialLoad(false));
@@ -77,6 +82,9 @@ export default function ChatPage({ userId, language = "hi" }) {
     if (!text || loading) return;
     setInput("");
     setLoading(true);
+    // Free-text chat must leave "idle", or the message list never renders
+    // (messages are only drawn in chat/profiling/complete modes).
+    if (v2Mode === "idle") setV2Mode("chat");
 
     // Show user message immediately with "sent" status
     const tempUserMsg = {

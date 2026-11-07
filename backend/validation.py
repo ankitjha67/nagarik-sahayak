@@ -387,9 +387,52 @@ def validate_name(value, field_name="name") -> ValidationResult:
     return r
 
 
+# India's 28 states + 8 union territories, with common aliases. Used to reject a
+# nonsense state ("45", a district, a typo) before it reaches the application
+# form, where it is printed verbatim.
+_INDIAN_STATES = {
+    "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh",
+    "goa", "gujarat", "haryana", "himachal pradesh", "jharkhand", "karnataka",
+    "kerala", "madhya pradesh", "maharashtra", "manipur", "meghalaya", "mizoram",
+    "nagaland", "odisha", "punjab", "rajasthan", "sikkim", "tamil nadu",
+    "telangana", "tripura", "uttar pradesh", "uttarakhand", "west bengal",
+    "andaman and nicobar islands", "chandigarh",
+    "dadra and nagar haveli and daman and diu", "delhi", "jammu and kashmir",
+    "ladakh", "lakshadweep", "puducherry",
+}
+_STATE_ALIASES = {
+    "orissa": "odisha", "pondicherry": "puducherry", "ncr": "delhi",
+    "new delhi": "delhi", "uttaranchal": "uttarakhand", "j&k": "jammu and kashmir",
+    "jk": "jammu and kashmir", "ap": "andhra pradesh", "up": "uttar pradesh",
+    "mp": "madhya pradesh", "tn": "tamil nadu", "wb": "west bengal",
+}
+
+
+def canonical_state(value) -> str | None:
+    """Return the canonical state/UT name for a free-text answer, or None."""
+    key = re.sub(r"\s+", " ", str(value or "").strip().lower())
+    key = _STATE_ALIASES.get(key, key)
+    return key.title() if key in _INDIAN_STATES else None
+
+
+def validate_state(value, field_name="state") -> ValidationResult:
+    r = ValidationResult()
+    text = str(value or "").strip()
+    if not text:
+        r.add(Severity.ERROR, "state_missing", field_name,
+              "State is required.", "राज्य आवश्यक है।")
+        return r
+    if canonical_state(text) is None:
+        r.add(Severity.ERROR, "state_unknown", field_name,
+              "Enter a valid Indian state or union territory.",
+              "कृपया भारत के किसी राज्य या केंद्र शासित प्रदेश का नाम बताएं।")
+    return r
+
+
 # Dispatch by canonical profileKey / field type, so any form — catalog or
 # freshly extracted — gets the right checks without per-scheme wiring.
 _VALIDATORS_BY_KEY = {
+    "state": validate_state,
     "aadhaar_number": validate_aadhaar,
     "guardian_aadhaar": validate_aadhaar,
     "mobile_number": validate_mobile,

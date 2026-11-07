@@ -31,7 +31,16 @@ export const AppHeader = ({ showBack, onBack, onMenuClick, onNewChat }) => {
           <Menu size={20} />
         </button>
       ) : null}
-      <img src="/logo.png" alt="Nagarik Sahayak" className="h-10 w-auto object-contain" />
+      {/* Emblem + a real text wordmark. The logo PNG bakes the name into the
+          image, which is illegible at header size, so the app name is rendered
+          as crisp text beside it rather than relying on the tiny baked-in text. */}
+      <div className="flex items-center gap-2 min-w-0">
+        <img src="/logo.png" alt="" aria-hidden="true" className="h-11 w-auto object-contain shrink-0" />
+        <div className="leading-tight min-w-0">
+          <div className="text-[15px] font-bold text-[#000080] font-['Mukta'] truncate">नागरिक सहायक</div>
+          <div className="text-[10px] font-semibold text-[#FF9933] tracking-wide font-['Nunito'] truncate">Nagarik Sahayak</div>
+        </div>
+      </div>
       <div className="flex-1" />
       {/* In the header on every page rather than buried in settings. Someone who
           cannot read the current language cannot navigate to a settings screen
