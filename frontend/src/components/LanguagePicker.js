@@ -90,7 +90,7 @@ export function LanguagePicker({ compact = false }) {
           />
           <div
             role="listbox"
-            aria-label="Languages"
+            aria-label={code === "hi" ? "भाषाएं" : "Languages"}
             className="absolute right-0 z-50 mt-2 w-80 max-h-[70vh] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl"
             onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
           >

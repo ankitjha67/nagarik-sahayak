@@ -216,7 +216,8 @@ function OutcomePanel({ outcome }) {
 }
 
 export default function IdentityPage({ userId }) {
-  const { t } = useLanguage();
+  const { t, code } = useLanguage();
+  const hi = code === "hi";
   const [methods, setMethods] = useState([]);
   const [profile, setProfile] = useState({});
   // Seeded from what this browser already recorded, so a citizen who verified
@@ -398,7 +399,7 @@ export default function IdentityPage({ userId }) {
             onChange={(e) => setShareCode(e.target.value)}
             maxLength={16}
             autoComplete="off"
-            placeholder="The 4-character code you set"
+            placeholder={hi ? "आपके द्वारा सेट किया गया 4-अक्षर का कोड" : "The 4-character code you set"}
             className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
           <button

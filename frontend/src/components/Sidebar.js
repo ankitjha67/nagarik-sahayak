@@ -51,7 +51,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
       <div
         data-testid="sidebar-panel"
         role="dialog"
-        aria-label="Navigation menu"
+        aria-label={hi ? "नेविगेशन मेन्यू" : "Navigation menu"}
         className={`fixed top-0 left-0 h-full w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -61,7 +61,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           <button
             data-testid="sidebar-close-btn"
             onClick={onClose}
-            aria-label="Close menu"
+            aria-label={hi ? "मेन्यू बंद करें" : "Close menu"}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
           >
             <X size={20} />

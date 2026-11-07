@@ -277,7 +277,7 @@ export default function SchemesPage({ userId, language = "hi" }) {
           <button
             onClick={handleDownloadExcel}
             className="flex items-center gap-1 px-3 py-2.5 bg-[#000080] text-white rounded-xl text-xs font-semibold hover:bg-[#000060] transition-colors"
-            aria-label="Download Excel Report"
+            aria-label={isHindi ? "एक्सेल रिपोर्ट डाउनलोड करें" : "Download Excel Report"}
           >
             <Download size={14} />
           </button>
