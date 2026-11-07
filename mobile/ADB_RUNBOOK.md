@@ -1,4 +1,4 @@
-# Nagarik Sahayak on a real phone — adb runbook
+# Nagarik Sahayak on a real phone - adb runbook
 
 The app is a Capacitor wrapper around the existing React UI: the screens are
 bundled into the APK and run in a WebView, and every API call goes to the
@@ -6,13 +6,13 @@ FastAPI backend over the network. For USB testing, the backend runs on your
 laptop (ANKIT-DELL) and the phone reaches it through `adb reverse`.
 
 This runbook is what you run on the laptop the phone is plugged into. The
-cloud session that built the APK cannot see your USB — only you can run `adb`.
+cloud session that built the APK cannot see your USB - only you can run `adb`.
 
 ---
 
 ## 0. One-time prerequisites on the laptop
 
-- **Android platform-tools** (gives you `adb`): https://developer.android.com/tools/releases/platform-tools — unzip, add to PATH.
+- **Android platform-tools** (gives you `adb`): https://developer.android.com/tools/releases/platform-tools - unzip, add to PATH.
 - **On the phone:** Settings → About phone → tap *Build number* 7× to unlock Developer options → Developer options → enable **USB debugging**. Plug in over USB; when the phone asks, **Allow USB debugging** from this computer.
 - Confirm the phone is seen:
   ```bash
@@ -45,7 +45,7 @@ docker run -d --name ns-mongo -p 27017:27017 mongo:7 --replSet rs0
 docker exec ns-mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
 
 # Python deps (first time): pip install -r requirements.txt && python -m prisma generate
-# Env — minimum for a device demo:
+# Env - minimum for a device demo:
 export MONGO_URL="mongodb://127.0.0.1:27017/nagarik_sahayak?replicaSet=rs0"
 export DB_NAME=nagarik_sahayak
 export CORS_ORIGINS="http://localhost"            # the app's WebView origin
@@ -61,7 +61,7 @@ python -m uvicorn server:app --host 127.0.0.1 --port 8001
 ```
 Leave this running. With the demo citizen seeded you can sign in on the phone
 with **9000000001 / OTP 123456** and every feature already has data to work
-with — no need to type a profile. (See `backend/.env.example` for every variable, including
+with - no need to type a profile. (See `backend/.env.example` for every variable, including
 real SMS providers and the 14 speech engines.)
 
 ## 3. Bridge the phone to the backend
@@ -76,7 +76,7 @@ is needed. (`adb reverse` has to be re-run if you unplug/replug.)
 
 **Prefer the LAN instead?** Skip `adb reverse`, find the laptop's IP
 (`ipconfig` / `ip addr`, e.g. `192.168.1.5`), start uvicorn with
-`--host 0.0.0.0`, and point the app at it without rebuilding — in the app,
+`--host 0.0.0.0`, and point the app at it without rebuilding - in the app,
 open the browser console via `chrome://inspect` (step 6) and run:
 ```js
 localStorage.setItem("ns_backend_url", "http://192.168.1.5:8001"); location.reload();
@@ -86,7 +86,7 @@ localStorage.setItem("ns_backend_url", "http://192.168.1.5:8001"); location.relo
 
 1. Open **Nagarik Sahayak**. Allow the microphone when asked.
 2. **Login:** enter any Indian mobile number → OTP screen → enter `123456`
-   (DEMO_MODE). You should land in the app with a session (a real JWT — check
+   (DEMO_MODE). You should land in the app with a session (a real JWT - check
    `adb logcat` shows the `/auth/verify-otp` call returning tokens).
 3. **Scheme flow:** pick a scheme, answer the intake questions, generate the
    filled form, download the PDF.
@@ -120,7 +120,7 @@ export BHASHINI_USER_ID=...   BHASHINI_ULCA_KEY=...     # bhashini.gov.in
 # or any other from backend/.env.example: GROQ_API_KEY, OPENAI_API_KEY, SARVAM_API_KEY, …
 ```
 `GET http://localhost:8001/api/stt/providers` lists what is configured and the
-order they'll be tried. With `DEMO_MODE=false` you also need a real OTP path —
+order they'll be tried. With `DEMO_MODE=false` you also need a real OTP path -
 set `SMS_PROVIDER` and its keys, or set `OTP_MOCK_CODE=123456` for a dev phone.
 
 ## 8. Rebuild after a change
@@ -140,6 +140,6 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 | `adb devices` shows `unauthorized` | Accept the "Allow USB debugging" prompt on the phone; re-plug. |
 | App loads but every call fails | Backend not running, or `adb reverse` not set. Re-run step 3; check `chrome://inspect` network tab. |
 | Login says "could not send code" | DEMO_MODE off with no SMS provider. Set `DEMO_MODE=true` or `OTP_MOCK_CODE`. |
-| Mic does nothing | Permission denied — reinstall and Allow, or Settings → Apps → Nagarik Sahayak → Permissions → Microphone. |
+| Mic does nothing | Permission denied - reinstall and Allow, or Settings → Apps → Nagarik Sahayak → Permissions → Microphone. |
 | Voice returns 503 | No speech engine configured and not in DEMO_MODE. See step 7. |
 | `CLEARTEXT ... not permitted` | You pointed at an IP not covered; the debug build permits all cleartext, so rebuild if you changed the network config. |

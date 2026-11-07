@@ -1,4 +1,4 @@
-"""Scheme Discovery routes — integrates the V3 crawler pipeline into the web app."""
+"""Scheme Discovery routes - integrates the V3 crawler pipeline into the web app."""
 import asyncio
 import logging
 import uuid
@@ -9,7 +9,7 @@ from services import v3_bridge
 
 logger = logging.getLogger(__name__)
 
-# In-memory crawl state (lightweight — single instance app)
+# In-memory crawl state (lightweight - single instance app)
 _crawl_state = {
     "status": "idle",  # idle | starting | running | completed | failed
     "started_at": None,
@@ -80,7 +80,7 @@ async def _run_discovery_crawl(portal_names: list[str] | None = None):
         # Phase 3: Classify (LLM with rule-based fallback)
         classified = await classifier.classify_batch(unique_schemes)
 
-        # Phase 4: Change detection — upserts each scheme into the DB and
+        # Phase 4: Change detection - upserts each scheme into the DB and
         # annotates change_type on each ClassifiedScheme
         annotated = await asyncio.to_thread(
             change_agent.process_classified_batch, classified, run_id

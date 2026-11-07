@@ -1,11 +1,11 @@
-"""The combined gate — where every check meets, and where they can go wrong.
+"""The combined gate - where every check meets, and where they can go wrong.
 
 Two regressions live here, both found by running the real screening path rather
 than the units underneath it.
 
 **KYC evidence never reached the decision.** `fraud_detection.assess()` grew a
-`kyc_outcomes` parameter, but `evaluate_application` — the function every API
-route actually calls — never passed one. Every unit test passed; the feature
+`kyc_outcomes` parameter, but `evaluate_application` - the function every API
+route actually calls - never passed one. Every unit test passed; the feature
 was inert in production. A citizen who verified against a UIDAI-signed document
 got exactly the scrutiny of one who verified nothing, which makes verifying
 pure cost and means nobody does it.
@@ -69,7 +69,7 @@ class TestAbsenceIsNotRefusal:
         assert "identity_document_missing" in ABSENCE_CODES
 
     def test_a_profile_with_no_document_is_incomplete_not_blocked(self):
-        """The regression. This came back blocked_invalid_data — a refusal —
+        """The regression. This came back blocked_invalid_data - a refusal -
         for somebody who had simply not reached that field yet."""
         partial = {"name": "Sunita Devi", "age": 34, "gender": "Female",
                    "state": "Uttar Pradesh", "district": "Sitapur"}
@@ -182,7 +182,7 @@ class TestOutcomesSurviveTheWire:
         [{"assurance": 99}], [{"fraudSignal": "lots"}],
     ])
     def test_malformed_input_degrades_instead_of_raising(self, junk):
-        """A client sending nonsense must not crash a decision mid-flight —
+        """A client sending nonsense must not crash a decision mid-flight -
         the citizen loses their application, not the client."""
         result = gate(complete_profile(), kyc_outcomes=junk)
         assert result.outcome is GateOutcome.APPROVED

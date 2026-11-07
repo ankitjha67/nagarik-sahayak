@@ -1,4 +1,4 @@
-"""Grievance redressal — IT Rules 2021 rule 3(2) and DPDP s13.
+"""Grievance redressal - IT Rules 2021 rule 3(2) and DPDP s13.
 
 Rule 3(2) of the Intermediary Guidelines fixes two hard deadlines: acknowledge a
 complaint within **24 hours** and resolve it within **15 days**. DPDP s13 gives a
@@ -30,7 +30,7 @@ def officer() -> dict:
     """Published contact for the Grievance Officer / DPO.
 
     Rule 3(2) requires the name and contact to be published. Unset values are
-    reported as unset rather than filled with a plausible placeholder — a fake
+    reported as unset rather than filled with a plausible placeholder - a fake
     officer is worse than a visibly missing one, because it looks satisfied.
     """
     name = os.environ.get("GRIEVANCE_OFFICER_NAME", "")

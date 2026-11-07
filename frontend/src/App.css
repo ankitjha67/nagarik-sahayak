@@ -2,7 +2,7 @@
 
 
 /* ─────────────────────────────────────────────────────────────────────
-   Accessibility — RPwD Act 2016 (s40, s42, s46) and GIGW 3.0, which set
+   Accessibility - RPwD Act 2016 (s40, s42, s46) and GIGW 3.0, which set
    WCAG 2.1 Level AA as the baseline for government applications.
 
    A benefits application a blind or low-vision citizen cannot operate
@@ -41,7 +41,7 @@
 .text-\[9px\] { font-size: 11px !important; }
 .text-\[10px\] { font-size: 11px !important; }
 
-/* WCAG 2.5.5: touch targets need to be large enough to hit reliably —
+/* WCAG 2.5.5: touch targets need to be large enough to hit reliably -
    this matters most for users with motor impairments and for the older
    citizens these pension schemes serve. */
 button, a[role="button"], [role="switch"] {
@@ -64,7 +64,7 @@ button, a[role="button"], [role="switch"] {
   .text-gray-400, .text-gray-500 { color: #374151 !important; }
 }
 
-/* Available to screen readers, invisible on screen — for context that a
+/* Available to screen readers, invisible on screen - for context that a
    sighted user gets from layout alone. */
 .sr-only {
   position: absolute;

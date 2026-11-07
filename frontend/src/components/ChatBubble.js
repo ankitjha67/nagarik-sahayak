@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { CheckCheck, Check as CheckIcon, FileSearch, FileText, Check, X, Languages, Play, Pause, ShieldCheck, ShieldX, Download, FileDown, Loader2, Search, ClipboardCheck, FileOutput, Volume2, VolumeX, Share2, XCircle } from "lucide-react";
 import api from "../lib/api";
+import { toast } from "sonner";
 import { useLanguage } from "../lib/i18n";
 
 function escapeHtml(str) {
@@ -14,7 +15,7 @@ function escapeHtml(str) {
 }
 
 const EligibilityCard = ({ result }) => {
-  const { tx } = useLanguage();
+  const { tx, code } = useLanguage();
   const isEligible = result.eligible;
   return (
     <div
@@ -40,22 +41,33 @@ const EligibilityCard = ({ result }) => {
       </div>
       <p className="text-[11px] text-gray-600 font-['Nunito'] leading-relaxed">{result.reason}</p>
       {isEligible && result.benefit && (
-        <p className="text-[11px] text-green-700 font-['Nunito'] font-semibold mt-1">Benefit: {result.benefit}</p>
+        <p className="text-[11px] text-green-700 font-['Nunito'] font-semibold mt-1">{code === "hi" ? "लाभ" : "Benefit"}: {result.benefit}</p>
       )}
     </div>
   );
 };
 
-const ToolCallTrace = ({ toolCall }) => (
-  <div data-testid="mcp-tool-trace" className="mb-2.5 rounded-xl border border-[#E6E6F2] bg-[#F8F8FC] overflow-hidden">
+// Human-readable, bilingual labels for the internal step names, so a citizen
+// sees what happened rather than engine jargon ("MCP Tool: ...").
+const STEP_LABELS = {
+  search_schemes: { en: "Schemes searched", hi: "योजनाएं खोजी गईं" },
+  eligibility_matcher: { en: "Eligibility check", hi: "पात्रता जांच" },
+};
+
+const ToolCallTrace = ({ toolCall }) => {
+  const { code } = useLanguage();
+  const hi = code === "hi";
+  const step = STEP_LABELS[toolCall.tool_name];
+  return (
+  <div data-testid="scheme-trace" className="mb-2.5 rounded-xl border border-[#E6E6F2] bg-[#F8F8FC] overflow-hidden">
     <div className="flex items-center gap-2 px-3 py-1.5 bg-[#E6E6F2] border-b border-[#D4D4E8]">
       <FileSearch size={13} className="text-[#000080]" />
-      <span className="text-[11px] font-bold text-[#000080] font-['Mukta'] tracking-wide uppercase">
-        MCP Tool: {toolCall.tool_name}
+      <span className="text-[11px] font-bold text-[#000080] font-['Mukta'] tracking-wide">
+        {step ? (hi ? step.hi : step.en) : (hi ? "संसाधित" : "Processed")}
       </span>
     </div>
     <div className="px-3 py-2 space-y-1">
-      <p className="text-[10px] font-semibold text-gray-500 font-['Nunito'] uppercase tracking-wider">Documents scanned</p>
+      <p className="text-[10px] font-semibold text-gray-500 font-['Nunito'] uppercase tracking-wider">{hi ? "स्कैन किए गए दस्तावेज़" : "Documents scanned"}</p>
       {toolCall.documents_scanned?.map((doc, i) => (
         <div key={i} className="flex items-center gap-1.5">
           <FileText size={12} className="text-[#FF9933] flex-shrink-0" />
@@ -65,7 +77,7 @@ const ToolCallTrace = ({ toolCall }) => (
     </div>
     {toolCall.results && toolCall.results.length > 0 && (
       <div className="px-3 py-2 border-t border-[#E6E6F2] space-y-2">
-        <p className="text-[10px] font-semibold text-gray-500 font-['Nunito'] uppercase tracking-wider">Eligibility results</p>
+        <p className="text-[10px] font-semibold text-gray-500 font-['Nunito'] uppercase tracking-wider">{hi ? "पात्रता परिणाम" : "Eligibility results"}</p>
         {toolCall.results.map((r, i) => (
           <EligibilityCard key={i} result={r} />
         ))}
@@ -78,20 +90,21 @@ const ToolCallTrace = ({ toolCall }) => (
             <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center">
               <Check size={10} className="text-green-600" />
             </div>
-            <span className="text-[11px] font-semibold text-green-700 font-['Nunito']">Match found</span>
+            <span className="text-[11px] font-semibold text-green-700 font-['Nunito']">{hi ? "मिलान मिला" : "Match found"}</span>
           </>
         ) : (
           <>
             <div className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center">
               <X size={10} className="text-red-500" />
             </div>
-            <span className="text-[11px] font-semibold text-red-600 font-['Nunito']">No match in documents</span>
+            <span className="text-[11px] font-semibold text-red-600 font-['Nunito']">{hi ? "दस्तावेज़ों में कोई मिलान नहीं" : "No match in documents"}</span>
           </>
         )}
       </div>
     )}
   </div>
-);
+  );
+};
 
 const TranscriptionBlock = ({ message }) => {
   const hi = message.transcript_hi || "";
@@ -134,7 +147,7 @@ const TranscriptionBlock = ({ message }) => {
         <div className="flex items-center gap-1.5">
           <Languages size={14} className="text-[#FF9933]" />
           <span className="text-[10px] font-bold text-[#FF9933] font-['Mukta'] uppercase tracking-wider">
-            Voice Transcription — Sarvam Saaras v3
+            Voice Transcription - Sarvam Saaras v3
           </span>
         </div>
         {audioUrl && (
@@ -165,7 +178,7 @@ const TranscriptionBlock = ({ message }) => {
   );
 };
 
-/* Hindi Voice Reply — uses browser SpeechSynthesis (works offline) */
+/* Hindi Voice Reply - uses browser SpeechSynthesis (works offline) */
 const HindiVoiceBtn = ({ text }) => {
   const { tx } = useLanguage();
   const [speaking, setSpeaking] = useState(false);
@@ -238,7 +251,7 @@ const TickStatus = ({ status }) => {
   );
 };
 
-/* WhatsApp Share Button — copies share text to clipboard */
+/* WhatsApp Share Button - copies share text to clipboard */
 const WhatsAppShareBtn = ({ pdfUrl, schemeName }) => {
   const { tx } = useLanguage();
   const [copied, setCopied] = useState(false);
@@ -328,7 +341,7 @@ const FlaggedBlock = ({ flagged }) => {
         </span>
       </div>
       <p className="text-[10px] text-amber-700 font-['Nunito'] leading-relaxed pl-4">
-        {flagged.map((f) => f.scheme_name).join(", ")} — लाभ जारी होने से पहले जाँच की जाएगी।
+        {flagged.map((f) => f.scheme_name).join(", ")} - लाभ जारी होने से पहले जाँच की जाएगी।
         आपका फॉर्म तैयार है।
         <span className="block opacity-80">
           These will be checked before the benefit is released. Your form is ready.
@@ -337,6 +350,22 @@ const FlaggedBlock = ({ flagged }) => {
     </div>
   );
 };
+
+// Fetch a protected PDF through the api client (so the bearer token and 401
+// refresh are attached) and trigger a browser download. A plain <a href> to
+// /api/pdf/{id} sends no Authorization header and 401s.
+async function downloadPdfBlob(pdfPath, fileName) {
+  const resp = await api.get(pdfPath.replace(/^\/api/, ""), { responseType: "blob" });
+  const blobUrl = URL.createObjectURL(resp.data);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = fileName;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(blobUrl);
+}
 
 const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
   const { tx } = useLanguage();
@@ -361,12 +390,14 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
       let successCount = 0;
       for (let i = 0; i < pdfUrls.length; i++) {
         const pdfItem = pdfUrls[i];
-        const url = `${backendUrl}${pdfItem.pdf_url}`;
         const fileName = `${(pdfItem.scheme_name || "Form").replace(/\s+/g, "_")}_Form.pdf`;
         try {
-          const resp = await fetch(url);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const blob = await resp.blob();
+          // /api/pdf/{id} is auth-protected: a bare fetch sends no bearer token
+          // and 401s. Go through the api client so the token (and 401 refresh)
+          // are attached. pdf_url is "/api/...", and api's baseURL already ends
+          // in "/api", so strip the leading "/api".
+          const resp = await api.get(pdfItem.pdf_url.replace(/^\/api/, ""), { responseType: "blob" });
+          const blob = resp.data;
           const blobUrl = URL.createObjectURL(blob);
           const link = document.createElement("a");
           link.href = blobUrl;
@@ -378,7 +409,7 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
           URL.revokeObjectURL(blobUrl);
           successCount++;
         } catch {
-          // Individual file failed — continue, will fallback to zip
+          // Individual file failed - continue, will fallback to zip
         }
         // 500ms stagger between downloads
         if (i < pdfUrls.length - 1) {
@@ -394,12 +425,14 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
           await api.get(`/download-all?user_id=${userId || ""}&count=${pdfUrls.length}`);
         } catch {}
       } else {
-        // Some failed — fallback to zip download
-        const zipUrl = `${backendUrl}/api/download-all-zip?pdf_ids=${encodeURIComponent(pdfIds.join(","))}&user_id=${encodeURIComponent(userId || "")}`;
+        // Some failed - fallback to zip download
         try {
-          const resp = await fetch(zipUrl);
-          if (!resp.ok) throw new Error(`ZIP HTTP ${resp.status}`);
-          const blob = await resp.blob();
+          // Authenticated zip fallback (same reason as the per-file fetch).
+          const resp = await api.get(
+            `/download-all-zip?pdf_ids=${encodeURIComponent(pdfIds.join(","))}&user_id=${encodeURIComponent(userId || "")}`,
+            { responseType: "blob" }
+          );
+          const blob = resp.data;
           const blobUrl = URL.createObjectURL(blob);
           const link = document.createElement("a");
           link.href = blobUrl;
@@ -473,7 +506,7 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
 };
 
 export const ChatBubble = ({ message }) => {
-  const { tx } = useLanguage();
+  const { tx, code } = useLanguage();
   const isUser = message.role === "user";
   const hasToolCalls = message.tool_calls && message.tool_calls.length > 0;
   const isTranscription = message.type === "transcription";
@@ -516,25 +549,26 @@ export const ChatBubble = ({ message }) => {
         <FlaggedBlock flagged={message.flagged_for_review} />
         <RefusedBlock refused={message.refused} />
 
-        {/* PDF Download — ALL eligible forms at once */}
+        {/* PDF Download - ALL eligible forms at once */}
         {message.pdf_urls && message.pdf_urls.length > 0 ? (
           <MultiPdfDownloadBlock pdfUrls={message.pdf_urls} userId={message.user_id} backendUrl={backendUrl} />
         ) : (hasPdf || isPdfReport) && message.pdf_url ? (
           <div className="mt-2.5 space-y-2">
-            <a
-              href={`${backendUrl}${message.pdf_url}`}
+            <button
+              type="button"
+              onClick={() => downloadPdfBlob(message.pdf_url, "Application_Form.pdf").catch(() => toast.error(tx("download.failed")))}
               data-testid="pdf-download-btn"
-              className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#FF9933] to-[#FF8000] hover:from-[#FF8800] hover:to-[#E67300] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
+              className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#FF9933] to-[#FF8000] hover:from-[#FF8800] hover:to-[#E67300] text-white rounded-xl transition-all hover:-translate-y-0.5 shadow-md"
             >
               <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
                 <FileDown size={18} />
               </div>
               <div>
                 <span className="text-sm font-bold font-['Mukta'] block">{tx("download.pdf")}</span>
-                <span className="text-[10px] opacity-90 font-['Nunito']">Pre-filled Application Form</span>
+                <span className="text-[10px] opacity-90 font-['Nunito']">{code === "hi" ? "भरा हुआ आवेदन फॉर्म" : "Pre-filled Application Form"}</span>
               </div>
               <Download size={16} className="ml-auto opacity-80" />
-            </a>
+            </button>
             <WhatsAppShareBtn pdfUrl={`${backendUrl}${message.pdf_url}`} schemeName={
               message.eligibility_results?.find(r => r.eligible)?.scheme || "Government Scheme"
             } />
@@ -573,14 +607,13 @@ export const TypingIndicator = () => {
     </div>
   </div>
 );
+};
 
 const TOOL_STEPS = [
   { icon: Search, text: "Reading Vidyasiri Scholarship PDF...", textHi: "विद्यासिरी छात्रवृत्ति PDF पढ़ रहे हैं..." },
   { icon: ClipboardCheck, text: "Checking eligibility criteria...", textHi: "पात्रता मानदंड जांच रहे हैं..." },
   { icon: FileOutput, text: "Generating filled application form...", textHi: "भरा हुआ आवेदन फॉर्म तैयार कर रहे हैं..." },
 ];
-
-};
 
 export const ToolProgressIndicator = () => {
   const { tx } = useLanguage();
@@ -601,7 +634,7 @@ export const ToolProgressIndicator = () => {
           <div className="w-1.5 h-1.5 rounded-full bg-[#FF9933]" />
           <span className="text-[11px] font-semibold text-[#000080] font-['Mukta']">{tx("app.name")}</span>
           <Loader2 size={12} className="ml-1 text-[#FF9933] animate-spin" />
-          <span data-testid="agent-thinking-text" className="text-[10px] text-[#FF9933] font-semibold font-['Mukta'] ml-0.5">Agent is thinking...</span>
+          <span data-testid="agent-thinking-text" className="text-[10px] text-[#FF9933] font-semibold font-['Mukta'] ml-0.5">तैयार हो रहा है… / Working…</span>
         </div>
         <div className="space-y-2">
           {TOOL_STEPS.map((step, i) => {

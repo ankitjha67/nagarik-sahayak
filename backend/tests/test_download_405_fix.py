@@ -81,7 +81,7 @@ class TestDownloadAllZipGet:
         """GET /api/download-all-zip with a nonexistent id returns 404.
 
         The route checks each id against recorded ownership before bundling
-        (DPDP s8(4)), so an id with no owner is refused as not-found — which is
+        (DPDP s8(4)), so an id with no owner is refused as not-found - which is
         what this test is really asserting."""
         resp = api_client.get(f"{BASE_URL}/api/download-all-zip", params={
             "pdf_ids": "nonexistent-uuid",
@@ -98,7 +98,7 @@ class TestDownloadAllZipGet:
                 pdf_ids.append(parts[-1])
 
         pdf_ids_str = ",".join(pdf_ids)
-        # Request as the owner — the demo PDFs belong to authenticated_user, and
+        # Request as the owner - the demo PDFs belong to authenticated_user, and
         # the bundle route enforces ownership just like the single-file route.
         resp = api_client.get(f"{BASE_URL}/api/download-all-zip", params={
             "pdf_ids": pdf_ids_str,

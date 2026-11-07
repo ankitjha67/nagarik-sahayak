@@ -1,4 +1,4 @@
-"""Central and State scheme catalog — structure, domicile, and non-exclusion.
+"""Central and State scheme catalog - structure, domicile, and non-exclusion.
 
 Three properties matter here and none of them is "the catalog is big":
 
@@ -6,8 +6,8 @@ Three properties matter here and none of them is "the catalog is big":
    citizen of Bihar shown Ladli Behna will travel to an office and be turned
    away. Every State entry therefore carries a domicile rule.
 
-2. **A State resident must still see Central schemes.** The opposite failure —
-   filtering a Bihar user down to Bihar-only schemes — hides most of the money
+2. **A State resident must still see Central schemes.** The opposite failure -
+   filtering a Bihar user down to Bihar-only schemes - hides most of the money
    they are entitled to. This is the more damaging of the two errors, because
    it is invisible: nothing tells the user what they were not shown.
 
@@ -59,7 +59,7 @@ class TestCatalogStructure:
     def test_entry_has_fields_and_a_portal(self, entry):
         assert entry.get("extractedFields"), "no fields to fill"
         assert entry["totalFields"] == len(entry["extractedFields"])
-        # Most of these schemes are portal-only, so a PDF is optional — but a
+        # Most of these schemes are portal-only, so a PDF is optional - but a
         # citizen must always be told where to actually apply.
         assert entry.get("officialWebsite"), "no way to reach the department"
 
@@ -175,7 +175,7 @@ class TestNoOneIsLockedOut:
 
     @pytest.mark.parametrize("entry", CATALOG, ids=_id)
     def test_no_rule_references_an_undeclared_field(self, entry):
-        """A rule on a field no form collects can never pass — the scheme would
+        """A rule on a field no form collects can never pass - the scheme would
         sit permanently at INCOMPLETE with nothing the citizen can do."""
         keys = {f["profileKey"] for f in entry["extractedFields"]}
         # `age` is derived from date_of_birth by the engine rather than asked.
@@ -213,7 +213,7 @@ class TestNoOneIsLockedOut:
         "entry", [e for e in CATALOG if e["level"] == "State"], ids=_id)
     def test_a_resident_meeting_every_rule_is_eligible(self, entry):
         """Constructs a profile that satisfies each rule and asserts the scheme
-        actually resolves to ELIGIBLE — catching contradictory rule pairs that
+        actually resolves to ELIGIBLE - catching contradictory rule pairs that
         would make a scheme unclaimable by anyone."""
         profile = {}
         for rule in entry["eligibilityCriteria"]["rules"]:

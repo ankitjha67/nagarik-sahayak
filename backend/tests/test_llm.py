@@ -1,7 +1,7 @@
 """The provider-agnostic LLM layer: selection, fallback, and the routes.
 
-No model is called for real; fakes stand in so the registry's behaviour — try
-the chain, skip the unconfigured, survive a failing provider, report attempts —
+No model is called for real; fakes stand in so the registry's behaviour - try
+the chain, skip the unconfigured, survive a failing provider, report attempts -
 is what is under test.
 """
 from __future__ import annotations
@@ -91,8 +91,18 @@ def test_default_chain_puts_nvidia_first(monkeypatch):
     assert registry.chain()[-1] == "mock"
 
 
+def _clear_provider_keys(monkeypatch):
+    # A developer's .env may hold a real key (e.g. NVIDIA_API_KEY). These tests
+    # assert the UNCONFIGURED state, so clear any provider key first to stay
+    # hermetic regardless of the environment the suite runs in.
+    for k in list(os.environ):
+        if k.endswith("_API_KEY") or k.endswith("_LLM_KEY"):
+            monkeypatch.delenv(k, raising=False)
+
+
 def test_describe_lists_every_provider(monkeypatch):
     monkeypatch.setattr(registry, "_instances", {})
+    _clear_provider_keys(monkeypatch)
     d = registry.describe()
     keys = {p["key"] for p in d["providers"]}
     assert {"nvidia_nim", "openai", "anthropic", "gemini", "groq", "mistral", "deepseek",
@@ -104,6 +114,7 @@ def test_describe_lists_every_provider(monkeypatch):
 
 def test_is_configured_ignores_mock(monkeypatch):
     monkeypatch.setattr(registry, "_instances", {})
+    _clear_provider_keys(monkeypatch)
     # No real key set in the unit env -> not configured, even though mock exists.
     assert registry.is_configured() is False
 

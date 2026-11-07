@@ -1,4 +1,4 @@
-"""Real government form routes — catalog, live extraction, and link health."""
+"""Real government form routes - catalog, live extraction, and link health."""
 import logging
 
 from fastapi import HTTPException, BackgroundTasks, Request
@@ -36,7 +36,7 @@ async def form_catalog(level: str | None = None, state: str | None = None):
 
     `level=Central|State` and `state=<State>` narrow the list. Passing a state
     returns that State's schemes *and* every Central scheme, because a resident
-    of Bihar can claim both — returning only the State's own would hide most of
+    of Bihar can claim both - returning only the State's own would hide most of
     what they are entitled to.
     """
     if level and level not in ("Central", "State"):
@@ -55,7 +55,7 @@ async def form_catalog(level: str | None = None, state: str | None = None):
             "officialWebsite": e.get("officialWebsite", ""),
             "officialPdfUrl": e.get("official_pdf_url", ""),
             # Scheme literature (booklet/guidelines) where no fillable form is
-            # published — useful to link, but never used for field extraction.
+            # published - useful to link, but never used for field extraction.
             "referencePdfUrl": e.get("reference_pdf_url", ""),
             "hasLivePdf": bool(e.get("official_pdf_url")),
             "isScanned": e.get("is_scanned", False),
@@ -105,7 +105,7 @@ async def form_document_checklist(scheme_name: str):
     missing enclosure is the commonest reason an application is turned away,
     after the citizen has already spent a day and a fare to reach the office.
     The list is derived from the form's own fields, bilingually, with the
-    reason for each document and — for identity — the alternatives the law
+    reason for each document and - for identity - the alternatives the law
     allows, so a citizen without Aadhaar is never told it is compulsory.
 
     Served from bundled data: no database, network, or model.
@@ -184,7 +184,7 @@ async def refresh_forms(
 ):
     """Re-extract form fields from live government PDFs (admin, backgrounded).
 
-    Body: {"schemes": ["PM-KISAN Samman Nidhi", ...]} — omit to refresh every
+    Body: {"schemes": ["PM-KISAN Samman Nidhi", ...]} - omit to refresh every
     catalog scheme that publishes a PDF.
     """
     req = req or {}

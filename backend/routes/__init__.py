@@ -1,4 +1,4 @@
-"""Route registration — combines all route modules into a single APIRouter."""
+"""Route registration - combines all route modules into a single APIRouter."""
 from fastapi import APIRouter
 
 api_router = APIRouter(prefix="/api")

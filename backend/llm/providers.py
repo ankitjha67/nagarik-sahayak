@@ -23,6 +23,11 @@ async def _post(url: str, **kw) -> httpx.Response:
         return await client.post(url, **kw)
 
 
+async def _get(url: str, **kw) -> httpx.Response:
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        return await client.get(url, **kw)
+
+
 def _fail(provider: str, r: httpx.Response) -> LlmError:
     return LlmError(provider, f"HTTP {r.status_code}: {r.text[:200]}",
                     retryable=r.status_code >= 500 or r.status_code == 429)
@@ -41,12 +46,17 @@ class _OpenAICompatible(LlmProvider):
     def model(self) -> str:
         return _env(self.model_env, self.default_model) if self.model_env else self.default_model
 
+    async def _resolve_model(self) -> str:
+        """The model id to call. Subclasses may discover it at runtime."""
+        return self.model()
+
     async def complete(self, prompt, system="", *, temperature=0.2, max_tokens=2048, json_mode=False):
+        model = await self._resolve_model()
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
-        body = {"model": self.model(), "messages": messages,
+        body = {"model": model, "messages": messages,
                 "temperature": temperature, "max_tokens": max_tokens}
         if json_mode:
             body["response_format"] = {"type": "json_object"}
@@ -64,7 +74,7 @@ class _OpenAICompatible(LlmProvider):
         except (KeyError, IndexError, TypeError) as e:
             raise LlmError(self.key, f"unexpected response: {e}", retryable=False)
         usage = data.get("usage") or {}
-        return Completion(text=text, provider=self.key, model=self.model(),
+        return Completion(text=text, provider=self.key, model=model,
                           finish_reason=choice.get("finish_reason", ""),
                           prompt_tokens=usage.get("prompt_tokens", 0),
                           completion_tokens=usage.get("completion_tokens", 0), raw=data)
@@ -77,12 +87,51 @@ class NvidiaNim(_OpenAICompatible):
     env_keys = ("NVIDIA_API_KEY",)
     key_env = "NVIDIA_API_KEY"
     model_env = "NVIDIA_NIM_MODEL"
-    default_model = "meta/llama-3.1-70b-instruct"
+    # No hard-coded default: when NVIDIA_NIM_MODEL is unset or "auto", the model
+    # is discovered at runtime (see _resolve_model). This value is only the
+    # last-resort fallback if the models endpoint can't be reached.
+    default_model = "nvidia/nemotron-3-ultra-550b-a55b"
     note = ("NVIDIA-hosted models at integrate.api.nvidia.com (key nvapi-…); "
-            "set NVIDIA_NIM_BASE_URL to point at a self-hosted NIM instead.")
+            "leave NVIDIA_NIM_MODEL empty/auto to pick the best available model "
+            "at runtime, or pin one; set NVIDIA_NIM_BASE_URL for a self-hosted NIM.")
+
+    # Ranked by a live latency + JSON-fidelity probe against the hosted API
+    # (best-quality-that-is-fast first, then progressively smaller/faster, then
+    # strong non-NVIDIA fallbacks). The first id the account actually has wins.
+    PREFERENCE = (
+        "nvidia/nemotron-3-ultra-550b-a55b",      # flagship, ~1.3s, clean JSON
+        "nvidia/nemotron-3.5-super-vl-120b-a12b",
+        "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "nvidia/nemotron-3.5-bolt-e4b",           # fastest, ~0.7s
+        "mistralai/mistral-large-4-1t-a52b",
+        "google/gemma-4-31b-it",
+    )
+    _discovered: str = ""  # process-wide cache of the resolved model id
 
     def _base(self) -> str:
-        return _env("NVIDIA_NIM_BASE_URL", "https://integrate.api.nvidia.com/v1")
+        # `or` (not a default arg): an empty NVIDIA_NIM_BASE_URL in a .env file
+        # would otherwise override the hosted default with "" and drop the URL
+        # scheme.
+        return _env("NVIDIA_NIM_BASE_URL") or "https://integrate.api.nvidia.com/v1"
+
+    async def _resolve_model(self) -> str:
+        pinned = _env(self.model_env)
+        if pinned and pinned.lower() != "auto":
+            return pinned
+        if NvidiaNim._discovered:
+            return NvidiaNim._discovered
+        chosen = self.default_model
+        try:
+            key = _env(self.key_env)
+            r = await _get(self._base().rstrip("/") + "/models",
+                           headers={"authorization": f"Bearer {key}"})
+            if r.status_code < 300:
+                available = {m.get("id") for m in (r.json().get("data") or [])}
+                chosen = next((m for m in self.PREFERENCE if m in available), chosen)
+        except Exception:  # noqa: BLE001 - discovery is best-effort; fall back
+            pass
+        NvidiaNim._discovered = chosen
+        return chosen
 
 
 class OpenAI(_OpenAICompatible):
@@ -312,7 +361,7 @@ class Emergent(LlmProvider):
         chat = chat.with_model(provider, model)
         try:
             text = await chat.send_message(UserMessage(text=prompt))
-        except Exception as e:  # noqa: BLE001 — their SDK raises broadly
+        except Exception as e:  # noqa: BLE001 - their SDK raises broadly
             raise LlmError(self.key, f"{type(e).__name__}: {e}")
         return Completion(text=(text or "").strip(), provider=self.key, model=model)
 

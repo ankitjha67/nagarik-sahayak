@@ -5,7 +5,7 @@ import { BottomNav } from "../components/BottomNav";
 import { Sidebar } from "../components/Sidebar";
 import { getChatHistory, getSchemes, getExamAlerts, getDiscoveryStats } from "../lib/api";
 import { useLanguage } from "../lib/i18n";
-import { Mic, MessageCircle, BookOpen, ChevronRight, Sparkles, Clock, Globe } from "lucide-react";
+import { Mic, MessageCircle, BookOpen, ChevronRight, Clock, Globe } from "lucide-react";
 
 export default function HomePage({ userId }) {
   const navigate = useNavigate();
@@ -45,7 +45,7 @@ export default function HomePage({ userId }) {
         >
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#FFF0E0] flex items-center justify-center flex-shrink-0">
-              <Sparkles size={20} className="text-[#FF9933]" />
+              <MessageCircle size={20} className="text-[#FF9933]" />
             </div>
             <div>
               <h2 className="text-base font-bold text-[#000080] font-['Mukta']">

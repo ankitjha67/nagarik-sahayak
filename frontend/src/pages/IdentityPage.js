@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 
 // Identity verification, presented as what it is: optional, useful, and never a
-// gate. Two things this screen must never do —
+// gate. Two things this screen must never do -
 //
 //   * imply that an unverified applicant cannot apply. Under the Aadhaar Act
 //     s7 proviso a benefit cannot be refused for want of authentication, and a
@@ -59,7 +59,7 @@ function AvailabilityNote({ method }) {
     return (
       <p className="text-xs text-gray-600 mt-2">
         Not available here. This needs a UIDAI appointment that this service does
-        not hold — it cannot be switched on with a setting.
+        not hold - it cannot be switched on with a setting.
       </p>
     );
   }
@@ -147,7 +147,7 @@ function MatchRow({ match }) {
   return (
     <li className="text-sm">
       <span className={`font-medium ${tone}`}>{match.field.replace(/_/g, " ")}</span>
-      <span className="text-gray-600"> — {match.reason}</span>
+      <span className="text-gray-600"> - {match.reason}</span>
     </li>
   );
 }
@@ -216,7 +216,8 @@ function OutcomePanel({ outcome }) {
 }
 
 export default function IdentityPage({ userId }) {
-  const { t } = useLanguage();
+  const { t, code } = useLanguage();
+  const hi = code === "hi";
   const [methods, setMethods] = useState([]);
   const [profile, setProfile] = useState({});
   // Seeded from what this browser already recorded, so a citizen who verified
@@ -256,7 +257,7 @@ export default function IdentityPage({ userId }) {
 
   const record = useCallback(
     (outcome) => {
-      // saveKycOutcome persists the verdict only — the demographics read out
+      // saveKycOutcome persists the verdict only - the demographics read out
       // of the document are deliberately not written to this device.
       const next = saveKycOutcome(outcome);
       setOutcomes(next.length ? next : [...outcomes, outcome]);
@@ -268,7 +269,7 @@ export default function IdentityPage({ userId }) {
   const showError = (err) => {
     const detail = err?.response?.data?.detail;
     // The backend returns a bilingual, actionable object for anything the
-    // citizen can fix themselves — a mistyped share code, the wrong file.
+    // citizen can fix themselves - a mistyped share code, the wrong file.
     if (detail && typeof detail === "object" && detail.error) {
       toast.error(detail.error, { description: detail.errorHindi });
     } else {
@@ -367,7 +368,7 @@ export default function IdentityPage({ userId }) {
 
         <OutcomePanel outcome={latest} />
 
-        {/* Aadhaar offline e-KYC — the strongest route that needs no licence. */}
+        {/* Aadhaar offline e-KYC - the strongest route that needs no licence. */}
         <form onSubmit={submitXml} className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-center gap-2">
             <FileArchive className="w-5 h-5 text-[#FF9933]" aria-hidden="true" />
@@ -376,7 +377,7 @@ export default function IdentityPage({ userId }) {
           <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">
             Download the ZIP from myaadhaar.uidai.gov.in and upload it here with
             the four-character share code you chose. The file is read and
-            discarded — your full Aadhaar number is not in it and is never stored.
+            discarded - your full Aadhaar number is not in it and is never stored.
           </p>
           <label className="block mt-3 text-sm font-medium" htmlFor="ekyc-file">
             e-KYC ZIP file
@@ -398,7 +399,7 @@ export default function IdentityPage({ userId }) {
             onChange={(e) => setShareCode(e.target.value)}
             maxLength={16}
             autoComplete="off"
-            placeholder="The 4-character code you set"
+            placeholder={hi ? "आपके द्वारा सेट किया गया 4-अक्षर का कोड" : "The 4-character code you set"}
             className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
           <button
@@ -414,7 +415,7 @@ export default function IdentityPage({ userId }) {
           </button>
         </form>
 
-        {/* Secure QR — for someone holding a printed card and no download. */}
+        {/* Secure QR - for someone holding a printed card and no download. */}
         <form onSubmit={submitQr} className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-center gap-2">
             <QrCode className="w-5 h-5 text-[#FF9933]" aria-hidden="true" />
@@ -422,7 +423,7 @@ export default function IdentityPage({ userId }) {
           </div>
           <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">
             Scan the QR on your e-Aadhaar letter or PVC card and paste the value
-            here. Older letters carry an unsigned QR that cannot be checked — if
+            here. Older letters carry an unsigned QR that cannot be checked - if
             that happens you will be told, and another route offered.
           </p>
           <label className="block mt-3 text-sm font-medium" htmlFor="qr-value">
@@ -451,7 +452,7 @@ export default function IdentityPage({ userId }) {
           </div>
           <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">
             Record your details as self-declared. Nothing is checked against any
-            record, and that is fine — you can still apply for everything.
+            record, and that is fine - you can still apply for everything.
           </p>
           <button
             type="button"

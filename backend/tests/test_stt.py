@@ -1,8 +1,8 @@
 """The speech layer: sniffing, engine selection, fallback, and the routes.
 
 No engine is called for real. Each test swaps in small fake providers so the
-registry's behaviour — try the chain, skip what is unavailable, survive a
-broken engine, report every attempt — is what is under test.
+registry's behaviour - try the chain, skip what is unavailable, survive a
+broken engine, report every attempt - is what is under test.
 """
 from __future__ import annotations
 

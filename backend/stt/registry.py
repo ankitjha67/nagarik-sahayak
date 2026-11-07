@@ -103,7 +103,7 @@ async def transcribe(audio: bytes, mime: str = "", language: str = "", translate
         except SttError as e:
             attempts.append({"provider": key, "ok": False, "error": e.reason[:160], "ms": int((time.time() - t0) * 1000)})
             logger.warning("STT %s failed: %s", key, e.reason)
-        except Exception as e:  # noqa: BLE001 — one engine's bug must not stop the chain
+        except Exception as e:  # noqa: BLE001 - one engine's bug must not stop the chain
             attempts.append({"provider": key, "ok": False, "error": f"{type(e).__name__}: {e}"[:160]})
             logger.exception("STT %s raised", key)
     raise SttError("registry", "no speech engine produced a transcript", retryable=True)

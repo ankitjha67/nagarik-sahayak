@@ -2,7 +2,7 @@
 
 Split from gov_forms.py to keep each file readable; both feed the same catalog
 through get_catalog(). Field definitions reuse the shared builders so a common
-concept — a name, an address, a bank account — always lands on the same
+concept - a name, an address, a bank account - always lands on the same
 profileKey and the citizen is asked for it once across every scheme.
 
 Eligibility rules are written only where the scheme publishes a hard,

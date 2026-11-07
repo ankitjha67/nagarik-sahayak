@@ -1,8 +1,8 @@
-"""Alternative identity documents — Aadhaar Act 2016, s7 proviso.
+"""Alternative identity documents - Aadhaar Act 2016, s7 proviso.
 
 The proviso to section 7 is explicit: where a person assigned an Aadhaar number
 does not have one, or authentication fails, they must be offered an alternative
-means of identification. The Supreme Court in *Puttaswamy* was blunter still —
+means of identification. The Supreme Court in *Puttaswamy* was blunter still -
 nobody may be denied a benefit for want of Aadhaar.
 
 This matters more here than the statute alone suggests. The people least likely
@@ -19,8 +19,8 @@ expect, not because it is required.
 Format validation is deliberately loose for the state-issued documents. Ration
 card and job card formats vary by state and have changed over time; rejecting an
 unfamiliar-looking but genuine card would recreate the exclusion this module
-exists to prevent. Where a document has a real check — Aadhaar's Verhoeff digit,
-PAN's fixed shape — it is applied.
+exists to prevent. Where a document has a real check - Aadhaar's Verhoeff digit,
+PAN's fixed shape - it is applied.
 """
 from __future__ import annotations
 
@@ -111,7 +111,7 @@ def which_provided(profile: dict) -> list[str]:
     """Identity documents present in the profile.
 
     Also recognises the stored last-four remnant of an Aadhaar, since the number
-    itself is deliberately not persisted — a returning citizen who gave Aadhaar
+    itself is deliberately not persisted - a returning citizen who gave Aadhaar
     once should not be told they have supplied no identity document.
     """
     profile = profile or {}
@@ -174,7 +174,7 @@ def validate_profile_identity(profile: dict) -> tuple[bool, str, str]:
                 f"इनमें से कोई एक पहचान दस्तावेज़ दें: {names_hi}।")
 
     # Any one valid document is enough. Report an error only if every supplied
-    # document is malformed — a citizen who gave a good voter ID and mistyped
+    # document is malformed - a citizen who gave a good voter ID and mistyped
     # their PAN should not be blocked.
     errors = []
     for key in provided:

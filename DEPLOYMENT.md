@@ -19,7 +19,7 @@ field definitions and silently stops learning anything from a live form.
 `numpy` (already in `requirements.txt`) is what reads the ruled grid off a
 scanned form so a value stays inside its cell. Without it the filler still
 works but falls back to bounding values by the next printed word, which is
-looser — a fill report will then show `gridDetected: false`.
+looser - a fill report will then show `gridDetected: false`.
 
 Tesseract earns its place twice over: many published forms carry **no text
 layer at all** (the Kisan Credit Card form has exactly zero extractable
@@ -71,7 +71,7 @@ python scripts/backfill_identity_index.py  # populate fingerprint columns
 ```
 
 Run them in that order. `prisma generate` is required after any pull that
-touches `schema.prisma` — the `Scheme` and `FormTemplate` models gained
+touches `schema.prisma` - the `Scheme` and `FormTemplate` models gained
 `level` and `state` columns for the Central/State split, and a stale client
 will reject writes to them.
 
@@ -90,7 +90,7 @@ python scripts/seed_gov_forms.py seed --overwrite
   Indian NTP; a clock that drifts makes an incident timeline unusable as
   evidence.
 - Retain logs for 180 days **within India**. This is an infrastructure
-  decision the application cannot make for you — if logs ship to a region
+  decision the application cannot make for you - if logs ship to a region
   outside India, the obligation is unmet regardless of what the app does.
 - A reportable incident must reach CERT-In within **6 hours**. The application
   records and times incidents (`dpdp/incident.py`) but has no transmission
@@ -103,13 +103,13 @@ python scripts/seed_gov_forms.py seed --overwrite
 These are marked `needs_licence` in `/api/kyc/methods` and cannot be enabled
 by configuration:
 
-- **Aadhaar OTP e-KYC** and **biometric authentication** — require appointment
+- **Aadhaar OTP e-KYC** and **biometric authentication** - require appointment
   as a KUA/AUA by UIDAI.
 
 Aadhaar **offline e-KYC** and **Secure QR** work with no licence and no
 external account, and are the highest assurance the application reaches
 unaided. Without `UIDAI_SIGNING_CERT` the signature is parsed but not checked,
-and results are reported at `DOCUMENTED` rather than `VERIFIED` — the citizen
+and results are reported at `DOCUMENTED` rather than `VERIFIED` - the citizen
 is told, and the case goes to a reviewer. That downgrade is the correct
 behaviour, not a defect to work around.
 
@@ -120,7 +120,7 @@ behaviour, not a defect to work around.
 - **Language.** All 22 Eighth Schedule languages have interface translations
   and none has been checked by a native speaker. `GET /api/i18n/coverage`
   reports two grades: `draft` (script and register well attested) and
-  `low_confidence` (Bodo, Kashmiri, Manipuri, Santali — the orthography itself
+  `low_confidence` (Bodo, Kashmiri, Manipuri, Santali - the orthography itself
   may be wrong, and those ship with a standing warning to the reader). Full
   coverage is not full confidence; commission a review for the languages of
   any State you launch in, starting with `summary.reviewPriority`.
@@ -186,8 +186,8 @@ LLM key.
 
 Stage 14 exists because two bugs lived in the gaps between layers that every
 unit test passed over: KYC evidence that never reached the decision function
-the API calls, and a missing identity document classified as invalid data —
-a refusal — rather than an unfinished form. Both are pinned there and in
+the API calls, and a missing identity document classified as invalid data -
+a refusal - rather than an unfinished form. Both are pinned there and in
 `tests/test_gate_integration.py`.
 
 All 105 smoke-test checks pass on the current tree.
@@ -211,11 +211,11 @@ looked at rather than taken on trust.
 
 Two outputs, and they are not interchangeable:
 
-- **`filled_official.pdf`** — the department's own PDF with values overlaid
+- **`filled_official.pdf`** - the department's own PDF with values overlaid
   beside their printed labels. Partial by nature: a printed form rarely has a
   labelled slot for every field, so the run reports which values the citizen
   must write by hand before they travel.
-- **`application_final.pdf`** — the app's own bilingual form carrying every
+- **`application_final.pdf`** - the app's own bilingual form carrying every
   field, which is what a citizen prints and takes to the counter.
 
 Neither carries a full Aadhaar number. Both stop at the last four digits, and
@@ -224,7 +224,7 @@ the citizen writes the rest by hand on the copy they hand over.
 The run prints two checks around the fill, and both exist because of bugs they
 now catch:
 
-- **Before writing**, it audits the form — which catalog fields have a labelled
+- **Before writing**, it audits the form - which catalog fields have a labelled
   slot, which do not, and which labels are printed on the form that the catalog
   has no field for at all. That last one is how Father's Occupation, Mother's
   Occupation and Parivar Pehchan Patra were found: they came out blank on every
@@ -233,7 +233,7 @@ now catch:
   that no two overlap, that none sits on top of the form's own printing, and
   that none crosses the cell border it was placed inside. Placement is computed
   from the *unfilled* page, so none of that is certain until the file exists.
-  On a pure scan the verifier has to re-OCR the filled page — including our own
-  ink, which OCR reads back imperfectly — so those values are listed under
+  On a pure scan the verifier has to re-OCR the filled page - including our own
+  ink, which OCR reads back imperfectly - so those values are listed under
   `unconfirmed` rather than counted as missing, and `textCheckReliable` says
   which kind of answer you are getting.

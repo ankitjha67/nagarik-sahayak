@@ -299,7 +299,7 @@ class TestProfileEndpoints:
         mock_user.createdAt = datetime.now(timezone.utc)
 
         # The lookup goes through database.find_user, which rejects a malformed
-        # id ("user123" is not an ObjectId) before Prisma is consulted — so the
+        # id ("user123" is not an ObjectId) before Prisma is consulted - so the
         # seam to mock is find_user itself, not prisma.
         with patch("routes.profile.find_user", AsyncMock(return_value=mock_user)):
             resp = client.get("/api/profile/user123", headers=bearer_for("user123"))
@@ -372,7 +372,7 @@ class TestPDFEndpoints:
         assert resp.status_code in (400, 401, 404, 422)
 
     def test_pdf_valid_uuid_not_found(self, client, bearer_for):
-        """A valid UUID whose file does not exist returns 404 — to its owner.
+        """A valid UUID whose file does not exist returns 404 - to its owner.
 
         The route needs a signed-in caller, then the ownership gate runs, so to
         reach the missing-file path at all the caller must be authorised. The

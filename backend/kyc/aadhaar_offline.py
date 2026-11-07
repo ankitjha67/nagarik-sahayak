@@ -1,4 +1,4 @@
-"""Aadhaar Offline e-KYC — the highest assurance reachable without a licence.
+"""Aadhaar Offline e-KYC - the highest assurance reachable without a licence.
 
 UIDAI publishes two offline artefacts a citizen can hand over directly:
 
@@ -25,7 +25,7 @@ digits.
 UIDAI's XML signature requires UIDAI's public certificate, which this repository
 does not and must not bundle. Where the certificate is absent the parsed record
 comes back at DOCUMENTED assurance with ``signature_verified=False`` and an
-explicit reason — not at VERIFIED. Silently treating an unverified document as
+explicit reason - not at VERIFIED. Silently treating an unverified document as
 verified is the failure mode that makes an identity system worse than no
 identity system, because everyone downstream then trusts it.
 """
@@ -175,9 +175,9 @@ def _open_zip(data: bytes, share_code: str) -> bytes:
                 "विकल्प का उपयोग करें।", code="unsupported_encryption")
         raise OfflineKycError(
             "The share code did not open the file. It is the four-character code "
-            "you set while downloading — please check it and try again.",
+            "you set while downloading - please check it and try again.",
             "शेयर कोड से फ़ाइल नहीं खुली। यह डाउनलोड करते समय आपके द्वारा निर्धारित "
-            "चार अक्षरों का कोड है — कृपया जाँचकर पुनः प्रयास करें।",
+            "चार अक्षरों का कोड है - कृपया जाँचकर पुनः प्रयास करें।",
             code="bad_share_code")
 
 
@@ -194,7 +194,7 @@ def _try_pyzipper(data: bytes, password: bytes) -> bytes | None:
             if not names:
                 return None
             return zf.read(names[0])
-    except Exception:  # noqa: BLE001 — a wrong password surfaces many ways here
+    except Exception:  # noqa: BLE001 - a wrong password surfaces many ways here
         raise OfflineKycError(
             "The share code did not open the file. Please check the "
             "four-character code you set while downloading and try again.",
@@ -232,7 +232,7 @@ def parse_offline_xml(zip_bytes: bytes, share_code: str) -> OfflineKycRecord:
     """Open and parse a UIDAI offline e-KYC ZIP.
 
     Raises OfflineKycError with a bilingual, actionable message on every
-    failure — a citizen who mistyped a share code must be told exactly that,
+    failure - a citizen who mistyped a share code must be told exactly that,
     not shown a stack trace or a generic "verification failed".
     """
     xml_bytes = _open_zip(zip_bytes, share_code)
@@ -363,7 +363,7 @@ def _verify_xml_signature(xml_bytes: bytes, root) -> tuple[bool, str, str]:
                 "certificate is missing, so it was not checked.",
                 "यूआईडीएआई हस्ताक्षर उपस्थित है किंतु सर्वर पर यूआईडीएआई प्रमाणपत्र "
                 "अनुपलब्ध होने से जाँच नहीं हुई।")
-    except Exception:  # noqa: BLE001 — signxml raises a wide family
+    except Exception:  # noqa: BLE001 - signxml raises a wide family
         # Deliberately not logging the exception text: it can echo document
         # content, and this document is somebody's identity record.
         logger.warning("UIDAI XML signature verification failed")
@@ -514,7 +514,7 @@ def to_profile(record: OfflineKycRecord) -> dict:
 
 
 def _b64_photo(record_xml_photo: str) -> bytes:
-    """Decode the embedded photo. Not stored — used only for reviewer display."""
+    """Decode the embedded photo. Not stored - used only for reviewer display."""
     try:
         return base64.b64decode(record_xml_photo)
     except Exception:  # noqa: BLE001

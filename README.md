@@ -1,15 +1,15 @@
 # Nagarik Sahayak
 
 **Nagarik Sahayak** ("citizen helper") helps people in India find the government
-welfare schemes they actually qualify for — and fills out the real application
+welfare schemes they actually qualify for - and fills out the real application
 forms for them. A citizen gives their details once, in any of the 22 scheduled
 languages, and the app finds the Central and State schemes they are eligible
 for, tells them which documents to carry, collects every field the chosen form
 needs one validated question at a time, and produces the department's own
 published PDF, filled.
 
-The whole decision path — eligibility, fraud screening, document checklist,
-form filling — is rule-based and runs with **no LLM key and no internet
+The whole decision path - eligibility, fraud screening, document checklist,
+form filling - is rule-based and runs with **no LLM key and no internet
 dependency**. The citizen's Aadhaar number is never stored or printed in full.
 
 > This repository began as a hackathon entry and has since grown into a working
@@ -29,8 +29,8 @@ dependency**. The citizen's Aadhaar number is never stored or printed in full.
   numerals to ASCII, bad phone/PIN/Aadhaar rejected in both languages), and
   remembers answers for the next form.
 - **Fill the real government PDF.** The filler overlays answers onto the
-  published form — recovering the ruled grid from a scanned page, placing comb
-  boxes and composite fields, verifying nothing spills a cell — and names any
+  published form - recovering the ruled grid from a scanned page, placing comb
+  boxes and composite fields, verifying nothing spills a cell - and names any
   field the form has no slot for so the citizen can write it by hand.
 - **Screen before issuing.** Eligibility is decided against each scheme's stated
   rules; a fraud/abuse pass flags the usual gaming without ever refusing an
@@ -46,11 +46,11 @@ dependency**. The citizen's Aadhaar number is never stored or printed in full.
 - **Privacy and law (DPDP Act 2023, Aadhaar Act).** Consent and notice,
   data-principal rights, processing register, retention, documents encrypted at
   rest and gated to their owner. The full Aadhaar number is never persisted,
-  logged or displayed — only the last four and a keyed fingerprint. Legal and
+  logged or displayed - only the last four and a keyed fingerprint. Legal and
   consent text is served only in human-reviewed English and Hindi, never
   machine-translated.
 - **Identity without exclusion (KYC).** Offline Aadhaar QR/XML, tolerant name
-  and date matching, 14 catalogued verification methods — and a benefit is never
+  and date matching, 14 catalogued verification methods - and a benefit is never
   refused for want of verification (Aadhaar Act s7 proviso).
 - **Security.** Phone-OTP login (codes hashed at rest, single-use,
   attempt-limited, delivered through a pluggable SMS provider), short-lived JWT
@@ -85,7 +85,7 @@ backend/        FastAPI application
   pdf_filler.py, form_geometry.py, eligibility_engine.py, fraud_detection.py, …
   tests/        pytest suite
 frontend/       React app + Capacitor Android project (android/)
-mobile/         ADB_RUNBOOK.md — install and test the app on a real phone
+mobile/         ADB_RUNBOOK.md - install and test the app on a real phone
 docs/           PRODUCT_PLAN_UMANG.md (UMANG / API Setu plan), SECURITY_AND_STT.md
 ```
 
@@ -123,7 +123,7 @@ flow; an LLM key is optional.
 **Demo profile.** `python scripts/seed_demo.py` creates one demo citizen
 (Sunita Devi) with a complete profile. In a `DEMO_MODE` build, sign in with
 phone `9000000001` and OTP `123456` and you land straight in the app with data
-for every feature — eligible schemes, the intake answers already filled, the
+for every feature - eligible schemes, the intake answers already filled, the
 document checklist, KYC, the filled PDF, and the DPDP screens. `--remove`
 deletes it.
 
@@ -149,8 +149,8 @@ to it with `adb reverse tcp:8001 tcp:8001`, then test on-device and debug throug
 ## Where it is headed
 
 `docs/PRODUCT_PLAN_UMANG.md` sets out the path to integrating with UMANG and
-API Setu as an "Application Readiness" service — what Government of India
-onboarding actually requires, and the work packages to get there — written to be
+API Setu as an "Application Readiness" service - what Government of India
+onboarding actually requires, and the work packages to get there - written to be
 executed by other engineers.
 
 ## Licence

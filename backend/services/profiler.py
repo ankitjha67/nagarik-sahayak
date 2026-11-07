@@ -1,4 +1,4 @@
-"""Profiler Agent — collects user profile one question at a time, then runs eligibility + PDF generation."""
+"""Profiler Agent - collects user profile one question at a time, then runs eligibility + PDF generation."""
 import re
 import json
 import logging
@@ -17,6 +17,26 @@ PROFILER_QUESTIONS = {
     "age": "आपकी उम्र कितनी है?",
     "income": "आपकी सालाना घरेलू आय कितनी है? (रुपये में)",
     "state": "आप किस राज्य में रहते हैं?",
+}
+
+# India's 28 states + 8 union territories. Used to reject nonsense ("45",
+# a district, a typo) in the state field, which otherwise flowed straight
+# onto the application form. Common aliases map to the canonical name.
+INDIAN_STATES = {
+    "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh",
+    "goa", "gujarat", "haryana", "himachal pradesh", "jharkhand", "karnataka",
+    "kerala", "madhya pradesh", "maharashtra", "manipur", "meghalaya", "mizoram",
+    "nagaland", "odisha", "punjab", "rajasthan", "sikkim", "tamil nadu",
+    "telangana", "tripura", "uttar pradesh", "uttarakhand", "west bengal",
+    "andaman and nicobar islands", "chandigarh",
+    "dadra and nagar haveli and daman and diu", "delhi", "jammu and kashmir",
+    "ladakh", "lakshadweep", "puducherry",
+}
+STATE_ALIASES = {
+    "orissa": "odisha", "pondicherry": "puducherry", "ncr": "delhi",
+    "new delhi": "delhi", "uttaranchal": "uttarakhand", "j&k": "jammu and kashmir",
+    "jk": "jammu and kashmir", "ap": "andhra pradesh", "up": "uttar pradesh",
+    "mp": "madhya pradesh", "tn": "tamil nadu", "wb": "west bengal",
 }
 
 
@@ -50,12 +70,21 @@ def parse_profile_answer(field: str, text: str):
         income = int(nums[0])
         if income < 0:
             return None, "कृपया सही आय बताएं।"
+        # A low or zero income is NOT rejected: the poorest applicants are
+        # exactly who these schemes are for, and blocking them would be the
+        # worst failure. Implausibly low values are flagged (not blocked) as a
+        # review warning by validation.validate_income instead.
         return income, None
     elif field == "state":
-        state = text.strip()
-        if len(state) < 2:
+        raw = text.strip()
+        if len(raw) < 2:
             return None, "कृपया अपने राज्य का नाम बताएं।"
-        return state, None
+        key = re.sub(r'\s+', ' ', raw.lower()).strip()
+        key = STATE_ALIASES.get(key, key)
+        if key not in INDIAN_STATES:
+            return None, "कृपया भारत के किसी राज्य या केंद्र शासित प्रदेश का नाम बताएं (उदाहरण: बिहार / Bihar)।"
+        # Store the canonical Title Case name so the form reads cleanly.
+        return key.title(), None
     return None, "Invalid field"
 
 

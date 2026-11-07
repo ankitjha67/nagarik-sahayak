@@ -1,4 +1,4 @@
-"""Nagarik Sahayak — FastAPI Application Entry Point.
+"""Nagarik Sahayak - FastAPI Application Entry Point.
 
 This is the slim app entry that wires up:
 - Database connections (Prisma + Motor)

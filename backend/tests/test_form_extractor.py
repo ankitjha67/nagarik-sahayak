@@ -375,7 +375,7 @@ class TestLLMExtraction:
     @pytest.mark.asyncio
     async def test_llm_extraction_uses_configured_provider(self):
         """When a provider is configured, its JSON output is parsed and
-        returned — whichever provider it is."""
+        returned - whichever provider it is."""
         from form_extractor import extract_form_fields_llm
         from llm.base import Completion
         payload = '{"schemeName":"Test","extractedFields":[{"fieldName":"name","profileKey":"name"}]}'

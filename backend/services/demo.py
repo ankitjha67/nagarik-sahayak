@@ -4,7 +4,7 @@ import time as _time
 from config import AGNOST_WRITE_KEY, PDF_DIR, DEMO_MODE
 
 DEMO_PROFILE = {
-    "name": "Rajesh Kumar", "age": 42, "income": 18000,
+    "name": "Rajesh Kumar", "age": 42, "income": 16000,
     "state": "Karnataka", "child": "Son, 10th pass",
 }
 
@@ -12,12 +12,12 @@ VIDYASIRI_RESULT = {
     "scheme": "Vidyasiri Scholarship", "scheme_hi": "विद्यासिरी छात्रवृत्ति",
     "eligible": True,
     "reasons": [
-        "Child passed 10th — eligible for Post-Matric scholarship",
-        "Family income ₹18,000/month within ₹2,50,000/year ceiling",
+        "Child passed 10th - eligible for Post-Matric scholarship",
+        "Family income ₹16,000/month within ₹2,50,000/year ceiling",
         "Karnataka domicile verified",
     ],
-    "reason": "Child passed 10th — eligible for Post-Matric scholarship; "
-              "Family income ₹18,000/month within ₹2,50,000/year ceiling; "
+    "reason": "Child passed 10th - eligible for Post-Matric scholarship; "
+              "Family income ₹16,000/month within ₹2,50,000/year ceiling; "
               "Karnataka domicile verified",
     "benefit": "₹12,000–₹24,000/year tuition + hostel allowance for post-10th students",
 }
@@ -25,8 +25,8 @@ VIDYASIRI_RESULT = {
 PMKISAN_DEMO_RESULT = {
     "scheme": "PM-KISAN Samman Nidhi", "scheme_hi": "पीएम-किसान सम्मान निधि",
     "eligible": True,
-    "reasons": ["Family income ₹18,000/month within ₹2,00,000/year limit"],
-    "reason": "Family income ₹18,000/month within ₹2,00,000/year limit",
+    "reasons": ["Family income ₹16,000/month within ₹2,00,000/year limit"],
+    "reason": "Family income ₹16,000/month within ₹2,00,000/year limit",
     "benefit": "₹6,000/year (₹2,000 every 4 months via DBT)",
 }
 

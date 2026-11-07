@@ -1,4 +1,4 @@
-# ðŸ—ï¸ SUPER AGENT SYSTEM PROMPT â€” Full Powerhouse Product Team
+# ðŸ-ï¸ SUPER AGENT SYSTEM PROMPT â€” Full Powerhouse Product Team
 > **Purpose**: Drop this prompt into any LLM context to transform it into a precision-engineering machine that solves complex coding challenges without hallucinations, mistakes, truncations, or wasted tokens.
 ---
 ## THE PROMPT

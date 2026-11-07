@@ -1,6 +1,6 @@
 """Reviewer queue for benefit applications flagged by the fraud screen.
 
-The screen deliberately never refuses an application on suspicion alone — it
+The screen deliberately never refuses an application on suspicion alone - it
 routes it to a person. That promise is empty unless someone can actually see and
 work the resulting pile, which is what this module provides.
 
@@ -70,7 +70,7 @@ def validate_transition(current: str, target: str) -> None:
 def priority_of(case: dict) -> tuple:
     """Sort key placing the cases most worth a reviewer's time first.
 
-    Highest risk first, then oldest first — so a high-risk case cannot be
+    Highest risk first, then oldest first - so a high-risk case cannot be
     starved by newer arrivals, and an old low-risk case still eventually
     surfaces rather than sitting forever behind fresh traffic.
     """
@@ -140,7 +140,7 @@ async def enqueue(user_id: str, gate_result, dedupe: bool = True) -> str | None:
     """
     # Decide whether there is anything to record before touching the database.
     # The overwhelming majority of applications are clean, and they should cost
-    # nothing — not even a client import.
+    # nothing - not even a client import.
     risk = gate_result.risk or {}
     if not risk.get("requires_human_review"):
         return None
@@ -208,7 +208,7 @@ async def decide(case_id: str, decision: str, reviewer_id: str,
                  note: str = "") -> dict:
     """Record a reviewer's decision on a case.
 
-    A rejection must carry a note — refusing a citizen's benefit without a
+    A rejection must carry a note - refusing a citizen's benefit without a
     stated reason gives them nothing to appeal against.
     """
     from database import prisma

@@ -4,7 +4,7 @@ This exists because of a bug it would have caught. `seed_from_catalog` passed
 the raw catalog entry straight to `prisma.formtemplate.create`, while the live
 refresh path correctly built a payload through `_template_data`. The catalog
 entry carries snake_case keys (`official_pdf_url`, `is_scanned`) and plain
-Python lists where the client needs `Json()`, so every seed raised — and the
+Python lists where the client needs `Json()`, so every seed raised - and the
 seed loop catches per-scheme exceptions into an `errors` list, so a deployment
 came up with an empty form catalog and a log line nobody read.
 
@@ -51,7 +51,7 @@ def seeder(monkeypatch):
 
     The stub is installed unconditionally. test_app_boot puts a module-scoped
     `prisma` stub in sys.modules whose Json is the identity function, which
-    would make "is this value wrapped?" unanswerable — the test would pass
+    would make "is this value wrapped?" unanswerable - the test would pass
     alone and fail in a full run, for a reason having nothing to do with the
     code under test.
     """
@@ -77,7 +77,7 @@ class TestFormTemplatePayload:
         unknown = set(payload) - allowed
         assert not unknown, (
             f"_template_data emits {sorted(unknown)}, which FormTemplate does "
-            "not declare — Prisma rejects the write and the seed fails silently")
+            "not declare - Prisma rejects the write and the seed fails silently")
 
     def test_no_snake_case_keys_leak_through(self, seeder):
         from data.gov_forms import get_catalog

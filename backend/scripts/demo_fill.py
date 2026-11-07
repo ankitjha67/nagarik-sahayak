@@ -77,7 +77,7 @@ def demo_applicant(scheme: dict | None = None):
 
     The base persona is a Haryana student. Any further field the chosen scheme
     requires is filled from the tables above, or from the field's own options
-    where it is a choice — so the script exercises a whole form rather than
+    where it is a choice - so the script exercises a whole form rather than
     stopping at the gate because the persona happens not to be a farmer.
     """
     from validation import verhoeff_check_digit
@@ -194,7 +194,7 @@ async def main() -> int:
         return 1
 
     print("=" * 78)
-    print("NAGARIK SAHAYAK — FILLING ONE REAL GOVERNMENT FORM")
+    print("NAGARIK SAHAYAK - FILLING ONE REAL GOVERNMENT FORM")
     print("=" * 78)
     kv("Scheme", scheme["schemeName"], indent=0)
     kv("Hindi", scheme["schemeNameHindi"], indent=0)
@@ -224,7 +224,7 @@ async def main() -> int:
             kv("Interactive fields", widgets if widgets else "0  ← not a fillable AcroForm")
             doc.close()
     else:
-        kv("Published form", "none — this scheme is portal-only")
+        kv("Published form", "none - this scheme is portal-only")
 
     # ── 2. What the app knows about the form ─────────────────────────────
     rule("2  WHAT THE APP KNOWS ABOUT THIS FORM")
@@ -258,7 +258,7 @@ async def main() -> int:
         raw = profile.get(key)
         if raw in (None, ""):
             missing += 1
-            note = "— blank" + (" (REQUIRED)" if f.get("required") else " (optional)")
+            note = "- blank" + (" (REQUIRED)" if f.get("required") else " (optional)")
             print(f"  {f['labelEnglish'][:33]:<34} {key:<26} {note}")
             continue
         filled += 1
@@ -271,7 +271,7 @@ async def main() -> int:
     kv("Left blank", missing)
 
     # ── 5. The gate ──────────────────────────────────────────────────────
-    rule("5  THE GATE — may this form be issued?")
+    rule("5  THE GATE - may this form be issued?")
     from services import application_guard
 
     result = await application_guard.evaluate_application(
@@ -291,7 +291,7 @@ async def main() -> int:
 
     # ── 5b. Pre-flight audit ─────────────────────────────────────────────
     if source_pdf:
-        rule("5b  BEFORE WRITING — what does this form actually ask for?")
+        rule("5b  BEFORE WRITING - what does this form actually ask for?")
         from pdf_filler import audit_form
 
         audit = audit_form(str(source_pdf), fields, profile)
@@ -345,20 +345,20 @@ async def main() -> int:
             print()
             kv("Re-opened and checked", f"{check.get('checked', 0)} written values")
             if check.get("clean"):
-                kv("Result", "clean — nothing overlaps, nothing crosses a cell border")
+                kv("Result", "clean - nothing overlaps, nothing crosses a cell border")
             if check.get("unconfirmed"):
                 kv("Could not read back",
                    ", ".join(check["unconfirmed"])
                    + "  (scan has no text layer; OCR misreads our own ink)")
             else:
                 for problem in check.get("problems", []):
-                    print(f"      ! {problem['kind']}: {problem['profileKey']} — "
+                    print(f"      ! {problem['kind']}: {problem['profileKey']} - "
                           f"{problem['detail']}")
         else:
             kv("Why not", report.get("error", "")[:66])
             print("      The published PDF is a flat scan with no interactive fields,")
             print("      so there is nowhere to put a value that would land in the")
-            print("      right box. The app produces its own filled form instead —")
+            print("      right box. The app produces its own filled form instead -")
             print("      which is what a citizen carries to the office anyway.")
     else:
         kv("Skipped", "no published PDF for this scheme")

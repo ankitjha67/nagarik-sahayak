@@ -18,7 +18,7 @@ What it checks, per form:
   * the pre-flight audit agrees with what the fill actually managed
   * every mandatory field the applicant answered is on the page
   * the post-fill verification is clean
-  * nothing the applicant supplied vanished — it is placed or reported
+  * nothing the applicant supplied vanished - it is placed or reported
   * values are not silently mangled: truncated, de-spaced, or ellipsised
 
 Usage:
@@ -51,8 +51,8 @@ OUT = Path(os.environ.get("FORM_SWEEP_OUT", "/tmp/form_sweep_filled"))
 def source_url(scheme: dict) -> str:
     """The PDF to fill. Only an official form counts.
 
-    A reference PDF is a booklet or an eligibility leaflet — PM-KISAN's scheme
-    booklet, the SARAL information sheet — and filling one is not a thing that
+    A reference PDF is a booklet or an eligibility leaflet - PM-KISAN's scheme
+    booklet, the SARAL information sheet - and filling one is not a thing that
     can succeed. Judging those as failures buried the forms that genuinely
     were failing, so they are listed separately and not scored.
     """
@@ -71,7 +71,7 @@ def fetch(scheme: dict) -> Path | None:
         return path
     try:
         urllib.request.urlretrieve(url, path)
-    except Exception as exc:  # noqa: BLE001 — an unreachable form is a finding
+    except Exception as exc:  # noqa: BLE001 - an unreachable form is a finding
         print(f"    download failed: {type(exc).__name__}: {exc}")
         return None
     return path if path.exists() else None
@@ -166,7 +166,7 @@ def run_one(scheme: dict) -> dict:
 
     path = fetch(scheme)
     if path is None:
-        print("    no downloadable PDF — nothing to fill")
+        print("    no downloadable PDF - nothing to fill")
         result["status"] = "no-pdf"
         return result
 
@@ -206,7 +206,7 @@ def run_one(scheme: dict) -> dict:
     if lost:
         issues.append("supplied but neither placed nor reported: " + ", ".join(lost))
     for p in problems:
-        issues.append(f"{p['kind']}: {p.get('profileKey')} — {p.get('detail', '')}")
+        issues.append(f"{p['kind']}: {p.get('profileKey')} - {p.get('detail', '')}")
     issues.extend(mangled(written, profile, fields))
     if not report.get("success"):
         issues.append(f"fill failed: {report.get('error')}")

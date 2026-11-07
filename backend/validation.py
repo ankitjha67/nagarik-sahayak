@@ -5,7 +5,7 @@ system, so a false positive denies a poor citizen money they are entitled to.**
 That is a worse outcome than letting a questionable application through to a
 human reviewer. Therefore:
 
-* `ERROR` is reserved for data that is *objectively* impossible — a number that
+* `ERROR` is reserved for data that is *objectively* impossible - a number that
   fails its own checksum, a birth date in the future. These block submission
   because no legitimate applicant can produce them.
 * `WARNING` marks data that is merely unusual. It never blocks; it routes the
@@ -23,8 +23,8 @@ from enum import Enum
 
 
 class Severity(str, Enum):
-    ERROR = "error"      # Objectively invalid — blocks submission
-    WARNING = "warning"  # Suspicious but possible — routes to review
+    ERROR = "error"      # Objectively invalid - blocks submission
+    WARNING = "warning"  # Suspicious but possible - routes to review
     INFO = "info"        # Advisory only
 
 
@@ -51,8 +51,8 @@ class Finding:
 # not been rejected, and must not be told they have been.
 #
 # `identity_document_missing` belongs here and it is easy to get wrong. It is
-# raised only when no accepted document appears in the profile at all — a
-# malformed one is caught by that document's own validator with its own code —
+# raised only when no accepted document appears in the profile at all - a
+# malformed one is caught by that document's own validator with its own code -
 # so it always means "please add one", never "the one you gave is bad".
 ABSENCE_CODES = frozenset({"required_missing", "identity_document_missing"})
 
@@ -104,7 +104,7 @@ class ValidationResult:
 
 
 # ══════════════════════════════════════════════════════════════════════
-# Aadhaar — Verhoeff checksum
+# Aadhaar - Verhoeff checksum
 # ══════════════════════════════════════════════════════════════════════
 # UIDAI generates Aadhaar numbers with a Verhoeff check digit. Validating it
 # rejects typos and casually invented numbers ("123456789012") outright, which
@@ -190,8 +190,8 @@ def validate_aadhaar(value, field_name="aadhaar_number") -> ValidationResult:
         return r
     if not verhoeff_is_valid(digits):
         r.add(Severity.ERROR, "aadhaar_checksum", field_name,
-              "Aadhaar number failed its checksum — please re-check the digits.",
-              "आधार संख्या सत्यापन में विफल — कृपया अंक दोबारा जाँचें।")
+              "Aadhaar number failed its checksum - please re-check the digits.",
+              "आधार संख्या सत्यापन में विफल - कृपया अंक दोबारा जाँचें।")
     return r
 
 
@@ -352,11 +352,18 @@ def validate_income(value, field_name="annual_income") -> ValidationResult:
         r.add(Severity.ERROR, "income_negative", field_name,
               "Annual income cannot be negative.", "वार्षिक आय ऋणात्मक नहीं हो सकती।")
     elif amount == 0:
-        # Legitimate for the destitute, so this must never block — but a zero
+        # Legitimate for the destitute, so this must never block - but a zero
         # declaration is also the cheapest way to fake means-test eligibility.
         r.add(Severity.WARNING, "income_zero", field_name,
-              "Zero income declared — an income certificate will be required.",
-              "शून्य आय घोषित — आय प्रमाण पत्र आवश्यक होगा।")
+              "Zero income declared - an income certificate will be required.",
+              "शून्य आय घोषित - आय प्रमाण पत्र आवश्यक होगा।")
+    elif 0 < amount < 1000:
+        # ₹45 "annual income" is almost always a typo or an answer meant for a
+        # different question. Flag for review - never block, since a genuinely
+        # tiny income must still reach the scheme meant to help.
+        r.add(Severity.WARNING, "income_implausible_low", field_name,
+              "Declared annual income is unusually low; please confirm the amount.",
+              "घोषित वार्षिक आय असामान्य रूप से कम है; कृपया राशि की पुष्टि करें।")
     elif amount > 100_000_000:
         r.add(Severity.WARNING, "income_implausible", field_name,
               "Declared income is unusually high; please confirm the amount.",
@@ -387,9 +394,52 @@ def validate_name(value, field_name="name") -> ValidationResult:
     return r
 
 
-# Dispatch by canonical profileKey / field type, so any form — catalog or
-# freshly extracted — gets the right checks without per-scheme wiring.
+# India's 28 states + 8 union territories, with common aliases. Used to reject a
+# nonsense state ("45", a district, a typo) before it reaches the application
+# form, where it is printed verbatim.
+_INDIAN_STATES = {
+    "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh",
+    "goa", "gujarat", "haryana", "himachal pradesh", "jharkhand", "karnataka",
+    "kerala", "madhya pradesh", "maharashtra", "manipur", "meghalaya", "mizoram",
+    "nagaland", "odisha", "punjab", "rajasthan", "sikkim", "tamil nadu",
+    "telangana", "tripura", "uttar pradesh", "uttarakhand", "west bengal",
+    "andaman and nicobar islands", "chandigarh",
+    "dadra and nagar haveli and daman and diu", "delhi", "jammu and kashmir",
+    "ladakh", "lakshadweep", "puducherry",
+}
+_STATE_ALIASES = {
+    "orissa": "odisha", "pondicherry": "puducherry", "ncr": "delhi",
+    "new delhi": "delhi", "uttaranchal": "uttarakhand", "j&k": "jammu and kashmir",
+    "jk": "jammu and kashmir", "ap": "andhra pradesh", "up": "uttar pradesh",
+    "mp": "madhya pradesh", "tn": "tamil nadu", "wb": "west bengal",
+}
+
+
+def canonical_state(value) -> str | None:
+    """Return the canonical state/UT name for a free-text answer, or None."""
+    key = re.sub(r"\s+", " ", str(value or "").strip().lower())
+    key = _STATE_ALIASES.get(key, key)
+    return key.title() if key in _INDIAN_STATES else None
+
+
+def validate_state(value, field_name="state") -> ValidationResult:
+    r = ValidationResult()
+    text = str(value or "").strip()
+    if not text:
+        r.add(Severity.ERROR, "state_missing", field_name,
+              "State is required.", "राज्य आवश्यक है।")
+        return r
+    if canonical_state(text) is None:
+        r.add(Severity.ERROR, "state_unknown", field_name,
+              "Enter a valid Indian state or union territory.",
+              "कृपया भारत के किसी राज्य या केंद्र शासित प्रदेश का नाम बताएं।")
+    return r
+
+
+# Dispatch by canonical profileKey / field type, so any form - catalog or
+# freshly extracted - gets the right checks without per-scheme wiring.
 _VALIDATORS_BY_KEY = {
+    "state": validate_state,
     "aadhaar_number": validate_aadhaar,
     "guardian_aadhaar": validate_aadhaar,
     "mobile_number": validate_mobile,
@@ -423,7 +473,7 @@ def validate_profile(profile: dict, fields: list[dict] | None = None) -> Validat
 
     # Aadhaar Act s7 proviso: a person without Aadhaar must be offered an
     # alternative means of identification. So a missing Aadhaar is only an error
-    # when no other accepted document was supplied — and the message then names
+    # when no other accepted document was supplied - and the message then names
     # the alternatives rather than demanding Aadhaar specifically.
     from dpdp import identity_documents
 
@@ -464,7 +514,7 @@ def validate_profile(profile: dict, fields: list[dict] | None = None) -> Validat
             result.findings.extend(validator(value, key).findings)
 
     # Also validate any known-sensitive keys present in the profile but not
-    # declared by this form — a bad Aadhaar is a bad Aadhaar regardless.
+    # declared by this form - a bad Aadhaar is a bad Aadhaar regardless.
     for key, validator in _VALIDATORS_BY_KEY.items():
         if key in checked:
             continue

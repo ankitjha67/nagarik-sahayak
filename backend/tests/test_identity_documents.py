@@ -1,8 +1,8 @@
-"""Tests for alternative identity documents — Aadhaar Act s7 proviso.
+"""Tests for alternative identity documents - Aadhaar Act s7 proviso.
 
 The property under test is exclusion, not validation. The people least likely to
 hold a working Aadhaar are the elderly, the homeless, migrant workers and people
-whose fingerprints no longer read — precisely the population an old-age pension
+whose fingerprints no longer read - precisely the population an old-age pension
 or a BPL housing scheme exists to serve. A form that will not proceed without
 Aadhaar excludes the intended beneficiary.
 

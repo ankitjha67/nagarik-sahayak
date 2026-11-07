@@ -14,7 +14,7 @@ export function resolvePageCopy(key, code) {
 
 // English strings, bundled. The app must render in a usable language before the
 // first network round-trip completes and must keep rendering if that round-trip
-// fails — a citizen on a weak connection should see the interface, not a spinner
+// fails - a citizen on a weak connection should see the interface, not a spinner
 // where the navigation ought to be.
 const FALLBACK = {
   "app.name": "Nagarik Sahayak",
@@ -136,7 +136,7 @@ export function LanguageProvider({ children, initial }) {
       qualityWarningHindi: bundle.qualityWarningHindi || "",
       t: (key) => strings[key] ?? FALLBACK[key] ?? key,
       isFallback: (key) => fallbacks.has(key),
-      // Page copy — the interface text that lives in the screens. Resolves
+      // Page copy - the interface text that lives in the screens. Resolves
       // against the live language (en/hi today, extensible to more as data),
       // so a non-Hindi reader gets English rather than the hardcoded Hindi
       // these strings used to be. See lib/pageCopy.js.
@@ -150,7 +150,7 @@ export function LanguageProvider({ children, initial }) {
 export function useLanguage() {
   const ctx = useContext(LanguageContext);
   if (!ctx) {
-    // Used outside the provider — return a working English shim rather than
+    // Used outside the provider - return a working English shim rather than
     // throwing, so one misplaced component cannot blank the whole page.
     return {
       code: "en",

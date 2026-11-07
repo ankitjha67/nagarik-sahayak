@@ -151,7 +151,7 @@ class MotorSessionStore(SessionStore):
             await self.db.operator_consents.create_index([("operator_id", 1), ("citizen_id", 1)], unique=True)
             await self.db.auth_mfa.create_index("user_id", unique=True)
             await self.db.auth_audit.create_index("seq", unique=True)
-        except Exception:  # noqa: BLE001 — indexes are an optimisation, never a blocker
+        except Exception:  # noqa: BLE001 - indexes are an optimisation, never a blocker
             pass
 
     async def session_create(self, record):

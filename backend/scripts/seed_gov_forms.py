@@ -42,7 +42,7 @@ async def cmd_verify(args) -> int:
     for r in report["results"]:
         if r.get("status") == "no_url":
             # Curated-only scheme: intentional, not a broken link.
-            icon, detail = "CURATED", "no published PDF — using curated fields"
+            icon, detail = "CURATED", "no published PDF - using curated fields"
         elif r["ok"]:
             icon = "OK" if r.get("kind") == "form" else "REF"
             kind_note = "form" if r.get("kind") == "form" else "reference doc"

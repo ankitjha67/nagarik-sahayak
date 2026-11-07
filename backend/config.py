@@ -28,7 +28,7 @@ PDF_DIR.mkdir(exist_ok=True)
 
 # --- Rate Limiting ---
 # The OTP throttle. Defaults match the product rule (five requests a minute per
-# phone) and are read from the environment so a deployment can tune them — and
+# phone) and are read from the environment so a deployment can tune them - and
 # so an automated test run against a live instance can raise the ceiling for
 # one session instead of each test having to invent a fresh phone number.
 _rate_limit_store: Dict[str, list] = defaultdict(list)

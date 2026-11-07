@@ -18,7 +18,7 @@ previous key and are rewritten with the new one. Remove the old key only once
 this reports zero remaining.
 
 The key is the data. If DATA_ENCRYPTION_KEY is lost there is no recovery path,
-by design — a recovery path would be a second way in. Store it in a secret
+by design - a recovery path would be a second way in. Store it in a secret
 manager, never in the repository.
 """
 import argparse
@@ -45,7 +45,7 @@ async def main() -> int:
     if args.generate_key:
         print(crypto.generate_key())
         print("\nSet this as DATA_ENCRYPTION_KEY. Back it up in a secret "
-              "manager — losing it means losing every stored profile.",
+              "manager - losing it means losing every stored profile.",
               file=sys.stderr)
         return 0
 
@@ -107,7 +107,7 @@ async def main() -> int:
         verb = "would convert" if args.dry_run else "converted"
         print(f"\n{verb} {converted}, already encrypted {already}, failed {failed}")
         if args.dry_run:
-            print("Dry run — nothing was written.")
+            print("Dry run - nothing was written.")
         if failed:
             print(f"\n{failed} row(s) could not be decrypted. Check that "
                   f"DATA_ENCRYPTION_KEY_OLD holds the key they were written "

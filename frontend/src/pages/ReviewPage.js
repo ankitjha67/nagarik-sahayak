@@ -76,7 +76,7 @@ function ReviewerSignIn({ onSignIn }) {
     setError("");
     const creds = { reviewerId: reviewerId.trim(), adminSecret: adminSecret.trim() };
     try {
-      // Verify by actually hitting the queue — no point admitting someone to a
+      // Verify by actually hitting the queue - no point admitting someone to a
       // console whose every request will then fail.
       await getReviewQueue(creds, { limit: 1 });
       sessionStorage.setItem(CRED_KEY, JSON.stringify(creds));
@@ -294,7 +294,7 @@ function SignalCard({ signal }) {
 
 // What identity evidence stands behind this application. A reviewer needs to
 // tell apart an applicant who produced a UIDAI-signed document from one who
-// typed a number into a form — those deserve different amounts of scrutiny,
+// typed a number into a form - those deserve different amounts of scrutiny,
 // and without this panel they look identical on screen.
 //
 // "Self-declared" is rendered as a neutral state, not a warning. It is the
@@ -349,7 +349,7 @@ function IdentityPanel({ identity }) {
                 <span className="font-semibold">
                   {String(c.field).replace(/_/g, " ")}
                 </span>
-                {c.decisive ? " — cannot be a transcription difference: " : " — "}
+                {c.decisive ? " - cannot be a transcription difference: " : " - "}
                 {c.reason}
               </li>
             ))}
@@ -488,7 +488,7 @@ function CaseDetail({ creds, caseId, onBack, onDecided }) {
     // The backend enforces this too; checking here saves a round trip and lets
     // the reviewer fix it without losing what they typed.
     if (action === "rejected" && !note.trim()) {
-      setError("A rejection needs a reason — the applicant is entitled to one.");
+      setError("A rejection needs a reason - the applicant is entitled to one.");
       return;
     }
     setBusy(action);
@@ -614,7 +614,7 @@ function CaseDetail({ creds, caseId, onBack, onDecided }) {
         <label className="text-[11px] font-bold text-gray-600 font-['Mukta'] block mb-1.5">
           Reviewer note
           {isPending && (
-            <span className="font-normal text-gray-400"> — required to reject</span>
+            <span className="font-normal text-gray-400"> - required to reject</span>
           )}
         </label>
         <textarea

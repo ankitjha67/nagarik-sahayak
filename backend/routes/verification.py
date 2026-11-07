@@ -1,4 +1,4 @@
-"""Verification routes — validate, check eligibility, and screen for abuse."""
+"""Verification routes - validate, check eligibility, and screen for abuse."""
 import logging
 
 from fastapi import HTTPException
@@ -74,7 +74,7 @@ async def verify_application(req: dict):
     creating an account.
 
     `kyc_outcomes` are whatever the /kyc endpoints returned for this citizen.
-    Omitting them is normal and never counts against the applicant — under the
+    Omitting them is normal and never counts against the applicant - under the
     Aadhaar Act s7 proviso a benefit cannot be refused for want of
     authentication. Supplying them can only lower the friction an honest
     applicant meets, except where a document flatly contradicts the form.
@@ -106,12 +106,12 @@ async def verify_application(req: dict):
 async def screen_all_schemes(req: dict):
     """Run the full gate against every catalog scheme.
 
-    Answers the question citizens actually have — "what am I entitled to?" —
+    Answers the question citizens actually have - "what am I entitled to?" -
     rather than making them guess a scheme name first.
 
     When the profile says which State the citizen lives in, other States'
     schemes are left out of the screen. They would every one come back
-    "not eligible — you do not live there", which buries the handful of real
+    "not eligible - you do not live there", which buries the handful of real
     answers under three dozen items the citizen can do nothing about. Central
     schemes are always screened, whatever the State.
     """

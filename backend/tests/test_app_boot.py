@@ -6,7 +6,7 @@ router that silently fails to mount, leaving a deploy that starts and then 404s
 everything.
 
 The database is stubbed because a generated Prisma client needs a live MongoDB.
-That is deliberate — the point here is wiring, not persistence, and the checks
+That is deliberate - the point here is wiring, not persistence, and the checks
 below use only endpoints that serve from bundled data or pure computation.
 """
 import importlib
@@ -60,7 +60,7 @@ def client(stubbed_env):
     from starlette.testclient import TestClient
 
     # raise_server_exceptions=False so a handler that needs a live database
-    # reports 500 instead of aborting the run — routing is what is under test.
+    # reports 500 instead of aborting the run - routing is what is under test.
     return TestClient(server.app, raise_server_exceptions=False)
 
 
@@ -116,7 +116,7 @@ class TestRoutingWorks:
         assert "version" in r.json()
 
     def test_unknown_path_is_404(self, client):
-        """Confirms the router is mounted — a 404 here, not a 500 or a hang."""
+        """Confirms the router is mounted - a 404 here, not a 500 or a hang."""
         assert client.get("/api/no-such-endpoint").status_code == 404
 
     def test_form_catalog_serves_without_a_database(self, client):
@@ -149,7 +149,7 @@ class TestRoutingWorks:
         assert client.post("/api/forms/refresh", json={}, headers=bearer_for("c1")).status_code == 403
 
     def test_citizen_case_status_is_their_own(self, client, bearer_for):
-        """People are entitled to know their own application is being checked —
+        """People are entitled to know their own application is being checked -
         and only their own."""
         assert client.get("/api/review/my-cases/anyone", headers=bearer_for("anyone")).status_code == 200
         assert client.get("/api/review/my-cases/anyone", headers=bearer_for("other")).status_code == 403
@@ -256,7 +256,7 @@ class TestLanguageRouting:
 
     def test_an_unchecked_translation_warns_the_reader(self, client):
         """Manipuri now has text, and the warning is what makes shipping it
-        honest — the reader is the only person who could spot an error, and
+        honest - the reader is the only person who could spot an error, and
         only if told to look."""
         body = client.get("/api/i18n/bundle/mni").json()
         assert body["fullyTranslated"] is True

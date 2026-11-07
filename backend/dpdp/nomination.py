@@ -14,7 +14,7 @@ nominee has no access whatsoever.
 The converse risk is real too. A nominee who cannot act when the citizen has
 genuinely died leaves a family unable to close out a pension application, which
 is exactly the situation section 14 exists to prevent. So activation is
-deliberately possible — through a person, on evidence, with an audit trail —
+deliberately possible - through a person, on evidence, with an audit trail -
 rather than impossible.
 
 What an activated nominee can do is narrower than what the citizen could: read
@@ -38,7 +38,7 @@ async def record(user_id: str, *, name: str, relation: str,
                  contact: str = "") -> dict:
     """Record or replace a nomination (s14).
 
-    Recording confers nothing by itself — the nominee gains access only if a
+    Recording confers nothing by itself - the nominee gains access only if a
     reviewer later activates it on evidence of death or incapacity.
     """
     from database import prisma
@@ -97,7 +97,7 @@ async def status(user_id: str) -> dict:
     if not name:
         return {
             "has_nominee": False,
-            "right": "DPDP Act 2023, s14 — you may nominate someone to "
+            "right": "DPDP Act 2023, s14 - you may nominate someone to "
                      "exercise your rights if you die or become incapable.",
             "rights_they_would_have": list(NOMINEE_RIGHTS),
         }
@@ -156,7 +156,7 @@ async def activate(user_id: str, *, reviewer_id: str, evidence: str) -> dict:
     # Logged at WARNING: this is a rare, high-consequence action and should
     # surface in alerting rather than sit unnoticed in an access log.
     logger.warning(
-        "NOMINATION ACTIVATED for %s by reviewer %s — nominee '%s' may now "
+        "NOMINATION ACTIVATED for %s by reviewer %s - nominee '%s' may now "
         "exercise %s. Evidence: %s",
         user_id, reviewer_id, user.nomineeName, ", ".join(NOMINEE_RIGHTS),
         evidence,

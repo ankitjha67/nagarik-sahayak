@@ -1,17 +1,17 @@
-// Page copy — the interface text that lives in the screens rather than in the
+// Page copy - the interface text that lives in the screens rather than in the
 // small, fully-translated core catalogue the backend serves.
 //
 // Why this is separate from the backend message catalogue. That catalogue
 // (i18n/catalog.py) is a deliberately small set of ~40 strings, and a test
 // enforces that every one of them exists in all 22 scheduled languages and
-// reads differently from English — it is the set the project stands behind.
+// reads differently from English - it is the set the project stands behind.
 // The screens carry hundreds more strings. Fabricating all of them into 22
 // languages is exactly what that catalogue's design forbids, so page copy
 // lives here instead, in the two languages the app can actually write today:
 // English (the universal fallback) and Hindi.
 //
 // The shape is per-key-then-per-language on purpose, so adding a real
-// translation later — Tamil, Bengali — is a data change here and nothing in
+// translation later - Tamil, Bengali - is a data change here and nothing in
 // the components moves. `tx(key)` (see i18n.js) resolves a key against the
 // live language, falling back to English, so a speaker of a language we cannot
 // yet write sees readable English rather than Hindi they may not read. That
@@ -20,7 +20,7 @@
 //
 // What must NOT go here: the privacy notice, the terms, and any statutory
 // rights text. Those are legal instruments served from the backend (dpdp/) in
-// English and Hindi only — a mistranslated consent notice is a defective
+// English and Hindi only - a mistranslated consent notice is a defective
 // consent. Keep this file to interface chrome: buttons, labels, toasts,
 // headings, empty states.
 
@@ -81,8 +81,8 @@ export const PAGE_COPY = {
   // ── Chat ──────────────────────────────────────────────────────────────
   "chat.recordingStarted": { en: "s recording… please speak", hi: "s रिकॉर्डिंग शुरू… बोलें" },
   "chat.micDenied": {
-    en: "Allow microphone access — turn on the permission in your browser settings",
-    hi: "माइक्रोफोन एक्सेस दें — ब्राउज़र सेटिंग्स में अनुमति चालू करें",
+    en: "Allow microphone access - turn on the permission in your browser settings",
+    hi: "माइक्रोफोन एक्सेस दें - ब्राउज़र सेटिंग्स में अनुमति चालू करें",
   },
   "chat.newChatStarted": { en: "New chat started!", hi: "नई चैट शुरू हो गई!" },
 
@@ -137,8 +137,8 @@ export const PAGE_COPY = {
     hi: "अब हम आपकी प्रोफ़ाइल पूरी करेंगे। कृपया नीचे दिए गए सवालों का जवाब दें।",
   },
   "chat.formRefusedCount": {
-    en: "A form could not be generated for {n} scheme(s) — see the reasons below.",
-    hi: "{n} योजना के लिए फॉर्म नहीं बन सका — कारण नीचे देखें।",
+    en: "A form could not be generated for {n} scheme(s) - see the reasons below.",
+    hi: "{n} योजना के लिए फॉर्म नहीं बन सका - कारण नीचे देखें।",
   },
   "chat.flaggedCount": {
     en: "{n} application(s) sent for verification.",
@@ -159,7 +159,7 @@ export const PAGE_COPY = {
   "privacy.whatGrievance": { en: "What is your grievance?", hi: "आपकी शिकायत क्या है?" },
   "privacy.sending": { en: "Sending…", hi: "भेजा जा रहा है…" },
   "privacy.sendGrievance": { en: "Send grievance", hi: "शिकायत भेजें" },
-  "privacy.nomineeActive": { en: "Active — this person can use your rights now", hi: "सक्रिय — यह व्यक्ति अभी आपके अधिकारों का उपयोग कर सकता है" },
+  "privacy.nomineeActive": { en: "Active - this person can use your rights now", hi: "सक्रिय - यह व्यक्ति अभी आपके अधिकारों का उपयोग कर सकता है" },
   "privacy.saving": { en: "Saving…", hi: "सहेजा जा रहा है…" },
   "privacy.nominate": { en: "Nominate", hi: "नामित करें" },
   "privacy.eraseMyData": { en: "Erase my data", hi: "मेरा डेटा मिटाएं" },

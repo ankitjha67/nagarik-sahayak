@@ -15,7 +15,8 @@ const CATEGORY_CONFIG = {
 };
 
 export const SchemeSelector = ({ onSchemesSelected, userId }) => {
-  const { tx } = useLanguage();
+  const { tx, code } = useLanguage();
+  const hi = code === "hi";
   const [schemes, setSchemes] = useState([]);
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -223,12 +224,12 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
           {uploading ? (
             <>
               <Loader2 size={16} className="animate-spin" />
-              <span>Extracting fields...</span>
+              <span>{hi ? "फ़ील्ड निकाले जा रहे हैं…" : "Extracting fields…"}</span>
             </>
           ) : (
             <>
               <Upload size={16} />
-              <span>Upload PDF Form</span>
+              <span>{hi ? "PDF फॉर्म अपलोड करें" : "Upload PDF Form"}</span>
             </>
           )}
         </button>
@@ -247,7 +248,7 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
               value={formUrl}
               onChange={(e) => setFormUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !fetchingUrl && handleFetchFromUrl()}
-              placeholder="Paste a gov.in form PDF link"
+              placeholder={hi ? "gov.in फॉर्म PDF लिंक पेस्ट करें" : "Paste a gov.in form PDF link"}
               disabled={fetchingUrl}
               data-testid="scheme-url-input"
               className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-gray-200 text-xs font-['Nunito'] focus:border-[#FF9933] focus:ring-1 focus:ring-[#FF9933] outline-none disabled:opacity-50"
@@ -260,12 +261,12 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
             className="px-4 py-2.5 bg-[#000080] text-white rounded-xl text-xs font-semibold hover:bg-[#000060] transition-colors disabled:opacity-40 flex items-center gap-1.5"
           >
             {fetchingUrl ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
-            {fetchingUrl ? "Reading..." : "Fetch"}
+            {fetchingUrl ? (hi ? "पढ़ रहे हैं…" : "Reading…") : (hi ? "लाएं" : "Fetch")}
           </button>
         </div>
         {fetchingUrl && (
           <p className="text-[10px] text-gray-400 font-['Nunito'] text-center mt-1.5">
-            Scanned forms are read with OCR — this can take up to a minute.
+            Scanned forms are read with OCR - this can take up to a minute.
           </p>
         )}
         {uploadResult && (
@@ -280,7 +281,7 @@ export const SchemeSelector = ({ onSchemesSelected, userId }) => {
               <div className="flex items-start gap-1.5">
                 <FileText size={14} className="mt-0.5 flex-shrink-0" />
                 <span>
-                  <strong>{uploadResult.scheme}</strong> — {uploadResult.totalFields} fields extracted
+                  <strong>{uploadResult.scheme}</strong> - {uploadResult.totalFields} fields extracted
                   {uploadResult.method === "ocr" && (
                     <span className="block text-[10px] opacity-75">
                       Read from a scanned form using OCR

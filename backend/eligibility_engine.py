@@ -1,7 +1,7 @@
 """Deterministic eligibility evaluation against declared scheme rules.
 
 The catalog (`data/gov_forms.py`) states each scheme's eligibility as structured
-rules — `{"field": "age", "op": ">=", "value": 60}` — rather than prose. This
+rules - `{"field": "age", "op": ">=", "value": 60}` - rather than prose. This
 module evaluates a citizen's profile against them and returns a verdict with a
 per-rule explanation.
 
@@ -162,7 +162,7 @@ def evaluate_rule(profile: dict, rule: dict) -> RuleResult:
                         f"(आपने {actual} दर्ज किया)।"),
         )
 
-    # Equality/inequality — compare case-insensitively as text so "yes"/"Yes"
+    # Equality/inequality - compare case-insensitively as text so "yes"/"Yes"
     # and 60/"60" behave the way a form-filler expects.
     a_txt, e_txt = str(actual).strip().lower(), str(expected).strip().lower()
     ok = (a_txt == e_txt) if op == "==" else (a_txt != e_txt)

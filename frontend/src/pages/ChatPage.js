@@ -42,7 +42,12 @@ export default function ChatPage({ userId, language = "hi" }) {
     if (userId) {
       getChatHistory(userId)
         .then((r) => {
-          setMessages(r.data || []);
+          const history = r.data || [];
+          setMessages(history);
+          // A reload must show the existing conversation. Messages only render
+          // in a non-idle mode, so restore "chat" when history isn't empty -
+          // otherwise the thread loads into state but nothing is drawn.
+          if (history.length > 0) setV2Mode("chat");
           setInitialLoad(false);
         })
         .catch(() => setInitialLoad(false));
@@ -77,6 +82,9 @@ export default function ChatPage({ userId, language = "hi" }) {
     if (!text || loading) return;
     setInput("");
     setLoading(true);
+    // Free-text chat must leave "idle", or the message list never renders
+    // (messages are only drawn in chat/profiling/complete modes).
+    if (v2Mode === "idle") setV2Mode("chat");
 
     // Show user message immediately with "sent" status
     const tempUserMsg = {
@@ -191,7 +199,7 @@ export default function ChatPage({ userId, language = "hi" }) {
         setMessages((prev) => [...prev, user_message, bot_message]);
 
         if (res.data.is_mock) {
-          toast.info("Demo mode — mock transcript used");
+          toast.info("Demo mode - mock transcript used");
         } else {
           toast.success(`${res.data.provider || "speech"} · ${sttLang === "hi" ? "हिंदी" : "English"}`);
         }
@@ -338,7 +346,7 @@ export default function ChatPage({ userId, language = "hi" }) {
                   const flagged = data.flagged_for_review || [];
                   // Report what actually happened. Announcing "N forms ready"
                   // while quietly dropping refused schemes leaves someone
-                  // wondering what became of a scheme they chose — and reads
+                  // wondering what became of a scheme they chose - and reads
                   // absurdly ("0 forms ready!") when everything was refused.
                   let content;
                   if (data.count === 0) {
@@ -419,7 +427,7 @@ export default function ChatPage({ userId, language = "hi" }) {
               toast.info(next === "hi" ? "Voice: हिंदी" : "Voice: English", { duration: 1500 });
             }}
             disabled={loading || isRecording}
-            title={sttLang === "hi" ? "Voice language: Hindi — click to switch" : "Voice language: English — click to switch"}
+            title={sttLang === "hi" ? "Voice language: Hindi - click to switch" : "Voice language: English - click to switch"}
             aria-label={sttLang === "hi" ? "Switch voice language to English" : "Switch voice language to Hindi"}
             className="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 bg-[#E6E6F2] text-[#000080] hover:bg-[#D0D0E8] active:scale-95 text-xs font-bold font-['Mukta']"
           >

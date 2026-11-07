@@ -10,7 +10,7 @@ import { useLanguage } from "../lib/i18n";
 // scheduled languages now have text, but "Draft" and "Unchecked" mean different
 // things and the badge is the only place a reader learns which one they are
 // getting. A language with no entries at all would still be listed and marked
-// "Not yet available" rather than hidden — a Santali speaker who finds their
+// "Not yet available" rather than hidden - a Santali speaker who finds their
 // language absent concludes the app does not know Santali exists.
 
 function QualityBadge({ quality, percent }) {
@@ -90,7 +90,7 @@ export function LanguagePicker({ compact = false }) {
           />
           <div
             role="listbox"
-            aria-label="Languages"
+            aria-label={code === "hi" ? "भाषाएं" : "Languages"}
             className="absolute right-0 z-50 mt-2 w-80 max-h-[70vh] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl"
             onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
           >

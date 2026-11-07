@@ -15,7 +15,7 @@ than dying in a comment.
 
 **On the two grades of draft.** All 22 scheduled languages now have entries,
 but they are not all equally trustworthy and the catalogue says which is which.
-``DRAFT`` marks a language whose script and register are well attested — the
+``DRAFT`` marks a language whose script and register are well attested - the
 text will read naturally to a speaker and needs review for register and idiom.
 ``LOW_CONFIDENCE`` marks one where the orthography itself may be wrong: Bodo,
 Kashmiri, Manipuri and Santali are written in scripts and conventions with far
@@ -27,14 +27,14 @@ it is most needed rather than uniformly.
 
 This grading is the whole reason it is safe to ship the eight. Without it,
 adding them would mean asserting to a Santali speaker that the app speaks
-Santali — and if the text is wrong they have no way to know, because the only
+Santali - and if the text is wrong they have no way to know, because the only
 evidence available to them is the text.
 
 **On legal text.** The privacy notice, the terms of service and the statutory
 rights language are *not* in this catalogue and must not be machine-translated
 into it. Those are served from dpdp/ in English and Hindi only. A mistranslated
 consent notice is a defective consent, and s6(3) of the DPDP Act gives the
-Data Principal the right to the notice in a language they choose — which is a
+Data Principal the right to the notice in a language they choose - which is a
 reason to commission real translations, not a reason to fabricate them.
 """
 from __future__ import annotations
@@ -69,7 +69,7 @@ UNTRANSLATED_REASON = (
 LOW_CONFIDENCE_REASON = (
     "This translation has not been checked by anyone who speaks the language. "
     "It may be wrong, including in ways that look correct. If anything here "
-    "does not make sense, switch to English or Hindi — and please tell us, so "
+    "does not make sense, switch to English or Hindi - and please tell us, so "
     "it can be fixed."
 )
 

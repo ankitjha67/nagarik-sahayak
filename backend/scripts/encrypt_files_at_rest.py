@@ -84,7 +84,7 @@ def main() -> int:
     verb = "would encrypt" if args.dry_run else "encrypted"
     print(f"\n{verb} {converted}, already encrypted {already}, failed {failed}")
     if args.dry_run:
-        print("Dry run — nothing was written.")
+        print("Dry run - nothing was written.")
     return 1 if failed else 0
 
 

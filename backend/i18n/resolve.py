@@ -3,7 +3,7 @@
 The design point: a fallback is never silent. Every lookup reports the language
 actually served, and every bundle reports the coverage and quality of what it
 contains. A person reading English because Santali is unavailable must be told
-that is what happened — otherwise the interface appears to be asserting that
+that is what happened - otherwise the interface appears to be asserting that
 English is their language, and they have no way to ask for better.
 """
 from __future__ import annotations
@@ -93,7 +93,7 @@ def bundle(code: str) -> dict:
 
 
 def catalogue() -> list[dict]:
-    """Every language with its coverage — the language picker's data source.
+    """Every language with its coverage - the language picker's data source.
 
     Ordered by how much of it exists, so a citizen sees usable languages first,
     with the rest still listed and honestly marked as unavailable.
@@ -131,8 +131,8 @@ def suggest(state: str = "", accept_language: str = "") -> dict:
         # Named explicitly so a caller does not mistake "we picked English"
         # for "this person reads English".
         "unavailableFromRanked": [c for c in ranked if c not in available],
-        # Recommending one of these is still right — it is the citizen's
-        # language — but the caller must show the standing warning with it.
+        # Recommending one of these is still right - it is the citizen's
+        # language - but the caller must show the standing warning with it.
         "lowConfidenceFromRanked": [
             c for c in available if quality_of(c) is Quality.LOW_CONFIDENCE],
         # Languages widely spoken in this State that the Eighth Schedule does
@@ -171,7 +171,7 @@ def summary() -> dict:
                    "speaker to check them. They are usable for interface text "
                    "and must not be relied on for legal notices until reviewed. "
                    "Those marked 'low_confidence' may additionally be wrong in "
-                   "their orthography — the reader is warned, and these are "
+                   "their orthography - the reader is warned, and these are "
                    "where a commissioned review buys the most."),
         "legalTextPolicy": ("The privacy notice, terms of service and statutory "
                             "rights text are served in English and Hindi only "

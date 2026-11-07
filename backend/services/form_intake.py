@@ -1,7 +1,7 @@
-"""Form intake — collect every detail a chosen form needs, one question at a time.
+"""Form intake - collect every detail a chosen form needs, one question at a time.
 
 The static profiler (`services/profiler.py`) only ever learns four things: name,
-age, income, State. Real government forms ask for a great deal more — a
+age, income, State. Real government forms ask for a great deal more - a
 scholarship wants the course and institution, a pension wants the bank account
 and IFSC, a girl-child scheme wants the child's date of birth. Those details
 differ form to form and are not known in advance.
@@ -10,7 +10,7 @@ This module is the brain that closes that gap. Given the forms a citizen has
 chosen and whatever is already stored about them, it works out:
 
   * which of the form's fields are already answered,
-  * which are still missing (required *and* optional — "store all new details",
+  * which are still missing (required *and* optional - "store all new details",
     not just the mandatory ones),
   * what the next question is, localised, with its type and any options, and
   * whether a typed answer is valid, returning the normalised value to store.
@@ -20,7 +20,7 @@ Two rules are baked in so the layers above cannot get them wrong:
 * **Transient fields are never stored.** The Aadhaar number is stripped before
   storage everywhere else in the system (`dpdp/profile_store`), so a naive
   "ask for every missing field and save it" loop would ask for the Aadhaar on
-  every turn forever — it is supplied, stripped, found missing again, asked
+  every turn forever - it is supplied, stripped, found missing again, asked
   again. Transient fields are collected only at the moment of filling and used
   once; they are not part of profile completeness.
 
@@ -56,7 +56,7 @@ def collect_fields(schemes: list[dict]) -> list[dict]:
 
     `schemes` is a list of catalog entries or form templates, each carrying an
     `extractedFields` list. A field is kept once, under its profile key, the
-    first time it is seen — so choosing two schemes that both want a mobile
+    first time it is seen - so choosing two schemes that both want a mobile
     number asks for it once, not twice.
 
     When two forms disagree about the same field, the stricter view wins: a

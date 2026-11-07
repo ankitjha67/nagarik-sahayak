@@ -328,7 +328,7 @@ export default function ExamsPage({ userId, language = "hi" }) {
                         {exam.application_start && (
                           <div className="flex items-center gap-2 text-xs text-gray-600 mt-2">
                             <Calendar size={12} />
-                            <span>{isHindi ? "आवेदन:" : "Apply:"} {exam.application_start} — {exam.application_end || "TBD"}</span>
+                            <span>{isHindi ? "आवेदन:" : "Apply:"} {exam.application_start} - {exam.application_end || "TBD"}</span>
                           </div>
                         )}
                         {exam.qualification && (

@@ -159,7 +159,7 @@ export default function GovSchemeDashboard() {
         {[
           { label: "Total Schemes", value: data.totalSchemes, icon: "ðŸ“Š", color: "#38BDF8" },
           { label: "Central", value: data.central, icon: "ðŸ›ï¸", color: "#818CF8" },
-          { label: "State", value: data.state, icon: "ðŸ—ºï¸", color: "#34D399" },
+          { label: "State", value: data.state, icon: "ðŸ-ºï¸", color: "#34D399" },
           { label: "Dedup Removed", value: data.duplicatesRemoved, icon: "ðŸ”", color: "#F97316" },
         ].map((stat, i) => (
           <div

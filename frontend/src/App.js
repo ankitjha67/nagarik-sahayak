@@ -54,7 +54,7 @@ class ErrorBoundary extends Component {
 // The routes live in their own component *inside* the LanguageProvider so the
 // `language` each page receives is the provider's live value, not a copy frozen
 // at mount. Before this split, App held its own `language` state that the
-// language picker never updated — the picker changes the provider, not App — so
+// language picker never updated - the picker changes the provider, not App - so
 // switching language left every page keyed on the prop stuck in the old
 // language until a full reload. Reading it from the provider here fixes every
 // page at once.
@@ -64,7 +64,7 @@ function AppRoutes({ userId, onLogin, onLogout }) {
 
   return (
     <BrowserRouter>
-        {/* WCAG 2.4.1 — lets keyboard and screen-reader users bypass the
+        {/* WCAG 2.4.1 - lets keyboard and screen-reader users bypass the
             header rather than tabbing through it on every page. */}
         <a href="#main-content" className="skip-to-content">
           मुख्य सामग्री पर जाएं / Skip to main content

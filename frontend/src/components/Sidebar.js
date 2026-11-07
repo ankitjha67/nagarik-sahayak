@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, BarChart3, ExternalLink, Zap, Globe, GraduationCap, Download, ShieldCheck, BadgeCheck } from "lucide-react";
+import { useLanguage } from "../lib/i18n";
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const { code } = useLanguage();
+  const hi = code === "hi";
   const [analyticsStatus, setAnalyticsStatus] = useState(null);
   const [demoOn, setDemoOn] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -48,17 +51,17 @@ export const Sidebar = ({ isOpen, onClose }) => {
       <div
         data-testid="sidebar-panel"
         role="dialog"
-        aria-label="Navigation menu"
+        aria-label={hi ? "नेविगेशन मेन्यू" : "Navigation menu"}
         className={`fixed top-0 left-0 h-full w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <span className="text-base font-bold text-[#000080] font-['Mukta']">Menu</span>
+          <span className="text-base font-bold text-[#000080] font-['Mukta']">{hi ? "मेन्यू" : "Menu"}</span>
           <button
             data-testid="sidebar-close-btn"
             onClick={onClose}
-            aria-label="Close menu"
+            aria-label={hi ? "मेन्यू बंद करें" : "Close menu"}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
           >
             <X size={20} />
@@ -79,10 +82,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-semibold text-[#000080] font-['Nunito']">Analytics Dashboard</span>
+                <span className="text-sm font-semibold text-[#000080] font-['Nunito']">{hi ? "एनालिटिक्स डैशबोर्ड" : "Analytics Dashboard"}</span>
                 <ExternalLink size={12} className="text-gray-400 flex-shrink-0" />
               </div>
-              <span className="text-xs text-gray-400 font-['Nunito']">Agnost AI</span>
+              <span className="text-xs text-gray-400 font-['Nunito']">{hi ? "ऐप उपयोग और जानकारी" : "App usage & insights"}</span>
             </div>
             {analyticsStatus?.enabled && (
               <span data-testid="analytics-active-badge" className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
@@ -98,9 +101,9 @@ export const Sidebar = ({ isOpen, onClose }) => {
               <Zap size={18} className={demoOn ? "text-amber-500" : "text-gray-400"} />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">Demo Mode</span>
+              <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">{hi ? "डेमो मोड" : "Demo Mode"}</span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                {demoOn ? "Stage-ready" : "Off"}
+                {demoOn ? (hi ? "तैयार" : "Stage-ready") : (hi ? "बंद" : "Off")}
               </span>
             </div>
             <button
@@ -133,16 +136,16 @@ export const Sidebar = ({ isOpen, onClose }) => {
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
-                Scheme Discovery
+                {hi ? "योजना खोज" : "Scheme Discovery"}
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                Crawl portals, view health
+                {hi ? "पोर्टल क्रॉल करें, स्थिति देखें" : "Crawl portals, view health"}
               </span>
             </div>
           </button>
 
           {/* Identity verification. Described as optional in the label itself,
-              not only inside the page — a menu entry that reads like a required
+              not only inside the page - a menu entry that reads like a required
               step turns people away before they ever open it. */}
           <button
             onClick={() => { onClose(); navigate("/identity"); }}
@@ -153,10 +156,10 @@ export const Sidebar = ({ isOpen, onClose }) => {
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
-                Verify Identity
+                {hi ? "पहचान सत्यापित करें" : "Verify Identity"}
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                Optional — speeds up your claim
+                {hi ? "वैकल्पिक - आपका दावा तेज़ करता है" : "Optional - speeds up your claim"}
               </span>
             </div>
           </button>
@@ -171,14 +174,14 @@ export const Sidebar = ({ isOpen, onClose }) => {
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
-                Exam Alerts
+                {hi ? "परीक्षा अलर्ट" : "Exam Alerts"}
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                Deadlines, admit cards, results
+                {hi ? "समय-सीमा, प्रवेश पत्र, परिणाम" : "Deadlines, admit cards, results"}
               </span>
             </div>
           </button>
-          {/* Reviewer console — departmental staff sign in with their own
+          {/* Reviewer console - departmental staff sign in with their own
               credentials on the page itself. */}
           <button
             onClick={() => { onClose(); navigate("/review"); }}
@@ -189,17 +192,17 @@ export const Sidebar = ({ isOpen, onClose }) => {
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-sm font-semibold text-[#000080] font-['Nunito'] block">
-                Review Queue
+                {hi ? "समीक्षा सूची" : "Review Queue"}
               </span>
               <span className="text-xs text-gray-400 font-['Nunito']">
-                Staff only — flagged applications
+                {hi ? "केवल स्टाफ - चिह्नित आवेदन" : "Staff only - flagged applications"}
               </span>
             </div>
           </button>
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 px-5 py-4 border-t border-gray-100">
-          <p className="text-[10px] text-gray-400 font-['Nunito'] text-center">Powered by Agnost AI</p>
+          <p className="text-[10px] text-gray-400 font-['Nunito'] text-center">Digital India Initiative</p>
         </div>
       </div>
     </>

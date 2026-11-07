@@ -1,4 +1,4 @@
-"""KYC orchestration — run a method, compare the result, decide what happens next.
+"""KYC orchestration - run a method, compare the result, decide what happens next.
 
 The single rule this module enforces is that **verification decides nothing**.
 It produces evidence: an assurance level, a set of field comparisons, and a
@@ -100,7 +100,7 @@ def _assess(profile: dict, record_demographics: dict, method: str,
     matches = matching.compare_profile(profile, record_demographics)
     score, contradicted = matching.overall(matches)
 
-    # No overlapping fields to compare — the citizen has not filled anything in
+    # No overlapping fields to compare - the citizen has not filled anything in
     # yet. Not a failure: the record is used to *populate* the profile.
     if not matches:
         return VerificationOutcome(
@@ -127,10 +127,10 @@ def _assess(profile: dict, record_demographics: dict, method: str,
         signal = 35
     elif score < REVIEW_THRESHOLD:
         msg_en = ("Some details differ slightly from your document. This is "
-                  "common and usually harmless — an officer will check and your "
+                  "common and usually harmless - an officer will check and your "
                   "application continues meanwhile.")
         msg_hi = ("कुछ विवरण आपके दस्तावेज़ से थोड़े भिन्न हैं। यह सामान्य एवं "
-                  "प्रायः निर्दोष है — अधिकारी जाँच करेंगे और इस बीच आपका आवेदन "
+                  "प्रायः निर्दोष है - अधिकारी जाँच करेंगे और इस बीच आपका आवेदन "
                   "चलता रहेगा।")
         signal = 5
     else:
@@ -226,7 +226,7 @@ def record_document_upload(profile: dict, *, document_type: str,
 
 
 def record_self_declaration(profile: dict) -> VerificationOutcome:
-    """Format and checksum validation only — recorded as self-declared."""
+    """Format and checksum validation only - recorded as self-declared."""
     from dpdp import identity_documents
     ok, en, hi = identity_documents.validate_profile_identity(profile)
     return VerificationOutcome(
@@ -285,7 +285,7 @@ def _next_step(level: Assurance, contradicted: bool) -> str:
                 "offline e-KYC file, a QR scan, or by visiting a service centre. "
                 "None of these is compulsory.")
     return ("Add any one identity document to continue. Aadhaar is one option "
-            "among several — a voter ID, ration card or job card also works.")
+            "among several - a voter ID, ration card or job card also works.")
 
 
 def _next_step_hi(level: Assurance, contradicted: bool) -> str:
@@ -301,14 +301,14 @@ def _next_step_hi(level: Assurance, contradicted: bool) -> str:
         return ("आप आधार ऑफ़लाइन ई-केवाईसी फ़ाइल, क्यूआर स्कैन अथवा सेवा केंद्र पर "
                 "जाकर अपना आवेदन और सुदृढ़ कर सकते हैं। इनमें से कोई भी अनिवार्य नहीं है।")
     return ("जारी रखने हेतु कोई एक पहचान दस्तावेज़ जोड़ें। आधार कई विकल्पों में से एक "
-            "है — मतदाता पहचान पत्र, राशन कार्ड अथवा जॉब कार्ड भी चलेगा।")
+            "है - मतदाता पहचान पत्र, राशन कार्ड अथवा जॉब कार्ड भी चलेगा।")
 
 
 def required_assurance_for(scheme: dict) -> Assurance:
     """The assurance a scheme's *disbursing department* would want.
 
     Advisory only. It is used to tell a citizen what will make their claim
-    smoother, never to block a submission — deciding that someone may not even
+    smoother, never to block a submission - deciding that someone may not even
     apply is a power this application does not have.
     """
     benefit = (scheme.get("eligibilityCriteria") or {}).get("benefit", "").lower()

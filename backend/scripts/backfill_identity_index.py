@@ -11,7 +11,7 @@ When to run this:
 
 * Once after deploying the fingerprint index, so users who registered earlier
   are covered. Until then, cross-applicant fraud checks simply return no match
-  for them — a silent loss of signal, not an error, which is exactly the kind of
+  for them - a silent loss of signal, not an error, which is exactly the kind of
   gap worth closing deliberately.
 * After rotating IDENTITY_HASH_SALT, with --all. Every stored digest is derived
   from that key, so rotating it invalidates all of them at once and shared-
@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 def _profile_of(user) -> dict:
     """Merge a user's extended and basic profiles, preferring the extended one.
 
-    Routed through profile_store so this reads encrypted rows too — otherwise
+    Routed through profile_store so this reads encrypted rows too - otherwise
     the backfill would silently compute fingerprints from ciphertext.
     """
     from dpdp import profile_store
@@ -87,7 +87,7 @@ async def main() -> int:
         print(f"\n{verb} {updated}, unchanged {skipped}"
               + (f", of which {cleared} had no identifiers to index" if cleared else ""))
         if args.dry_run:
-            print("Dry run — nothing was written.")
+            print("Dry run - nothing was written.")
         return 0
     finally:
         await prisma.disconnect()

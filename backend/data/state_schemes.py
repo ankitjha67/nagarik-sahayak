@@ -1,7 +1,7 @@
 """State Government schemes.
 
 Most welfare money an Indian citizen can actually claim is disbursed by a State,
-not by the Union — a woman in Madhya Pradesh is far more likely to be drawing
+not by the Union - a woman in Madhya Pradesh is far more likely to be drawing
 Ladli Behna than any central transfer. A catalog that carried only central
 schemes would tell most users they qualify for nothing.
 
@@ -33,7 +33,7 @@ from data.gov_forms import (
 
 
 def _domicile(state: str, section="Address"):
-    """Residency proof block — the gate on every State scheme."""
+    """Residency proof block - the gate on every State scheme."""
     return [
         _f("domicile_certificate_number", f"{state} Domicile / Residence Certificate Number",
            f"{state} अधिवास प्रमाण पत्र संख्या", section=section,
@@ -548,8 +548,8 @@ STATE_SCHEMES: list[dict] = [
         "officialWebsite": "https://sspensions.ap.gov.in/",
         "official_pdf_url": "", "source_verified": "", "is_scanned": False,
         "eligibilityCriteria": {
-            "summary": "Resident of Andhra Pradesh falling in a notified pension category — old age (60+), widow, person with disability (40%+), weaver, toddy tapper, transgender, or a person with a chronic illness. Household must be within the prescribed land, income and asset limits.",
-            "summaryHindi": "आंध्र प्रदेश का निवासी जो अधिसूचित पेंशन श्रेणी में हो — वृद्ध (60+), विधवा, दिव्यांग (40%+), बुनकर, कल्लू निकालने वाले, ट्रांसजेंडर अथवा दीर्घकालिक रोगी।",
+            "summary": "Resident of Andhra Pradesh falling in a notified pension category - old age (60+), widow, person with disability (40%+), weaver, toddy tapper, transgender, or a person with a chronic illness. Household must be within the prescribed land, income and asset limits.",
+            "summaryHindi": "आंध्र प्रदेश का निवासी जो अधिसूचित पेंशन श्रेणी में हो - वृद्ध (60+), विधवा, दिव्यांग (40%+), बुनकर, कल्लू निकालने वाले, ट्रांसजेंडर अथवा दीर्घकालिक रोगी।",
             "rules": [
                 {"field": "state", "op": "==", "value": "Andhra Pradesh"},
             ],
@@ -860,8 +860,8 @@ STATE_SCHEMES: list[dict] = [
         "officialWebsite": "https://sspu.lsgkerala.gov.in/",
         "official_pdf_url": "", "source_verified": "", "is_scanned": False,
         "eligibilityCriteria": {
-            "summary": "Resident of Kerala in a notified category — 60 years or above, widow, unmarried woman aged 50 or above, or person with disability. Family income must be within the prescribed limit and the applicant must not be drawing another government pension.",
-            "summaryHindi": "केरल का निवासी जो अधिसूचित श्रेणी में हो — 60 वर्ष या अधिक, विधवा, 50 वर्ष से अधिक की अविवाहित महिला, अथवा दिव्यांगजन। आवेदक किसी अन्य सरकारी पेंशन का लाभार्थी न हो।",
+            "summary": "Resident of Kerala in a notified category - 60 years or above, widow, unmarried woman aged 50 or above, or person with disability. Family income must be within the prescribed limit and the applicant must not be drawing another government pension.",
+            "summaryHindi": "केरल का निवासी जो अधिसूचित श्रेणी में हो - 60 वर्ष या अधिक, विधवा, 50 वर्ष से अधिक की अविवाहित महिला, अथवा दिव्यांगजन। आवेदक किसी अन्य सरकारी पेंशन का लाभार्थी न हो।",
             "rules": [
                 {"field": "state", "op": "==", "value": "Kerala"},
             ],
@@ -1404,8 +1404,8 @@ STATE_SCHEMES: list[dict] = [
         "officialWebsite": "https://socialwelfare.tripura.gov.in/",
         "official_pdf_url": "", "source_verified": "", "is_scanned": False,
         "eligibilityCriteria": {
-            "summary": "Resident of Tripura in a notified category — old age, widow, or person with disability — whose household is within the prescribed income limit and who is not drawing another government pension.",
-            "summaryHindi": "त्रिपुरा का निवासी जो अधिसूचित श्रेणी में हो — वृद्ध, विधवा अथवा दिव्यांग — तथा जो अन्य सरकारी पेंशन प्राप्त न कर रहा हो।",
+            "summary": "Resident of Tripura in a notified category - old age, widow, or person with disability - whose household is within the prescribed income limit and who is not drawing another government pension.",
+            "summaryHindi": "त्रिपुरा का निवासी जो अधिसूचित श्रेणी में हो - वृद्ध, विधवा अथवा दिव्यांग - तथा जो अन्य सरकारी पेंशन प्राप्त न कर रहा हो।",
             "rules": [
                 {"field": "state", "op": "==", "value": "Tripura"},
             ],
@@ -1453,7 +1453,7 @@ STATE_SCHEMES: list[dict] = [
         "officialWebsite": "https://socialwelfare.nagaland.gov.in/",
         "official_pdf_url": "", "source_verified": "", "is_scanned": False,
         "eligibilityCriteria": {
-            "summary": "Resident of Nagaland in a notified category — old age, widow, or person with disability — certified by the village council or ward authority and within the prescribed income limit.",
+            "summary": "Resident of Nagaland in a notified category - old age, widow, or person with disability - certified by the village council or ward authority and within the prescribed income limit.",
             "summaryHindi": "नागालैंड का निवासी जो अधिसूचित श्रेणी में हो, ग्राम परिषद अथवा वार्ड प्राधिकारी द्वारा प्रमाणित।",
             "rules": [
                 {"field": "state", "op": "==", "value": "Nagaland"},

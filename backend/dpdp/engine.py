@@ -1,4 +1,4 @@
-"""The DPDP compliance engine — checks rows, code and payloads against the Act.
+"""The DPDP compliance engine - checks rows, code and payloads against the Act.
 
 Three surfaces, one finding model:
 
@@ -98,14 +98,14 @@ def check_row(
     """Check one citizen's stored data for DPDP compliance.
 
     `consented_purposes` is the set of purposes the citizen actually agreed to.
-    Passing None means "no consent record exists", which is itself the finding —
+    Passing None means "no consent record exists", which is itself the finding -
     silently assuming consent is exactly the failure mode the Act targets.
     """
     report = Report(scope=f"row:{row_id or 'anonymous'}")
     profile = profile or {}
     report.checked = len(profile)
 
-    # s6(1) — data must serve a declared purpose.
+    # s6(1) - data must serve a declared purpose.
     for key in registry.undeclared_fields(profile):
         report.add(
             Severity.WARNING, "undeclared_field", "s6(1)",
@@ -119,7 +119,7 @@ def check_row(
 
     present = [k for k, v in profile.items() if v not in (None, "")]
 
-    # s4/s6 — a lawful basis is required for each purpose being served.
+    # s4/s6 - a lawful basis is required for each purpose being served.
     consent_required_purposes: set[str] = set()
     for key in present:
         rec = registry.record_for(key)
@@ -150,7 +150,7 @@ def check_row(
                                 "fields that serve only them.",
                 )
 
-    # s9 — children's data needs verifiable parental consent.
+    # s9 - children's data needs verifiable parental consent.
     child_present = [k for k in present
                      if (r := registry.record_for(k)) and r.child_data]
     if child_present and not has_parental_consent:
@@ -164,7 +164,7 @@ def check_row(
                         "use this data for tracking or behavioural advertising.",
         )
 
-    # s8(3) — data used to decide an entitlement must be accurate and complete.
+    # s8(3) - data used to decide an entitlement must be accurate and complete.
     for key in present:
         rec = registry.record_for(key)
         if not rec or not rec.decisional:
@@ -184,7 +184,7 @@ def check_row(
                             "on it.",
             )
 
-    # s8(6) — erase once the purpose is served.
+    # s8(6) - erase once the purpose is served.
     if created_at:
         now = datetime.now(timezone.utc)
         if created_at.tzinfo is None:
@@ -221,7 +221,7 @@ def check_row(
 # The value must be *interpolated or passed*, not merely named in the message
 # text: logger.error(f"Profile reset failed: {e}") logs an exception, not a
 # profile. Matching on the word alone produced exactly that false positive, and
-# a scanner that cries wolf gets switched off — which protects nobody.
+# a scanner that cries wolf gets switched off - which protects nobody.
 _PII_VARS = r"profile|full_profile|filled_fields|msg_dict|profile_data|fields"
 _LOG_LEAK_RE = re.compile(
     r"log(?:ger)?\.(?:debug|info|warning|error|critical|exception)\s*\("
@@ -305,7 +305,7 @@ def scan_payload(payload, *, destination: str = "response",
                  allow: frozenset[PIICategory] = frozenset()) -> Report:
     """Detect personal data in an outbound payload.
 
-    `allow` names categories legitimately present — a citizen reading their own
+    `allow` names categories legitimately present - a citizen reading their own
     profile must of course receive it. Anything outside that set leaving the
     process is unintended.
     """

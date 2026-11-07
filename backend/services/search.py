@@ -1,4 +1,4 @@
-"""Scheme search — Prisma-backed and in-memory sync variants."""
+"""Scheme search - Prisma-backed and in-memory sync variants."""
 import re
 import logging
 import time as _time
@@ -92,7 +92,7 @@ async def search_schemes_prisma(query: str) -> dict:
         return {
             "tool_name": "search_schemes", "tool_input": {"query": query},
             "documents_scanned": [s.name for s in schemes], "match_found": False,
-            "result_text": "I don't know — criteria not explicitly stated in government PDFs.",
+            "result_text": "I don't know - criteria not explicitly stated in government PDFs.",
         }
 
     results = []
@@ -134,7 +134,7 @@ def search_schemes_sync(query: str, language: str = "hi") -> dict:
         return {
             "tool_name": "search_schemes", "tool_input": {"query": query},
             "documents_scanned": [s["title"] for s in SCHEMES_SEED], "match_found": False,
-            "result_text": "I don't know — criteria not explicitly stated in government PDFs.",
+            "result_text": "I don't know - criteria not explicitly stated in government PDFs.",
         }
 
     is_hi = language == "hi"

@@ -1,4 +1,4 @@
-"""Record of processing — what personal data exists, why, and for how long.
+"""Record of processing - what personal data exists, why, and for how long.
 
 DPDP obligations are per-purpose, not per-application. Section 5 requires the
 notice to state what is collected and why; section 6 limits consent to data
@@ -171,7 +171,7 @@ REGISTRY: tuple[FieldRecord, ...] = (
                 retention_days=_APPLICATION_CYCLE),
     FieldRecord("annual_income", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
                 retention_days=_APPLICATION_CYCLE, decisional=True,
-                note="Means test — the single most decisional field."),
+                note="Means test - the single most decisional field."),
     FieldRecord("income_certificate_number", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
                 retention_days=_APPLICATION_CYCLE, decisional=True),
     FieldRecord("is_bpl", C.FINANCIAL, (P.SCHEME_ELIGIBILITY,),
@@ -406,7 +406,7 @@ def category_for_field(field_name: str) -> PIICategory | None:
         return record.category
     if key in NON_PERSONAL_KEYS:
         return None
-    # Suffix conventions catch fields the registry has not yet enumerated —
+    # Suffix conventions catch fields the registry has not yet enumerated -
     # better to over-protect an unknown `*_aadhaar` than to leak it.
     low = key.lower()
     if low.endswith("aadhaar") or low.endswith("aadhaar_number"):
@@ -439,8 +439,8 @@ def child_data_fields() -> list[FieldRecord]:
 def undeclared_fields(profile: dict) -> list[str]:
     """Stored keys that no registry entry covers.
 
-    Each is personal data processed outside any declared purpose — the exact
-    thing section 6(1) forbids — or an inventory gap. Either way it needs a
+    Each is personal data processed outside any declared purpose - the exact
+    thing section 6(1) forbids - or an inventory gap. Either way it needs a
     human decision, so it is surfaced rather than silently permitted.
     """
     return sorted(

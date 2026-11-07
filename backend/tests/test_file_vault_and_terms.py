@@ -6,7 +6,7 @@ not the other protects the harder target and ignores the easier one.
 
 The terms tests check substance rather than presence. Four disclosures exist to
 stop a citizen believing they have applied when they have not, or paying a
-middleman — so the tests assert those are actually said, in both languages.
+middleman - so the tests assert those are actually said, in both languages.
 """
 import pytest
 

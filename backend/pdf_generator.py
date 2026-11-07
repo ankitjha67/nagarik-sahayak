@@ -34,8 +34,8 @@ def _format_phone(value: str) -> str:
 def _mask_aadhaar(value: str, full: bool = False) -> str:
     """Format Aadhaar number for display.
 
-    full=False (default): Masked for draft — XXXX XXXX 1234
-    full=True: Full number with spacing — 1234 5678 9012
+    full=False (default): Masked for draft - XXXX XXXX 1234
+    full=True: Full number with spacing - 1234 5678 9012
     """
     digits = re.sub(r'\D', '', str(value))
     if len(digits) == 12:
@@ -92,7 +92,7 @@ def generate_eligibility_pdf(
     pdf.add_font("NS", "B", str(FONTS_DIR / "NotoSans-Bold.ttf"))
     pdf.add_font("NH", "", str(FONTS_DIR / "NotoSansDevanagari-Regular.ttf"))
     # NotoSans (Latin) has no Devanagari glyphs, so Hindi drawn in a bold Latin
-    # style previously rendered as nothing at all — scheme names and section
+    # style previously rendered as nothing at all - scheme names and section
     # headings silently vanished from generated PDFs. Registering the Devanagari
     # face as a glyph fallback fixes every Hindi path at once. It is registered
     # for the bold slot as well, pointing at the same regular file, because
@@ -208,7 +208,7 @@ def _fit_to_width(pdf, text: str, max_mm: float) -> str:
     """Trim `text` to the column, measuring it rather than counting characters.
 
     A bilingual label is Devanagari plus English, and Devanagari glyphs are
-    wider than Latin ones — so a character-count cut let "हरियाणा अधिवास प्रमाण
+    wider than Latin ones - so a character-count cut let "हरियाणा अधिवास प्रमाण
     पत्र संख्या / Haryana Domicile Certificate Number" run out of its column and
     under the value box next to it. Measured trimming cannot do that whatever
     the script.
@@ -305,7 +305,7 @@ def generate_filled_form_pdf(
     pdf.add_font("NS", "B", str(FONTS_DIR / "NotoSans-Bold.ttf"))
     pdf.add_font("NH", "", str(FONTS_DIR / "NotoSansDevanagari-Regular.ttf"))
     # NotoSans (Latin) has no Devanagari glyphs, so Hindi drawn in a bold Latin
-    # style previously rendered as nothing at all — scheme names and section
+    # style previously rendered as nothing at all - scheme names and section
     # headings silently vanished from generated PDFs. Registering the Devanagari
     # face as a glyph fallback fixes every Hindi path at once. It is registered
     # for the bold slot as well, pointing at the same regular file, because
@@ -525,7 +525,7 @@ def generate_real_filled_form_pdf(
     page numbers, and long textarea values.
 
     is_draft=True (default): Adds DRAFT watermark, masks Aadhaar
-    is_draft=False: No watermark, full Aadhaar — for official submission
+    is_draft=False: No watermark, full Aadhaar - for official submission
     """
     pdf = FPDF()
     pdf.set_auto_page_break(auto=False)  # Manual page break control
@@ -535,7 +535,7 @@ def generate_real_filled_form_pdf(
     pdf.add_font("NS", "B", str(FONTS_DIR / "NotoSans-Bold.ttf"))
     pdf.add_font("NH", "", str(FONTS_DIR / "NotoSansDevanagari-Regular.ttf"))
     # NotoSans (Latin) has no Devanagari glyphs, so Hindi drawn in a bold Latin
-    # style previously rendered as nothing at all — scheme names and section
+    # style previously rendered as nothing at all - scheme names and section
     # headings silently vanished from generated PDFs. Registering the Devanagari
     # face as a glyph fallback fixes every Hindi path at once. It is registered
     # for the bold slot as well, pointing at the same regular file, because

@@ -2,7 +2,7 @@
 
 Closes the remaining limb of SPDI Rule 8 and DPDP s8(4): reasonable security
 practices proportionate to the data held. Everything else built so far protects
-data in motion and in use — ownership checks, redaction, masking. None of it
+data in motion and in use - ownership checks, redaction, masking. None of it
 helps if someone obtains a copy of the database, which is the likeliest way a
 breach of this system would actually happen.
 
@@ -15,7 +15,7 @@ plaintext. For a record that decides someone's benefit eligibility, undetected
 modification is as harmful as disclosure.
 
 **A fresh random nonce per encryption, never reused.** GCM fails
-catastrophically on nonce reuse — it leaks the XOR of plaintexts and the
+catastrophically on nonce reuse - it leaks the XOR of plaintexts and the
 authentication key. The nonce is stored alongside the ciphertext, which is safe
 and standard; what must never repeat is the (key, nonce) pair.
 
@@ -81,7 +81,7 @@ def is_enabled() -> bool:
     keys = _load_keys()
     if not keys and not _warned_missing_key:
         logger.warning(
-            "DATA_ENCRYPTION_KEY is not set — personal data is being stored "
+            "DATA_ENCRYPTION_KEY is not set - personal data is being stored "
             "unencrypted. Set a 32-byte base64 key in production; see "
             "dpdp/crypto.py generate_key()."
         )
@@ -94,7 +94,7 @@ def _backend_available() -> bool:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM  # noqa: F401
         return True
     except ImportError:
-        logger.error("cryptography is not installed — cannot encrypt at rest")
+        logger.error("cryptography is not installed - cannot encrypt at rest")
         return False
 
 

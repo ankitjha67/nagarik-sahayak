@@ -2,8 +2,8 @@
 
 One dependency, `enforce`, runs on every API request. Its rule:
 
-    A request that names a user — in the path, in the JSON body, or in the
-    X-User-Id header — must be authenticated as that user, or by a role that
+    A request that names a user - in the path, in the JSON body, or in the
+    X-User-Id header - must be authenticated as that user, or by a role that
     may act for them. A request that names nobody needs a token unless the
     route is public.
 

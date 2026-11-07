@@ -2,7 +2,7 @@
 
 Before this existed the same "merge fullProfile over profile, tolerating both
 JSON strings and dicts" loop appeared in six files. That duplication was already
-a latent bug — two of the copies handled malformed JSON differently — and it
+a latent bug - two of the copies handled malformed JSON differently - and it
 made encryption impossible to add without editing every call site.
 
 Routing every access through here buys three things at once:
@@ -48,7 +48,7 @@ def _coerce(raw) -> dict:
 def load(user) -> dict:
     """The citizen's complete profile: extended merged over basic.
 
-    fullProfile wins on conflict — it is the record the V2 flow maintains and
+    fullProfile wins on conflict - it is the record the V2 flow maintains and
     is the more recently written of the two.
     """
     merged: dict = {}
@@ -104,7 +104,7 @@ def status() -> dict:
         "aadhaar_storage": {
             "policy": "Aadhaar numbers are never persisted; only the last four "
                       "digits and a keyed fingerprint are stored.",
-            "basis": "Aadhaar (Authentication) Regulations — an entity that is "
+            "basis": "Aadhaar (Authentication) Regulations - an entity that is "
                      "not a Requesting Entity must not store the number.",
             "enforced_at": "dpdp/profile_store.py, on every write path",
         },

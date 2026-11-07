@@ -1,4 +1,4 @@
-"""KYC routes — offer every identity option, and be honest about each.
+"""KYC routes - offer every identity option, and be honest about each.
 
 Two rules hold across this file.
 
@@ -227,7 +227,7 @@ async def kyc_status(request: Request, req: dict):
 
 @api_router.post("/kyc/scheme-gap")
 async def scheme_gap(request: Request, req: dict):
-    """What would strengthen a claim on one scheme — advisory only.
+    """What would strengthen a claim on one scheme - advisory only.
 
     Body: {"outcomes": [...], "schemeName": "..."}
 

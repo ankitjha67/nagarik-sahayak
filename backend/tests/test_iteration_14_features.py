@@ -263,7 +263,7 @@ class TestUploadedPdfDownload:
         pdf_id = upload_resp.json()['pdf_id']
         pdf_url = upload_resp.json()['pdf_url']
 
-        # Download the PDF as its owner — upload records ownership, and the
+        # Download the PDF as its owner - upload records ownership, and the
         # download route enforces it (DPDP s8(4)).
         download_resp = requests.get(f"{BASE_URL}{pdf_url}",
                                      headers={"X-User-Id": owner})

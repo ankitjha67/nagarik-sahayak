@@ -1,4 +1,4 @@
-# GovScheme + GovExam SuperAgent V3 — Complete Codebase
+# GovScheme + GovExam SuperAgent V3 - Complete Codebase
 
 **Total files:** 41 | **Total lines:** ~12,649 | **Generated:** 2026-02-24
 
@@ -57,13 +57,13 @@
 <!-- lines: 81 -->
 
 ```markdown
-# GovScheme India — OpenClaw Agent Configuration
+# GovScheme India - OpenClaw Agent Configuration
 
 You are **GovSchemeAgent**, an autonomous agent that discovers, classifies, and organizes Indian government schemes (scholarships, grants, startup funds, subsidies) from 50+ government portals.
 
 ## Capabilities
 
-1. **Discover**: Crawl government portals — myScheme.gov.in (2300+ schemes), National Scholarship Portal (150+), Startup India (80+), state portals, and ministry websites
+1. **Discover**: Crawl government portals - myScheme.gov.in (2300+ schemes), National Scholarship Portal (150+), Startup India (80+), state portals, and ministry websites
 2. **Classify**: Use LLM to categorize each scheme by level (Central/State/UT), sector (Education, Agriculture, Fisheries, MSME, etc.), and type (Scholarship, Grant, Startup Fund, Subsidy)
 3. **Organize**: Store everything in structured folder hierarchies with downloaded PDFs, guidelines, and metadata
 4. **Search**: Query the organized database to find specific schemes by state, sector, or keywords
@@ -93,10 +93,10 @@ python -m src.orchestrator --mode discover --output ./output --no-pdfs
 
 ## Data Sources
 
-- myScheme Portal (myscheme.gov.in) — 2300+ central & state schemes
-- National Scholarship Portal (scholarships.gov.in) — 150+ scholarships
-- Startup India (startupindia.gov.in) — 80+ startup schemes
-- API Setu (apisetu.gov.in) — Government API gateway
+- myScheme Portal (myscheme.gov.in) - 2300+ central & state schemes
+- National Scholarship Portal (scholarships.gov.in) - 150+ scholarships
+- Startup India (startupindia.gov.in) - 80+ startup schemes
+- API Setu (apisetu.gov.in) - Government API gateway
 - 28 State government portals
 - 30+ Central ministry websites
 - Buddy4Study aggregator
@@ -150,11 +150,11 @@ Orchestrator (CEO)
 
 ## The Problem
 
-India has **2,300+** government schemes across Central, State, and UT governments — spread across **50+ portals** with no unified way to discover, compare, or access them. Citizens miss out on schemes they're eligible for simply because the information is fragmented.
+India has **2,300+** government schemes across Central, State, and UT governments - spread across **50+ portals** with no unified way to discover, compare, or access them. Citizens miss out on schemes they're eligible for simply because the information is fragmented.
 
 ## Our Solution
 
-**GovScheme SuperAgent** — a multi-agent system built on OpenClaw that:
+**GovScheme SuperAgent** - a multi-agent system built on OpenClaw that:
 
 1. **Crawls** 50+ government portals autonomously
 2. **Deduplicates** across sources (fuzzy matching + content hashing)
@@ -213,8 +213,8 @@ We also built a **12-role product team prompt** that transforms any LLM into a p
 ## Demo Flow (8 Minutes)
 
 1. **[1 min]** Show the problem: search for a scholarship across 5 different government sites
-2. **[2 min]** Run the agent pipeline — show the Rich terminal output with progress
-3. **[2 min]** Walk through the organized folder structure — open a scheme folder
+2. **[2 min]** Run the agent pipeline - show the Rich terminal output with progress
+3. **[2 min]** Walk through the organized folder structure - open a scheme folder
 4. **[1 min]** Show the React dashboard with real-time stats
 5. **[1 min]** Demo the OpenClaw skill integration
 6. **[1 min]** Show the Super Agent Prompt and how it eliminates LLM errors
@@ -246,11 +246,11 @@ If deployed as a public service, this system could help:
 <!-- lines: 110 -->
 
 ```markdown
-# 🏆 GovScheme SuperAgent — OpenClaw Buildathon Entry
+# 🏆 GovScheme SuperAgent - OpenClaw Buildathon Entry
 
 ## Zero to 700+ Government Schemes in 8 Hours
 
-A multi-agent system that crawls across **Central, State, and Union Territory** government websites to discover, classify, and store **every scholarship, grant, startup fund, and welfare scheme** in India — organized into intelligent folder hierarchies.
+A multi-agent system that crawls across **Central, State, and Union Territory** government websites to discover, classify, and store **every scholarship, grant, startup fund, and welfare scheme** in India - organized into intelligent folder hierarchies.
 
 ---
 
@@ -351,7 +351,7 @@ python -m src.orchestrator --mode dashboard  # Launch dashboard
 
 ## 💡 Why This Wins
 
-- **Real utility**: Solves a genuine problem — citizens struggle to find schemes they're eligible for
+- **Real utility**: Solves a genuine problem - citizens struggle to find schemes they're eligible for
 - **Scale**: 700+ schemes organized and downloadable
 - **Agent architecture**: True multi-agent coordination, not just sequential scripts
 - **LLM-powered classification**: Intelligent categorization that understands sector context
@@ -509,7 +509,7 @@ export default function GovSchemeDashboard() {
             🇮🇳 GovScheme SuperAgent
           </h1>
           <p style={{ color: "#64748B", margin: "4px 0 0", fontSize: 14 }}>
-            OpenClaw Buildathon — Multi-Agent Government Scheme Discovery
+            OpenClaw Buildathon - Multi-Agent Government Scheme Discovery
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -677,7 +677,7 @@ export default function GovSchemeDashboard() {
           )}
         </div>
 
-        {/* Right Panel — Scheme Browser */}
+        {/* Right Panel - Scheme Browser */}
         <div
           style={{
             background: "linear-gradient(135deg, #1E293B, #0F172A)",
@@ -824,7 +824,7 @@ export default function GovSchemeDashboard() {
 <!-- lines: 332 -->
 
 ```markdown
-# 🏗️ SUPER AGENT SYSTEM PROMPT — Full Powerhouse Product Team
+# 🏗️ SUPER AGENT SYSTEM PROMPT - Full Powerhouse Product Team
 
 > **Purpose**: Drop this prompt into any LLM context to transform it into a precision-engineering machine that solves complex coding challenges without hallucinations, mistakes, truncations, or wasted tokens.
 
@@ -833,87 +833,87 @@ export default function GovSchemeDashboard() {
 ## THE PROMPT
 
 ```
-You are ARCHITECT — a synchronized ensemble of 12 specialized agents operating as one unified product team. Every response you produce has been vetted by each role below before it reaches the user. You do not hallucinate. You do not truncate. You do not guess. You verify, plan, implement, test, and deliver.
+You are ARCHITECT - a synchronized ensemble of 12 specialized agents operating as one unified product team. Every response you produce has been vetted by each role below before it reaches the user. You do not hallucinate. You do not truncate. You do not guess. You verify, plan, implement, test, and deliver.
 
 ═══════════════════════════════════════════════════
 ROLE ENSEMBLE (Always Active, Always Checking)
 ═══════════════════════════════════════════════════
 
-[CEO] — Strategic Decision Maker
+[CEO] - Strategic Decision Maker
 - Resolves ambiguity in requirements by choosing the simplest correct path
 - Kills scope creep: "Is this needed for MVP? No? Defer it."
 - Forces prioritization: P0 (blocks launch), P1 (core feature), P2 (nice to have)
 - Final approval gate before any code ships
 
-[PRODUCT MANAGER] — Requirements Translator
+[PRODUCT MANAGER] - Requirements Translator
 - Converts user intent into precise, testable acceptance criteria
 - Writes user stories in format: "As [user], I want [action], so that [outcome]"
 - Identifies edge cases the user hasn't mentioned
 - Creates the definition of done for each deliverable
 
-[PROJECT MANAGER] — Execution Planner
+[PROJECT MANAGER] - Execution Planner
 - Breaks work into sequential, dependency-aware tasks
 - Estimates complexity: S (< 20 lines), M (20-100 lines), L (100-500 lines), XL (500+)
 - Plans the order of implementation to minimize rework
 - Tracks what's done, what's next, what's blocked
 
-[BUSINESS ANALYST] — Domain Expert
+[BUSINESS ANALYST] - Domain Expert
 - Maps business rules to technical constraints
 - Identifies data flows, integrations, and system boundaries
 - Validates that the technical solution matches the business need
 - Catches requirements gaps before coding begins
 
-[SENIOR DEVELOPER — Backend] — System Builder
+[SENIOR DEVELOPER - Backend] - System Builder
 - Writes production-grade server code (APIs, databases, business logic)
 - Follows SOLID principles, DRY, and separation of concerns
 - Uses proper error handling: specific exceptions, meaningful messages, recovery paths
 - Implements pagination, caching, retry logic, and connection pooling by default
 
-[SENIOR DEVELOPER — Frontend] — Interface Builder
+[SENIOR DEVELOPER - Frontend] - Interface Builder
 - Builds responsive, accessible, performant UIs
 - Manages state properly (React hooks, context, or state management)
 - Handles loading states, error states, and empty states for every component
 - Implements proper form validation, debouncing, and optimistic updates
 
-[SENIOR DEVELOPER — Infrastructure] — DevOps Engineer
+[SENIOR DEVELOPER - Infrastructure] - DevOps Engineer
 - Designs deployment configs, Dockerfiles, CI/CD pipelines
 - Configures environment variables, secrets management, logging
 - Sets up health checks, graceful shutdown, and restart policies
 - Handles database migrations and rollback strategies
 
-[IT SECURITY] — Security Auditor
+[IT SECURITY] - Security Auditor
 - Reviews every code block for: injection attacks, XSS, CSRF, auth bypass, data leaks
 - Enforces input validation on EVERY external input
 - Verifies secrets are never hardcoded and are loaded from environment
 - Checks for dependency vulnerabilities and insecure defaults
 - Validates authentication and authorization on every endpoint
 
-[RISK MANAGEMENT] — Failure Analyst
+[RISK MANAGEMENT] - Failure Analyst
 - Identifies what can go wrong: network failures, rate limits, data corruption, race conditions
 - Requires graceful degradation for every external dependency
 - Ensures timeouts, circuit breakers, and fallback mechanisms exist
 - Validates that error messages don't leak internal information
 
-[FINANCE] — Token & Resource Optimizer
+[FINANCE] - Token & Resource Optimizer
 - Monitors response length: are we being verbose without adding value?
 - Eliminates redundant code, unnecessary comments, and boilerplate
 - Suggests batch operations over individual calls
 - Calculates computational complexity and flags O(n²) or worse
 
-[QA / TESTER] — Quality Gate
+[QA / TESTER] - Quality Gate
 - Writes test cases for: happy path, edge cases, error conditions, boundary values
 - Validates that code compiles, imports resolve, and types are correct
 - Checks for: off-by-one errors, null/undefined handling, async race conditions
 - Performs code review checklist before any code is presented
 
-[GROWTH / MARKETING] — User Experience Advocate
+[GROWTH / MARKETING] - User Experience Advocate
 - Ensures the solution is intuitive and user-friendly
 - Validates error messages are helpful (not "Error 500")
 - Checks documentation is clear and complete
 - Verifies the solution solves the ACTUAL user problem, not a proxy
 
 ═══════════════════════════════════════════════════
-OPERATING PROTOCOL — The 7-Gate Pipeline
+OPERATING PROTOCOL - The 7-Gate Pipeline
 ═══════════════════════════════════════════════════
 
 Every response passes through these gates in order. If any gate fails, the response is revised before output.
@@ -924,7 +924,7 @@ Before writing ANY code:
 □ Restate what the user wants in one sentence
 □ List the acceptance criteria (what "done" looks like)
 □ Identify the tech stack (explicit or inferred)
-□ Flag any ambiguity — ask ONE focused clarifying question if critical
+□ Flag any ambiguity - ask ONE focused clarifying question if critical
 □ If no ambiguity, proceed without asking
 
 GATE 2: PLAN (Project Manager + CEO)
@@ -937,7 +937,7 @@ GATE 2: PLAN (Project Manager + CEO)
 
 GATE 3: IMPLEMENT (Developers)
 ───────────────────────────────
-□ Write COMPLETE code — never truncate, never use "..." or "// rest of implementation"
+□ Write COMPLETE code - never truncate, never use "..." or "// rest of implementation"
 □ Every function has: type hints/annotations, docstring, error handling
 □ Every file has: necessary imports, no unused imports
 □ Use consistent naming: snake_case (Python), camelCase (JS/TS), PascalCase (classes)
@@ -1145,7 +1145,7 @@ agent:
 If your context window is limited, use this condensed version:
 
 ```
-You are ARCHITECT — a product team ensemble. Before ANY code:
+You are ARCHITECT - a product team ensemble. Before ANY code:
 1. UNDERSTAND: Restate the goal. List acceptance criteria. Flag ambiguity.
 2. PLAN: Break into tasks. List files. Choose patterns.
 3. IMPLEMENT: Complete code only. No truncation. No placeholders. Types + docs + error handling.
@@ -1190,7 +1190,7 @@ aiofiles>=23.2.0
 rapidfuzz>=3.5.0
 openpyxl>=3.1.0
 schedule>=1.2.0
-# V3 Additions — Exam Pipeline
+# V3 Additions - Exam Pipeline
 pdfminer.six>=20221105
 xlsxwriter>=3.1.0
 feedparser>=6.0.0
@@ -1222,7 +1222,7 @@ python-docx>=1.1.0
 
 ```python
 """
-GovScheme SuperAgent — Change Detection Agent
+GovScheme SuperAgent - Change Detection Agent
 Compares freshly crawled schemes against the persistent database
 to detect: new launches, updates, closures, and approaching deadlines.
 """
@@ -1242,7 +1242,7 @@ logger = logging.getLogger("change_agent")
 
 class ChangeDetectionAgent:
     """
-    The Intelligence Agent — compares each crawl run against
+    The Intelligence Agent - compares each crawl run against
     the persistent database to produce a delta report:
       - NEW:    scheme_id not in DB
       - UPDATED: scheme exists but detail_hash has changed
@@ -1426,7 +1426,7 @@ class ChangeDetectionAgent:
 
 ```python
 """
-GovScheme SuperAgent — Deduplication Agent
+GovScheme SuperAgent - Deduplication Agent
 Detects and removes duplicate schemes across multiple data sources
 using fuzzy string matching and content hashing.
 """
@@ -1498,7 +1498,7 @@ class DeduplicationAgent:
                     match_method="fuzzy_name",
                 )
 
-        # Not a duplicate — register it
+        # Not a duplicate - register it
         self.hash_index[scheme.content_hash] = scheme.scheme_name
         if scheme.scheme_detail_url:
             self.url_index.add(scheme.scheme_detail_url)
@@ -1585,7 +1585,7 @@ class DeduplicationAgent:
 
 ```python
 """
-GovScheme SuperAgent — Data Models
+GovScheme SuperAgent - Data Models
 Pydantic models for scheme data, agent messages, and storage.
 """
 from __future__ import annotations
@@ -1855,7 +1855,7 @@ class CrawlProgress(BaseModel):
         return delta.total_seconds() / 60
 
     def sector_distribution(self) -> dict[str, int]:
-        """Placeholder — populated by orchestrator from DB."""
+        """Placeholder - populated by orchestrator from DB."""
         return {}
 
 
@@ -1898,7 +1898,7 @@ class DailyRunReport(BaseModel):
 
 ```python
 """
-GovScheme SuperAgent — Classification Agent
+GovScheme SuperAgent - Classification Agent
 Uses LLM to classify raw scheme data into proper categories.
 """
 from __future__ import annotations
@@ -1953,7 +1953,7 @@ Rules:
 - Choose the MOST SPECIFIC sector that matches
 - If fisheries/aquaculture is mentioned, use Fisheries even if under Agriculture ministry
 - For startup/entrepreneurship schemes, prefer Startup over MSME unless clearly MSME-focused
-- Be precise with scheme_type — scholarships are for students, grants are for projects/organizations
+- Be precise with scheme_type - scholarships are for students, grants are for projects/organizations
 """
 
 
@@ -2218,7 +2218,7 @@ class ClassificationAgent:
 
 ```python
 """
-GovScheme SuperAgent — Exam Portal Sources (V3)
+GovScheme SuperAgent - Exam Portal Sources (V3)
 Complete registry of 150+ government exam portals:
   - EXAM_BODIES: dict of conducting body metadata
   - STATE_PSC_PORTALS: 28 states + Delhi + J&K
@@ -2232,7 +2232,7 @@ from typing import Optional
 
 
 # ═══════════════════════════════════════════════════
-# ExamPortalSource — one crawl target
+# ExamPortalSource - one crawl target
 # ═══════════════════════════════════════════════════
 
 @dataclass
@@ -2254,7 +2254,7 @@ class ExamPortalSource:
 
 
 # ═══════════════════════════════════════════════════
-# EXAM_BODIES — Conducting body metadata
+# EXAM_BODIES - Conducting body metadata
 # ═══════════════════════════════════════════════════
 
 EXAM_BODIES: dict[str, dict] = {
@@ -2285,9 +2285,9 @@ EXAM_BODIES: dict[str, dict] = {
     "ITBP": {"full_name": "Indo-Tibetan Border Police", "website": "https://itbpolice.nic.in", "career_url": "https://itbpolice.nic.in/itbpWeb/Recruitment.do"},
     "ASSAM_RIFLES": {"full_name": "Assam Rifles", "website": "https://assamrifles.gov.in", "career_url": "https://assamrifles.gov.in/Recruitments"},
     "NSG": {"full_name": "National Security Guard", "website": "https://nsg.gov.in", "career_url": "https://nsg.gov.in/recruitment"},
-    "IB": {"full_name": "Intelligence Bureau — MHA", "website": "https://mha.gov.in", "career_url": "https://mha.gov.in/en/commentsbox/recruitment"},
+    "IB": {"full_name": "Intelligence Bureau - MHA", "website": "https://mha.gov.in", "career_url": "https://mha.gov.in/en/commentsbox/recruitment"},
     "CBI": {"full_name": "Central Bureau of Investigation", "website": "https://cbi.gov.in", "career_url": "https://cbi.gov.in/recruitment.php"},
-    "DRDO": {"full_name": "DRDO — CEPTAM", "website": "https://drdo.gov.in", "career_url": "https://ceptam.drdo.gov.in"},
+    "DRDO": {"full_name": "DRDO - CEPTAM", "website": "https://drdo.gov.in", "career_url": "https://ceptam.drdo.gov.in"},
     "ISRO": {"full_name": "Indian Space Research Organisation", "website": "https://isro.gov.in", "career_url": "https://isro.gov.in/careers.html"},
     "BARC": {"full_name": "Bhabha Atomic Research Centre", "website": "https://barc.gov.in", "career_url": "https://www.barc.gov.in/careers/"},
     "CSIR": {"full_name": "Council of Scientific & Industrial Research", "website": "https://www.csir.res.in", "career_url": "https://csirhrdg.res.in/"},
@@ -2316,7 +2316,7 @@ EXAM_BODIES: dict[str, dict] = {
 
 
 # ═══════════════════════════════════════════════════
-# STATE PSC PORTALS — 28 states + Delhi + J&K
+# STATE PSC PORTALS - 28 states + Delhi + J&K
 # ═══════════════════════════════════════════════════
 
 STATE_PSC_PORTALS: dict[str, dict] = {
@@ -2354,7 +2354,7 @@ STATE_PSC_PORTALS: dict[str, dict] = {
 
 
 # ═══════════════════════════════════════════════════
-# RRB BOARDS — 21 Regional Railway Boards
+# RRB BOARDS - 21 Regional Railway Boards
 # ═══════════════════════════════════════════════════
 
 RRB_BOARDS = [
@@ -2402,7 +2402,7 @@ PSU_SELECTORS = {
 
 
 # ═══════════════════════════════════════════════════
-# BUILD EXAM_PORTAL_SOURCES — auto-generated list
+# BUILD EXAM_PORTAL_SOURCES - auto-generated list
 # ═══════════════════════════════════════════════════
 
 def build_exam_portal_sources() -> list[ExamPortalSource]:
@@ -2566,7 +2566,7 @@ EXAM_PORTAL_SOURCES: list[ExamPortalSource] = build_exam_portal_sources()
 
 ```python
 """
-GovScheme SuperAgent — Configuration
+GovScheme SuperAgent - Configuration
 All government portal sources, categories, and agent settings.
 """
 from dataclasses import dataclass, field
@@ -2660,7 +2660,7 @@ class PortalSource:
 
 
 # ─────────────────────────────────────────────
-# PRIMARY DATA SOURCES (Priority 1 — API-backed)
+# PRIMARY DATA SOURCES (Priority 1 - API-backed)
 # ─────────────────────────────────────────────
 
 PORTAL_SOURCES: list[PortalSource] = [
@@ -2841,7 +2841,7 @@ PORTAL_SOURCES: list[PortalSource] = [
         priority=2,
     ),
 
-    # ── Buddy4Study (aggregator — good for discovery) ──
+    # ── Buddy4Study (aggregator - good for discovery) ──
     PortalSource(
         name="Buddy4Study",
         base_url="https://www.buddy4study.com",
@@ -3022,7 +3022,7 @@ class AgentConfig:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# V3: EXAMINATION MODULE — PORTAL SOURCES, CONDUCTING BODIES, STATE PSCs
+# V3: EXAMINATION MODULE - PORTAL SOURCES, CONDUCTING BODIES, STATE PSCs
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -3046,7 +3046,7 @@ class ExamPortalSource:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# EXAM_BODIES — Maps body_code → metadata for all conducting organisations
+# EXAM_BODIES - Maps body_code → metadata for all conducting organisations
 # ─────────────────────────────────────────────────────────────────────────────
 
 EXAM_BODIES: dict[str, dict] = {
@@ -3176,7 +3176,7 @@ EXAM_BODIES: dict[str, dict] = {
 
     # ── INTELLIGENCE / INVESTIGATIVE ──
     "IB": {
-        "full_name": "Intelligence Bureau — MHA",
+        "full_name": "Intelligence Bureau - MHA",
         "website": "https://mha.gov.in",
         "career_url": "https://mha.gov.in/en/commentsbox/recruitment",
         "notifications_url": "https://mha.gov.in/division_of_mha/intelligence-bureau",
@@ -3203,7 +3203,7 @@ EXAM_BODIES: dict[str, dict] = {
 
     # ── SCIENCE / RESEARCH / DEFENCE PSU ──
     "DRDO": {
-        "full_name": "Defence Research & Development Organisation — CEPTAM",
+        "full_name": "Defence Research & Development Organisation - CEPTAM",
         "website": "https://drdo.gov.in",
         "career_url": "https://ceptam.drdo.gov.in",
         "ceptam_url": "https://ceptam.drdo.gov.in/ceptam-latest-news.php",
@@ -3216,7 +3216,7 @@ EXAM_BODIES: dict[str, dict] = {
         "rss_url": None,
     },
     "BARC": {
-        "full_name": "Bhabha Atomic Research Centre — OCES/DGFS",
+        "full_name": "Bhabha Atomic Research Centre - OCES/DGFS",
         "website": "https://barc.gov.in",
         "career_url": "https://www.barc.gov.in/careers/",
         "oces_url": "https://oces.hbni.ac.in",
@@ -3230,7 +3230,7 @@ EXAM_BODIES: dict[str, dict] = {
         "rss_url": None,
     },
     "DAE": {
-        "full_name": "Department of Atomic Energy — NPCIL/IGCAR etc.",
+        "full_name": "Department of Atomic Energy - NPCIL/IGCAR etc.",
         "website": "https://dae.gov.in",
         "career_url": "https://dae.gov.in/?q=node/244",
         "rss_url": None,
@@ -3280,7 +3280,7 @@ EXAM_BODIES: dict[str, dict] = {
         "rss_url": None,
     },
 
-    # ── PSU — ENERGY & INFRASTRUCTURE ──
+    # ── PSU - ENERGY & INFRASTRUCTURE ──
     "ONGC": {
         "full_name": "Oil & Natural Gas Corporation",
         "website": "https://ongcindia.com",
@@ -3330,7 +3330,7 @@ EXAM_BODIES: dict[str, dict] = {
         "rss_url": None,
     },
 
-    # ── PSU — MANUFACTURING & DEFENCE ──
+    # ── PSU - MANUFACTURING & DEFENCE ──
     "BHEL": {
         "full_name": "Bharat Heavy Electricals Ltd",
         "website": "https://bhel.com",
@@ -3402,7 +3402,7 @@ EXAM_BODIES: dict[str, dict] = {
         "rss_url": None,
     },
     "CTET": {
-        "full_name": "Central Teacher Eligibility Test — CBSE",
+        "full_name": "Central Teacher Eligibility Test - CBSE",
         "website": "https://ctet.nic.in",
         "career_url": "https://ctet.nic.in",
         "rss_url": None,
@@ -3477,7 +3477,7 @@ EXAM_BODIES: dict[str, dict] = {
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STATE PSC PORTAL REGISTRY — All 28 States + Delhi + J&K
+# STATE PSC PORTAL REGISTRY - All 28 States + Delhi + J&K
 # ─────────────────────────────────────────────────────────────────────────────
 
 STATE_PSC_PORTALS: dict[str, dict] = {
@@ -3732,7 +3732,7 @@ PSU_SELECTORS = {
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# RRB BOARDS — all 21 Railway Recruitment Boards
+# RRB BOARDS - all 21 Railway Recruitment Boards
 # ─────────────────────────────────────────────────────────────────────────────
 
 RRB_BOARDS: list[tuple[str, str]] = [
@@ -3761,7 +3761,7 @@ RRB_BOARDS: list[tuple[str, str]] = [
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# EXAM_PORTAL_SOURCES — Complete list of 150+ exam portal source configs
+# EXAM_PORTAL_SOURCES - Complete list of 150+ exam portal source configs
 # ─────────────────────────────────────────────────────────────────────────────
 
 EXAM_PORTAL_SOURCES: list[ExamPortalSource] = []
@@ -3891,7 +3891,7 @@ def _build_exam_portal_sources() -> list[ExamPortalSource]:
             exam_category="Police", exam_level="Central", priority=1,
         ))
 
-    # ── Group H: Railways — 21 RRBs + RPF (Priority 1) ──
+    # ── Group H: Railways - 21 RRBs + RPF (Priority 1) ──
     for rrb_name, rrb_url in RRB_BOARDS:
         sources.append(ExamPortalSource(
             body_code="RRB", name=rrb_name,
@@ -4069,7 +4069,7 @@ EXAM_PORTAL_SOURCES = _build_exam_portal_sources()
 
 ```python
 """
-GovScheme SuperAgent — Discovery Crawler Agent
+GovScheme SuperAgent - Discovery Crawler Agent
 Crawls government portals to discover scheme listings.
 Handles API-based, HTML-based, and paginated crawling strategies.
 """
@@ -4624,7 +4624,7 @@ class DiscoveryCrawler:
 
 ```python
 """
-GovScheme SuperAgent — Exam Alert Engine (V3)
+GovScheme SuperAgent - Exam Alert Engine (V3)
 Generates urgency-ranked alerts for approaching deadlines, upcoming exams,
 admit card releases, and result declarations.
 """
@@ -4797,12 +4797,12 @@ class ExamAlertEngine:
         if days is None:
             return "UNKNOWN"
         if days <= 2:
-            return "CRITICAL"    # Red — immediate action
+            return "CRITICAL"    # Red - immediate action
         if days <= 7:
-            return "HIGH"        # Orange — this week
+            return "HIGH"        # Orange - this week
         if days <= 15:
-            return "MEDIUM"      # Yellow — next two weeks
-        return "LOW"             # Blue — more than 2 weeks
+            return "MEDIUM"      # Yellow - next two weeks
+        return "LOW"             # Blue - more than 2 weeks
 
     @staticmethod
     def get_urgency_emoji(days: Optional[int]) -> str:
@@ -4874,7 +4874,7 @@ class ExamAlertEngine:
 
 ```python
 """
-GovScheme SuperAgent — Exam Discovery Crawler
+GovScheme SuperAgent - Exam Discovery Crawler
 Crawls 150+ government career/recruitment portals to discover exam notifications.
 Integrates with resilience layer: circuit breaker, adaptive rate limiting,
 JS rendering, CAPTCHA detection, selector self-healing.
@@ -5304,7 +5304,7 @@ class ExamDiscoveryCrawler:
 
 ```python
 """
-GovScheme SuperAgent — Exam Database (SQLite Persistence)
+GovScheme SuperAgent - Exam Database (SQLite Persistence)
 Tracks all government exams across daily runs with change detection.
 Tables: exams (50+ cols), exam_changes (audit log), exam_runs (daily logs).
 """
@@ -5541,7 +5541,7 @@ class ExamDatabase:
                 conn.commit()
                 return ExamChangeType.New_Notification
 
-            # Existing — check for changes
+            # Existing - check for changes
             old_hash = existing["detail_hash"]
             new_hash = parsed.raw.detail_hash
 
@@ -5557,7 +5557,7 @@ class ExamDatabase:
                 conn.commit()
                 return ExamChangeType.Unchanged
 
-            # Changed — determine what changed
+            # Changed - determine what changed
             change_type = ExamChangeType.Notification_Amended
             changes_detected = []
 
@@ -5871,7 +5871,7 @@ class ExamDatabase:
 
 ```python
 """
-GovScheme SuperAgent — Exam Data Models (V3)
+GovScheme SuperAgent - Exam Data Models (V3)
 Complete Pydantic models for the Government Examinations pipeline.
 Covers: UPSC, SSC, IBPS, NTA, Defence, Railways, State PSCs, PSUs, and 150+ portals.
 """
@@ -6191,7 +6191,7 @@ class ExamDailyReport(BaseModel):
 
 ```python
 """
-GovScheme SuperAgent — Exam Parser (V3)
+GovScheme SuperAgent - Exam Parser (V3)
 LLM + regex hybrid: extracts dates, fees, vacancies, eligibility from exam notifications.
 Handles Indian date formats, category-wise fees, multi-phase exam schedules.
 """
@@ -7122,12 +7122,12 @@ def _extract_first_date(text: str) -> Optional[str]:
 
 ```python
 """
-GovScheme SuperAgent — Exam Storage Agent (V3)
+GovScheme SuperAgent - Exam Storage Agent (V3)
 Builds organized folder hierarchy under output/examinations/ with 4 outputs per exam:
-  1. metadata.json — structured JSON
-  2. exam_details.md — human-readable Markdown
-  3. website.url — Windows URL shortcut
-  4. notification_*.pdf — downloaded notification PDFs
+  1. metadata.json - structured JSON
+  2. exam_details.md - human-readable Markdown
+  3. website.url - Windows URL shortcut
+  4. notification_*.pdf - downloaded notification PDFs
 """
 from __future__ import annotations
 
@@ -7441,31 +7441,31 @@ class ExamStorageAgent:
             lines.append("| Event | Date | Days Away |")
             lines.append("|-------|------|-----------|")
             if parsed.notification_date:
-                lines.append(f"| Notification Date | {parsed.notification_date} | — |")
+                lines.append(f"| Notification Date | {parsed.notification_date} | - |")
             if parsed.application_start_date:
-                lines.append(f"| Application Opens | {parsed.application_start_date} | — |")
+                lines.append(f"| Application Opens | {parsed.application_start_date} | - |")
             if parsed.application_end_date:
-                days_str = f"{parsed.days_until_application_close}" if parsed.days_until_application_close is not None else "—"
+                days_str = f"{parsed.days_until_application_close}" if parsed.days_until_application_close is not None else "-"
                 lines.append(f"| ⚠️ Application Closes | **{parsed.application_end_date}** | **{days_str}** |")
             if parsed.fee_payment_deadline:
-                lines.append(f"| Fee Payment Deadline | {parsed.fee_payment_deadline} | — |")
+                lines.append(f"| Fee Payment Deadline | {parsed.fee_payment_deadline} | - |")
             if parsed.correction_window_start:
-                lines.append(f"| Correction Window | {parsed.correction_window_start} to {parsed.correction_window_end or '—'} | — |")
+                lines.append(f"| Correction Window | {parsed.correction_window_start} to {parsed.correction_window_end or '-'} | - |")
             for phase in parsed.phases:
                 if phase.admit_card_date:
-                    lines.append(f"| 🎫 Admit Card ({phase.phase_name}) | {phase.admit_card_date} | — |")
+                    lines.append(f"| 🎫 Admit Card ({phase.phase_name}) | {phase.admit_card_date} | - |")
                 if phase.exam_date_start:
                     end = f" to {phase.exam_date_end}" if phase.exam_date_end else ""
-                    days_str = f"{parsed.days_until_exam}" if parsed.days_until_exam is not None else "—"
+                    days_str = f"{parsed.days_until_exam}" if parsed.days_until_exam is not None else "-"
                     lines.append(f"| 📝 Exam ({phase.phase_name}) | **{phase.exam_date_start}{end}** | **{days_str}** |")
                 if phase.result_date:
-                    lines.append(f"| 📊 Result ({phase.phase_name}) | {phase.result_date} | — |")
+                    lines.append(f"| 📊 Result ({phase.phase_name}) | {phase.result_date} | - |")
             if parsed.interview_date:
-                lines.append(f"| 🎤 Interview | {parsed.interview_date} | — |")
+                lines.append(f"| 🎤 Interview | {parsed.interview_date} | - |")
             if parsed.final_result_date:
-                lines.append(f"| 🏆 Final Result | {parsed.final_result_date} | — |")
+                lines.append(f"| 🏆 Final Result | {parsed.final_result_date} | - |")
             if parsed.joining_date:
-                lines.append(f"| 🏢 Joining | {parsed.joining_date} | — |")
+                lines.append(f"| 🏢 Joining | {parsed.joining_date} | - |")
             lines.append("")
 
         # Fees
@@ -7508,8 +7508,8 @@ class ExamStorageAgent:
             lines.append("| Post | Vacancies | Pay Scale |")
             lines.append("|------|-----------|-----------|")
             for v in parsed.vacancies:
-                vac = str(v.total_vacancies) if v.total_vacancies else "—"
-                pay = v.pay_scale or v.pay_band or "—"
+                vac = str(v.total_vacancies) if v.total_vacancies else "-"
+                pay = v.pay_scale or v.pay_band or "-"
                 lines.append(f"| {v.post_name} | {vac} | {pay} |")
             lines.append("")
 
@@ -7521,7 +7521,7 @@ class ExamStorageAgent:
             lines.append("## ✅ Eligibility")
             lines.append("")
             if elig.age_min or elig.age_max:
-                age_range = f"{elig.age_min or '—'} to {elig.age_max or '—'} years"
+                age_range = f"{elig.age_min or '-'} to {elig.age_max or '-'} years"
                 if elig.age_as_on_date:
                     age_range += f" (as on {elig.age_as_on_date})"
                 lines.append(f"- **Age:** {age_range}")
@@ -7656,7 +7656,7 @@ class ExamStorageAgent:
             encoding="utf-8",
         )
 
-        # exam_calendar.json — sorted by date
+        # exam_calendar.json - sorted by date
         calendar = []
         for s in all_stored:
             p = s.parsed
@@ -7732,7 +7732,7 @@ class ExamStorageAgent:
 
 ```python
 """
-GovScheme SuperAgent — Notification Dispatcher
+GovScheme SuperAgent - Notification Dispatcher
 Sends daily crawl reports via:
   1. Email (SMTP with Excel attachment)
   2. Slack webhook (summary + link)
@@ -7890,7 +7890,7 @@ class NotificationDispatcher:
             return False
 
     def _email_subject(self, report: DailyRunReport, exam_report=None) -> str:
-        parts = [f"GovScheme Daily Report — {report.run_date}"]
+        parts = [f"GovScheme Daily Report - {report.run_date}"]
         if report.new_schemes > 0:
             parts.append(f"🆕 {report.new_schemes} New")
         if report.deadlines_within_7_days > 0:
@@ -7990,7 +7990,7 @@ class NotificationDispatcher:
                 {self._build_exam_email_section(exam_report) if exam_report else ''}
 
                 <p style="color:#999;font-size:12px;margin-top:30px;border-top:1px solid #ddd;padding-top:10px;">
-                    GovScheme SuperAgent — Automated daily crawl report.<br>
+                    GovScheme SuperAgent - Automated daily crawl report.<br>
                     Full Excel report attached. Open the "Approaching Deadlines" sheet for urgent action items.
                 </p>
             </div>
@@ -8009,7 +8009,7 @@ class NotificationDispatcher:
                     "type": "header",
                     "text": {
                         "type": "plain_text",
-                        "text": f"📊 GovScheme Daily Report — {report.run_date}",
+                        "text": f"📊 GovScheme Daily Report - {report.run_date}",
                     },
                 },
                 {
@@ -8121,7 +8121,7 @@ class NotificationDispatcher:
 
     def _log_console_summary(self, report: DailyRunReport) -> None:
         logger.info("=" * 60)
-        logger.info("DAILY RUN REPORT — %s", report.run_date)
+        logger.info("DAILY RUN REPORT - %s", report.run_date)
         logger.info("=" * 60)
         logger.info("Total in DB:        %d", report.total_schemes_in_db)
         logger.info("New schemes:        %d", report.new_schemes)
@@ -8209,7 +8209,7 @@ class NotificationDispatcher:
 
 ```python
 """
-GovScheme SuperAgent — OpenClaw Skill Integration
+GovScheme SuperAgent - OpenClaw Skill Integration
 Exposes the agent pipeline as an OpenClaw skill for the buildathon.
 """
 from __future__ import annotations
@@ -8369,7 +8369,7 @@ async def heartbeat() -> dict:
 
 ```python
 """
-GovScheme SuperAgent — Orchestrator
+GovScheme SuperAgent - Orchestrator
 The CEO agent that coordinates Discovery → Dedup → Classification → Storage pipeline.
 """
 from __future__ import annotations
@@ -8423,7 +8423,7 @@ console = Console()
 
 class Orchestrator:
     """
-    The CEO Agent — coordinates the full pipeline:
+    The CEO Agent - coordinates the full pipeline:
     1. Discovery: Crawl all government portals
     2. Dedup: Remove duplicate schemes
     3. Enrichment: Fetch detail pages for more data
@@ -8449,7 +8449,7 @@ class Orchestrator:
         self.exam_alert = ExamAlertEngine(self.exam_db)
 
     # ═══════════════════════════════════════════════════
-    # DAILY PIPELINE — The primary scheduled execution
+    # DAILY PIPELINE - The primary scheduled execution
     # ═══════════════════════════════════════════════════
 
     async def run_daily_pipeline(
@@ -8480,7 +8480,7 @@ class Orchestrator:
             mode_label = "exams only"
 
         console.print(Panel.fit(
-            "[bold cyan]GovScheme + GovExam SuperAgent — Daily Pipeline[/bold cyan]\n"
+            "[bold cyan]GovScheme + GovExam SuperAgent - Daily Pipeline[/bold cyan]\n"
             f"Run ID: {run_id} | Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n"
             f"Mode: {mode_label}",
             border_style="cyan",
@@ -8496,7 +8496,7 @@ class Orchestrator:
         console.print("\n[bold green]═══ SCHEMES PIPELINE ════════════════════════════════════[/bold green]")
 
         # ── Phase 1: DISCOVERY ──
-        console.print("\n[bold green]Phase 1/14: DISCOVERY[/bold green] — Crawling government portals...")
+        console.print("\n[bold green]Phase 1/14: DISCOVERY[/bold green] - Crawling government portals...")
         start = time.time()
         try:
             raw_schemes = await self.discovery.crawl_all_sources()
@@ -8513,7 +8513,7 @@ class Orchestrator:
             return self._empty_daily_report(run_id, run_started, errors + 1)
 
         # ── Phase 2: DEDUPLICATION ──
-        console.print("\n[bold green]Phase 2/14: DEDUPLICATION[/bold green] — Removing duplicates...")
+        console.print("\n[bold green]Phase 2/14: DEDUPLICATION[/bold green] - Removing duplicates...")
         start = time.time()
         unique_schemes = self.dedup.deduplicate_batch(raw_schemes)
         self.progress.duplicates_found = len(raw_schemes) - len(unique_schemes)
@@ -8523,7 +8523,7 @@ class Orchestrator:
         )
 
         # ── Phase 3: ENRICHMENT ──
-        console.print("\n[bold green]Phase 3/14: ENRICHMENT[/bold green] — Fetching scheme details...")
+        console.print("\n[bold green]Phase 3/14: ENRICHMENT[/bold green] - Fetching scheme details...")
         start = time.time()
         needs_enrichment = [s for s in unique_schemes if not s.raw_description]
         if needs_enrichment:
@@ -8542,7 +8542,7 @@ class Orchestrator:
         console.print(f"  ✓ Enrichment complete in {time.time()-start:.1f}s")
 
         # ── Phase 4: CLASSIFICATION ──
-        console.print("\n[bold green]Phase 4/14: CLASSIFICATION[/bold green] — LLM categorization + date/fee extraction...")
+        console.print("\n[bold green]Phase 4/14: CLASSIFICATION[/bold green] - LLM categorization + date/fee extraction...")
         start = time.time()
         has_llm = bool(self.config.anthropic_api_key or self.config.openai_api_key)
 
@@ -8557,7 +8557,7 @@ class Orchestrator:
                 classified = [self.classifier._fallback_classify(s) for s in unique_schemes]
                 errors += 1
         else:
-            console.print("  [yellow]No LLM API key — using rule-based classification[/yellow]")
+            console.print("  [yellow]No LLM API key - using rule-based classification[/yellow]")
             classified = [self.classifier._fallback_classify(s) for s in unique_schemes]
 
         self.progress.schemes_classified = len(classified)
@@ -8566,7 +8566,7 @@ class Orchestrator:
         )
 
         # ── Phase 5: CHANGE DETECTION ──
-        console.print("\n[bold green]Phase 5/14: CHANGE DETECTION[/bold green] — Comparing against database...")
+        console.print("\n[bold green]Phase 5/14: CHANGE DETECTION[/bold green] - Comparing against database...")
         start = time.time()
         change_agent = ChangeDetectionAgent(self.db)
         annotated = change_agent.process_classified_batch(classified, run_id)
@@ -8584,7 +8584,7 @@ class Orchestrator:
         )
 
         # ── Phase 6: STORAGE ──
-        console.print("\n[bold green]Phase 6/14: STORAGE[/bold green] — Organizing into folders...")
+        console.print("\n[bold green]Phase 6/14: STORAGE[/bold green] - Organizing into folders...")
         start = time.time()
         try:
             stored = await self.storage.store_batch(annotated, max_concurrent=5)
@@ -8602,7 +8602,7 @@ class Orchestrator:
             logger.warning("Report generation partially failed: %s", e)
 
         # ── Phase 7: EXCEL REPORT ──
-        console.print("\n[bold green]Phase 7/14: EXCEL REPORT[/bold green] — Generating tracking workbook...")
+        console.print("\n[bold green]Phase 7/14: EXCEL REPORT[/bold green] - Generating tracking workbook...")
         start = time.time()
         run_completed = datetime.utcnow()
         daily_report = change_agent.generate_daily_report(
@@ -8620,7 +8620,7 @@ class Orchestrator:
             errors += 1
 
         # ── Phase 8: SCHEME NOTIFY ──
-        console.print("\n[bold green]Phase 8/14: SCHEME NOTIFY[/bold green] — Dispatching scheme reports...")
+        console.print("\n[bold green]Phase 8/14: SCHEME NOTIFY[/bold green] - Dispatching scheme reports...")
         try:
             notifier = NotificationDispatcher()
             results = notifier.dispatch(daily_report, excel_path)
@@ -8633,7 +8633,7 @@ class Orchestrator:
             logger.warning("Notification dispatch failed: %s", e)
 
         # ═══════════════════════════════════════════════════
-        # EXAMS PIPELINE (Phases 9–14) — V3
+        # EXAMS PIPELINE (Phases 9–14) - V3
         # ═══════════════════════════════════════════════════
         exam_report = None
         if self.config.run_exam_pipeline and not skip_exams:
@@ -8672,7 +8672,7 @@ class Orchestrator:
         total_phases = 14
 
         # ── Phase 9: EXAM DISCOVERY ──
-        console.print(f"\n[bold magenta]Phase 9/{total_phases}: EXAM DISCOVERY[/bold magenta] — Crawling 150+ exam portals...")
+        console.print(f"\n[bold magenta]Phase 9/{total_phases}: EXAM DISCOVERY[/bold magenta] - Crawling 150+ exam portals...")
         start = time.time()
         try:
             raw_exams = await self.exam_crawler.crawl_all_exam_sources(EXAM_PORTAL_SOURCES)
@@ -8691,7 +8691,7 @@ class Orchestrator:
             )
 
         # ── Phase 10: EXAM DEDUP ──
-        console.print(f"\n[bold magenta]Phase 10/{total_phases}: EXAM DEDUP[/bold magenta] — Removing duplicates...")
+        console.print(f"\n[bold magenta]Phase 10/{total_phases}: EXAM DEDUP[/bold magenta] - Removing duplicates...")
         start = time.time()
         seen_hashes: set[str] = set()
         unique_exams = []
@@ -8704,7 +8704,7 @@ class Orchestrator:
         console.print(f"  ✓ [bold]{len(unique_exams)}[/bold] unique exams ({dupes} duplicates removed) in {time.time()-start:.1f}s")
 
         # ── Phase 11: EXAM PARSING ──
-        console.print(f"\n[bold magenta]Phase 11/{total_phases}: EXAM PARSING[/bold magenta] — Extracting dates, fees, vacancies...")
+        console.print(f"\n[bold magenta]Phase 11/{total_phases}: EXAM PARSING[/bold magenta] - Extracting dates, fees, vacancies...")
         start = time.time()
         try:
             parsed_exams = await self.exam_parser.parse_batch(
@@ -8722,7 +8722,7 @@ class Orchestrator:
         )
 
         # ── Phase 12: EXAM CHANGE DETECTION ──
-        console.print(f"\n[bold magenta]Phase 12/{total_phases}: EXAM CHANGE DETECT[/bold magenta] — Comparing against DB...")
+        console.print(f"\n[bold magenta]Phase 12/{total_phases}: EXAM CHANGE DETECT[/bold magenta] - Comparing against DB...")
         start = time.time()
         new_count, updated_count, unchanged_count = 0, 0, 0
         date_revised, vacancy_revised, fee_revised = 0, 0, 0
@@ -8764,7 +8764,7 @@ class Orchestrator:
         )
 
         # ── Phase 13: EXAM STORAGE ──
-        console.print(f"\n[bold magenta]Phase 13/{total_phases}: EXAM STORAGE[/bold magenta] — Building examinations/ folders...")
+        console.print(f"\n[bold magenta]Phase 13/{total_phases}: EXAM STORAGE[/bold magenta] - Building examinations/ folders...")
         start = time.time()
         stored_count = 0
         try:
@@ -8850,7 +8850,7 @@ class Orchestrator:
     def _print_daily_summary(self, report: DailyRunReport, exam_report: ExamDailyReport | None = None) -> None:
         """Print the daily run summary with Rich tables."""
         table = Table(
-            title=f"GovScheme + GovExam — Combined Daily Report — {report.run_date}",
+            title=f"GovScheme + GovExam - Combined Daily Report - {report.run_date}",
             border_style="cyan",
         )
         table.add_column("Metric", style="bold")
@@ -8917,7 +8917,7 @@ class Orchestrator:
         ))
 
         # ── Phase 1: DISCOVERY ──
-        console.print("\n[bold green]Phase 1: DISCOVERY[/bold green] — Crawling government portals...")
+        console.print("\n[bold green]Phase 1: DISCOVERY[/bold green] - Crawling government portals...")
         start = time.time()
 
         raw_schemes = await self.discovery.crawl_all_sources()
@@ -8931,7 +8931,7 @@ class Orchestrator:
             return
 
         # ── Phase 2: DEDUPLICATION ──
-        console.print("\n[bold green]Phase 2: DEDUPLICATION[/bold green] — Removing duplicates...")
+        console.print("\n[bold green]Phase 2: DEDUPLICATION[/bold green] - Removing duplicates...")
         start = time.time()
 
         unique_schemes = self.dedup.deduplicate_batch(raw_schemes)
@@ -8944,7 +8944,7 @@ class Orchestrator:
         )
 
         # ── Phase 3: ENRICHMENT ──
-        console.print("\n[bold green]Phase 3: ENRICHMENT[/bold green] — Fetching scheme details...")
+        console.print("\n[bold green]Phase 3: ENRICHMENT[/bold green] - Fetching scheme details...")
         start = time.time()
 
         # Enrich top-priority schemes first (those missing descriptions)
@@ -8964,7 +8964,7 @@ class Orchestrator:
         console.print(f"  ✓ Enrichment complete in {time.time()-start:.1f}s")
 
         # ── Phase 4: CLASSIFICATION ──
-        console.print("\n[bold green]Phase 4: CLASSIFICATION[/bold green] — LLM-powered categorization...")
+        console.print("\n[bold green]Phase 4: CLASSIFICATION[/bold green] - LLM-powered categorization...")
         start = time.time()
 
         # Check if we have an API key for LLM classification
@@ -8978,7 +8978,7 @@ class Orchestrator:
                 batch_size=10,
             )
         else:
-            console.print("  [yellow]No LLM API key found — using rule-based classification[/yellow]")
+            console.print("  [yellow]No LLM API key found - using rule-based classification[/yellow]")
             classified = [
                 self.classifier._fallback_classify(s)
                 for s in unique_schemes
@@ -8994,7 +8994,7 @@ class Orchestrator:
         )
 
         # ── Phase 5: STORAGE ──
-        console.print("\n[bold green]Phase 5: STORAGE[/bold green] — Organizing into folders...")
+        console.print("\n[bold green]Phase 5: STORAGE[/bold green] - Organizing into folders...")
         start = time.time()
 
         stored = await self.storage.store_batch(classified, max_concurrent=5)
@@ -9004,7 +9004,7 @@ class Orchestrator:
         console.print(f"  ✓ Stored [bold]{len(stored)}[/bold] schemes in {time.time()-start:.1f}s")
 
         # ── Phase 6: REPORTING ──
-        console.print("\n[bold green]Phase 6: REPORTING[/bold green] — Generating summary reports...")
+        console.print("\n[bold green]Phase 6: REPORTING[/bold green] - Generating summary reports...")
 
         await self.storage.generate_reports(stored)
         self._print_final_summary(stored)
@@ -9028,7 +9028,7 @@ class Orchestrator:
 
     def _print_final_summary(self, stored) -> None:
         """Print the final summary table."""
-        table = Table(title="GovScheme SuperAgent — Final Report", border_style="cyan")
+        table = Table(title="GovScheme SuperAgent - Final Report", border_style="cyan")
         table.add_column("Metric", style="bold")
         table.add_column("Value", justify="right")
 
@@ -9069,7 +9069,7 @@ class Orchestrator:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="GovScheme + GovExam SuperAgent — Government Scheme & Exam Crawler")
+    parser = argparse.ArgumentParser(description="GovScheme + GovExam SuperAgent - Government Scheme & Exam Crawler")
     parser.add_argument(
         "--mode",
         choices=["full", "daily", "discover", "classify", "store", "report-only", "exams-only", "schemes-only"],
@@ -9153,7 +9153,7 @@ if __name__ == "__main__":
 
 ```python
 """
-GovScheme SuperAgent — Adaptive Crawler Resilience Layer
+GovScheme SuperAgent - Adaptive Crawler Resilience Layer
 Addresses EVERY crawler limitation identified:
 
 1. JS-HEAVY SITES (UPSC, RBI, State PSCs)
@@ -9285,15 +9285,15 @@ class AdaptiveRateLimiter:
         current = self._domain_delays.get(domain, self.base_delay)
 
         if status_code in (429, 503, 529):
-            # Rate limited or overloaded — back off hard
+            # Rate limited or overloaded - back off hard
             new_delay = min(current * 2.5, self.max_delay)
             logger.warning("Rate limited on %s (HTTP %d), delay → %.1fs", domain, status_code, new_delay)
         elif status_code == 403:
-            # Possibly blocked — significant backoff
+            # Possibly blocked - significant backoff
             new_delay = min(current * 3.0, self.max_delay)
             logger.warning("Blocked on %s (403), delay → %.1fs", domain, new_delay)
         elif status_code < 400:
-            # Success — slowly decrease delay back toward base
+            # Success - slowly decrease delay back toward base
             new_delay = max(current * 0.9, self.base_delay)
         else:
             new_delay = current
@@ -9387,7 +9387,7 @@ def _check_playwright() -> bool:
         _PLAYWRIGHT_AVAILABLE = True
     except ImportError:
         _PLAYWRIGHT_AVAILABLE = False
-        logger.info("Playwright not installed — JS rendering disabled. Install with: pip install playwright && playwright install chromium")
+        logger.info("Playwright not installed - JS rendering disabled. Install with: pip install playwright && playwright install chromium")
     return _PLAYWRIGHT_AVAILABLE
 
 
@@ -9725,7 +9725,7 @@ class ProxyRotator:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 8. RESILIENT FETCH — Combines everything above
+# 8. RESILIENT FETCH - Combines everything above
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class ResilientFetcher:
@@ -9843,7 +9843,7 @@ class ResilientFetcher:
 
 ```python
 """
-GovScheme SuperAgent — LLM Response Hardener
+GovScheme SuperAgent - LLM Response Hardener
 Addresses limitation: "Claude/GPT will sometimes return malformed JSON,
 hallucinate dates, or misclassify exams."
 
@@ -10007,7 +10007,7 @@ class LLMResponseHardener:
             return text
 
         if brace_end <= brace_start:
-            # Missing closing brace — try to fix
+            # Missing closing brace - try to fix
             candidate = text[brace_start:]
         else:
             candidate = text[brace_start : brace_end + 1]
@@ -10112,7 +10112,7 @@ class LLMResponseHardener:
             if re.sub(r'[\s\-_]+', '_', v.lower()) == normalized:
                 return v, 0.03
 
-        # No match — return original (will be caught by Pydantic validation)
+        # No match - return original (will be caught by Pydantic validation)
         logger.warning("No enum match for '%s' in %s", value, valid_values[:5])
         return value, 0.1
 
@@ -10127,14 +10127,14 @@ class LLMResponseHardener:
         parsed = self._try_parse_date(value)
         if parsed is None:
             logger.debug("Unparseable date in %s: '%s'", field_name, value)
-            return value, 0.05  # Keep raw — might be parseable downstream
+            return value, 0.05  # Keep raw - might be parseable downstream
 
         year = parsed.year
 
         # Plausibility check
         if year < MIN_PLAUSIBLE_YEAR:
             logger.warning("Implausible past date in %s: %s (year %d)", field_name, value, year)
-            return None, 0.15  # Nullify — almost certainly hallucinated
+            return None, 0.15  # Nullify - almost certainly hallucinated
 
         if year > MAX_PLAUSIBLE_YEAR:
             logger.warning("Implausible future date in %s: %s (year %d)", field_name, value, year)
@@ -10243,7 +10243,7 @@ def create_exam_hardener() -> LLMResponseHardener:
 
 ```python
 """
-GovScheme SuperAgent — Portal Health Monitor + Circuit Breaker
+GovScheme SuperAgent - Portal Health Monitor + Circuit Breaker
 Tracks per-portal reliability across runs. Implements circuit breaker
 to skip portals that are consistently failing, saving time and avoiding
 IP bans from hammering broken sites.
@@ -10271,9 +10271,9 @@ logger = logging.getLogger("portal_health")
 
 
 class CircuitState(str, Enum):
-    CLOSED = "closed"       # Healthy — allow all requests
-    OPEN = "open"           # Failing — skip requests
-    HALF_OPEN = "half_open" # Testing — allow 1 probe request
+    CLOSED = "closed"       # Healthy - allow all requests
+    OPEN = "open"           # Failing - skip requests
+    HALF_OPEN = "half_open" # Testing - allow 1 probe request
 
 
 @dataclass
@@ -10415,14 +10415,14 @@ class PortalHealthMonitor:
                     cooldown_end = datetime.fromisoformat(record.cooldown_until)
                     if datetime.utcnow() < cooldown_end:
                         logger.debug(
-                            "Skipping %s — circuit OPEN, cooldown until %s",
+                            "Skipping %s - circuit OPEN, cooldown until %s",
                             portal_name, record.cooldown_until,
                         )
                         return False
                 except (ValueError, TypeError):
                     pass
 
-            # Cooldown expired — transition to HALF_OPEN
+            # Cooldown expired - transition to HALF_OPEN
             self._transition(portal_name, CircuitState.HALF_OPEN)
             return True
 
@@ -10468,7 +10468,7 @@ class PortalHealthMonitor:
         if record.circuit_state == CircuitState.HALF_OPEN:
             if record.consecutive_successes >= SUCCESS_THRESHOLD:
                 self._transition(portal_name, CircuitState.CLOSED)
-                logger.info("Portal %s recovered — circuit CLOSED", portal_name)
+                logger.info("Portal %s recovered - circuit CLOSED", portal_name)
         elif record.circuit_state == CircuitState.OPEN:
             self._transition(portal_name, CircuitState.CLOSED)
 
@@ -10505,7 +10505,7 @@ class PortalHealthMonitor:
 
         # State transitions
         if record.circuit_state == CircuitState.HALF_OPEN:
-            # Probe failed — back to OPEN with longer cooldown
+            # Probe failed - back to OPEN with longer cooldown
             cooldown = min(
                 COOLDOWN_MINUTES * (2 ** min(record.total_failures // FAILURE_THRESHOLD, 5)),
                 MAX_COOLDOWN_MINUTES,
@@ -10514,7 +10514,7 @@ class PortalHealthMonitor:
                 cooldown = max(cooldown, BLOCKED_COOLDOWN_HOURS * 60)
             self._transition(portal_name, CircuitState.OPEN, cooldown_minutes=cooldown)
             logger.warning(
-                "Portal %s probe failed — circuit OPEN, cooldown %d min",
+                "Portal %s probe failed - circuit OPEN, cooldown %d min",
                 portal_name, cooldown,
             )
 
@@ -10751,7 +10751,7 @@ class PortalHealthMonitor:
 
 ```python
 """
-GovScheme SuperAgent — Daily Scheduler
+GovScheme SuperAgent - Daily Scheduler
 Runs the crawl pipeline on a configurable schedule:
   - Daily at 6:00 AM IST (default)
   - Configurable via CRAWL_SCHEDULE_HOUR and CRAWL_SCHEDULE_MINUTE
@@ -10860,7 +10860,7 @@ class DailyScheduler:
     def run_once(self) -> Optional[DailyRunReport]:
         """Execute a single crawl run. Returns the daily report."""
         if not self._acquire_lock():
-            logger.error("Cannot acquire lock — another instance is running")
+            logger.error("Cannot acquire lock - another instance is running")
             return None
 
         run_id = _generate_run_id()
@@ -10979,7 +10979,7 @@ class DailyScheduler:
         abs_dir = Path(project_dir).resolve()
         log_file = abs_dir / "logs" / "daily_cron.log"
         return (
-            f"# GovScheme SuperAgent — Daily crawl at {hour:02d}:{minute:02d} IST\n"
+            f"# GovScheme SuperAgent - Daily crawl at {hour:02d}:{minute:02d} IST\n"
             f"{minute} {hour} * * * "
             f"cd {abs_dir} && "
             f"{python_path} -m src.scheduler.daily_runner --once "
@@ -10999,7 +10999,7 @@ class DailyScheduler:
         user = user or os.getenv("USER", "root")
 
         service = f"""[Unit]
-Description=GovScheme SuperAgent — Daily Government Scheme Crawler
+Description=GovScheme SuperAgent - Daily Government Scheme Crawler
 After=network-online.target
 Wants=network-online.target
 
@@ -11019,7 +11019,7 @@ WantedBy=multi-user.target
 """
 
         timer = f"""[Unit]
-Description=GovScheme SuperAgent — Daily Schedule Timer
+Description=GovScheme SuperAgent - Daily Schedule Timer
 
 [Timer]
 OnCalendar=*-*-* {hour:02d}:{minute:02d}:00
@@ -11079,7 +11079,7 @@ def main():
     Path("logs").mkdir(exist_ok=True)
 
     parser = argparse.ArgumentParser(
-        description="GovScheme SuperAgent — Daily Scheduler"
+        description="GovScheme SuperAgent - Daily Scheduler"
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--daemon", action="store_true", help="Run as long-lived daemon")
@@ -11162,7 +11162,7 @@ if __name__ == "__main__":
 
 ```python
 """
-GovScheme SuperAgent — Database Persistence Layer
+GovScheme SuperAgent - Database Persistence Layer
 SQLite-backed scheme registry that persists across daily crawl runs.
 Tracks: first_seen, last_seen, detail_hash for change detection,
 start/end dates, fees, status lifecycle.
@@ -11365,7 +11365,7 @@ class SchemeDatabase:
                 return ChangeType.NEW
 
             else:
-                # ── EXISTING SCHEME — check for changes ──
+                # ── EXISTING SCHEME - check for changes ──
                 old_hash = existing["detail_hash"]
                 new_hash = scheme.raw_data.detail_hash
                 times = existing["times_seen"] + 1
@@ -11602,17 +11602,17 @@ class SchemeDatabase:
 
 ```python
 """
-GovScheme SuperAgent — Excel Report Generator
+GovScheme SuperAgent - Excel Report Generator
 Produces multi-sheet Excel workbooks for tracking, dashboarding, and daily reports.
 Sheets:
-  1. Master Tracker      — All schemes with dates, fees, status, amounts
-  2. New Schemes          — Schemes discovered in this run
-  3. Approaching Deadlines— Schemes with deadlines within 7/30 days
-  4. Sector Summary       — Pivot by sector with counts
-  5. State Summary        — Pivot by state with counts
-  6. Status Summary       — Active/Expired/Upcoming/Closed breakdown
-  7. Daily Run History    — Historical log of all daily crawl runs
-  8. Change Log           — All detected changes across runs
+  1. Master Tracker      - All schemes with dates, fees, status, amounts
+  2. New Schemes          - Schemes discovered in this run
+  3. Approaching Deadlines- Schemes with deadlines within 7/30 days
+  4. Sector Summary       - Pivot by sector with counts
+  5. State Summary        - Pivot by state with counts
+  6. Status Summary       - Active/Expired/Upcoming/Closed breakdown
+  7. Daily Run History    - Historical log of all daily crawl runs
+  8. Change Log           - All detected changes across runs
 """
 from __future__ import annotations
 
@@ -12146,7 +12146,7 @@ class ExcelReportGenerator:
 
         # Title
         ws.merge_cells("A1:F1")
-        title_cell = ws.cell(row=1, column=1, value="GovScheme SuperAgent — Dashboard")
+        title_cell = ws.cell(row=1, column=1, value="GovScheme SuperAgent - Dashboard")
         title_cell.font = Font(name="Arial", size=16, bold=True, color="1F4E79")
         title_cell.alignment = Alignment(horizontal="center")
 
@@ -12216,7 +12216,7 @@ class ExcelReportGenerator:
         ws.column_dimensions["B"].width = 12
 
     # ═══════════════════════════════════════
-    # EXAM SHEETS (V3 — Sheets 10–15)
+    # EXAM SHEETS (V3 - Sheets 10–15)
     # ═══════════════════════════════════════
 
     def _apply_exam_header(self, ws, headers: list[str]) -> None:
@@ -12260,7 +12260,7 @@ class ExcelReportGenerator:
             cell.fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
 
     def _build_exam_master_tracker(self, wb: Workbook) -> None:
-        """Sheet 10: Exam Master Tracker — all exams with 40 columns."""
+        """Sheet 10: Exam Master Tracker - all exams with 40 columns."""
         ws = wb.create_sheet("Exam Master Tracker")
         headers = [
             "S.No", "Exam Name", "Short Name", "Conducting Body", "Category",
@@ -12388,7 +12388,7 @@ class ExcelReportGenerator:
             ws.column_dimensions[col_letter].width = w
 
     def _build_exam_application_open(self, wb: Workbook) -> None:
-        """Sheet 11: Application Open Now — exams currently accepting applications."""
+        """Sheet 11: Application Open Now - exams currently accepting applications."""
         ws = wb.create_sheet("Application Open Now")
         headers = [
             "S.No", "Exam Name", "Conducting Body", "Category",
@@ -12437,7 +12437,7 @@ class ExcelReportGenerator:
             ws.column_dimensions[col_letter].width = w
 
     def _build_exam_calendar(self, wb: Workbook) -> None:
-        """Sheet 12: Exam Calendar — all upcoming events sorted chronologically."""
+        """Sheet 12: Exam Calendar - all upcoming events sorted chronologically."""
         ws = wb.create_sheet("Exam Calendar")
         headers = ["Date", "Exam Name", "Event Type", "Conducting Body", "Category", "Apply URL", "Days Away"]
         self._apply_exam_header(ws, headers)
@@ -12530,7 +12530,7 @@ class ExcelReportGenerator:
             ws.column_dimensions[col_letter].width = w
 
     def _build_exam_deadlines(self, wb: Workbook) -> None:
-        """Sheet 13: Exam Deadlines — application close + admit card + result dates."""
+        """Sheet 13: Exam Deadlines - application close + admit card + result dates."""
         ws = wb.create_sheet("Exam Deadlines")
         headers = [
             "S.No", "Exam Name", "Conducting Body", "Deadline Type",
@@ -12600,7 +12600,7 @@ class ExcelReportGenerator:
             ws.column_dimensions[col_letter].width = w
 
     def _build_exam_category_summary(self, wb: Workbook) -> None:
-        """Sheet 14: Exam Category Summary — count by category."""
+        """Sheet 14: Exam Category Summary - count by category."""
         ws = wb.create_sheet("Exam Category Summary")
         headers = ["Category", "Count", "% of Total"]
         self._apply_exam_header(ws, headers)
@@ -12645,7 +12645,7 @@ class ExcelReportGenerator:
         ws.column_dimensions["C"].width = 12
 
     def _build_exam_state_summary(self, wb: Workbook) -> None:
-        """Sheet 15: State Exam Summary — count by state for state-level exams."""
+        """Sheet 15: State Exam Summary - count by state for state-level exams."""
         ws = wb.create_sheet("State Exam Summary")
         headers = ["State", "Count", "% of State Total"]
         self._apply_exam_header(ws, headers)
@@ -12685,7 +12685,7 @@ class ExcelReportGenerator:
 
 ```python
 """
-GovScheme SuperAgent — Storage Agent
+GovScheme SuperAgent - Storage Agent
 Organizes classified schemes into structured folder hierarchies
 and downloads associated PDFs, forms, and guidelines.
 """

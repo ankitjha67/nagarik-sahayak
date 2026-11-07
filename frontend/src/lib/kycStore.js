@@ -8,8 +8,8 @@
 // **Only the verdict is stored, never the evidence.** A VerificationOutcome
 // comes back carrying `established` (the name, date of birth and address read
 // out of the document) and `matches` (a field-by-field comparison). None of
-// that is needed to make a decision — the gate reads the assurance level and
-// the fraud signal — so none of it is written to disk. Putting a citizen's
+// that is needed to make a decision - the gate reads the assurance level and
+// the fraud signal - so none of it is written to disk. Putting a citizen's
 // demographics into localStorage would spread personal data onto a device the
 // application does not control, for no gain.
 

@@ -1,12 +1,12 @@
 """Fraud and abuse detection for government benefit applications.
 
-THREAT MODEL — how this system would actually be abused:
+THREAT MODEL - how this system would actually be abused:
 
   T1 Identity fabrication   Invented Aadhaar numbers. Defeated cheaply by the
                             Verhoeff checksum in validation.py, so the realistic
                             attack is *reusing someone else's real* number.
   T2 Means-test gaming      Understating income, or declaring zero income while
-                            also declaring substantial land — the declarations
+                            also declaring substantial land - the declarations
                             contradict each other.
   T3 Demographic gaming     Claiming an age or gender the scheme requires:
                             "60" for an old-age pension, female for a widow
@@ -20,7 +20,7 @@ THREAT MODEL — how this system would actually be abused:
                             applicants are genuine; the account is the tell.
   T6 Volume abuse           Bulk/automated filing by an agent or script.
 
-DESIGN STANCE — why almost nothing here auto-rejects:
+DESIGN STANCE - why almost nothing here auto-rejects:
 
 A false positive in a welfare system means a poor person is denied money they
 are legally entitled to, and they usually have no practical way to appeal. A
@@ -30,7 +30,7 @@ symmetric, so this module *scores and routes* rather than refuses.
 Only two things stop an application outright, and neither lives here:
 objectively invalid data (validation.py) and failing the scheme's own stated
 eligibility rules (eligibility_engine.py). Everything in this file produces
-ALLOW / REVIEW / ESCALATE — a human decides.
+ALLOW / REVIEW / ESCALATE - a human decides.
 """
 from __future__ import annotations
 
@@ -261,7 +261,7 @@ def check_cross_applicant(history: ApplicantHistory) -> list[Signal]:
         signals.append(Signal(
             "bank_account_collection_point", ESCALATE_THRESHOLD,
             f"{h.users_sharing_bank_account} applicants are routing payment to "
-            f"this one bank account — consistent with benefit diversion.",
+            f"this one bank account - consistent with benefit diversion.",
             f"{h.users_sharing_bank_account} आवेदक इसी एक बैंक खाते में भुगतान ले रहे हैं।",
             threat="T5",
         ))
@@ -345,7 +345,7 @@ def check_identity_assurance(outcomes) -> list[Signal]:
 
     The positive direction is narrow on purpose: only a contradiction that
     cannot be a spelling or transliteration difference adds weight. Name
-    mismatches never reach here as suspicion — they arrive as review flags,
+    mismatches never reach here as suspicion - they arrive as review flags,
     because a married woman's maiden name on a bank account is not fraud.
     """
     signals: list[Signal] = []
@@ -407,7 +407,7 @@ def assess(
 async def build_history(user_id: str, profile: dict, scheme_name: str) -> ApplicantHistory:
     """Populate ApplicantHistory from stored users and applications.
 
-    Falls back to an empty (all-clear) history if the database is unreachable —
+    Falls back to an empty (all-clear) history if the database is unreachable -
     losing fraud signal is preferable to blocking a citizen because of an
     infrastructure fault.
     """
@@ -423,7 +423,7 @@ async def build_history(user_id: str, profile: dict, scheme_name: str) -> Applic
         # Shared-identifier counts, answered by indexed counting queries against
         # stored fingerprints. This previously loaded every user row and
         # compared in Python, which ran on the critical path of every single
-        # application — an O(users) scan per submission.
+        # application - an O(users) scan per submission.
         import identity_index
 
         fps = identity_index.fingerprints_for(profile)

@@ -1,7 +1,7 @@
 """Encryption at rest for generated documents.
 
 Profiles are encrypted in the database, but the documents produced from them sit
-on disk in the clear — and a filled application form carries the same name, bank
+on disk in the clear - and a filled application form carries the same name, bank
 account, income and address as the row it came from. Encrypting the database and
 leaving the PDFs beside it protects the harder target and ignores the easier one.
 

@@ -1,4 +1,4 @@
-"""KYC — identity verification that admits automatically and never refuses.
+"""KYC - identity verification that admits automatically and never refuses.
 
 The tests are organised around the two ways an identity system in a welfare
 context goes wrong:
@@ -9,7 +9,7 @@ nobody validated. TestHonesty pins the assurance level to what actually
 happened.
 
 **It excludes the people it exists to serve.** Every automated check here has a
-predictable false-negative population — the widow with a maiden name on her
+predictable false-negative population - the widow with a maiden name on her
 bank account, the labourer whose UIDAI record holds only a year of birth, the
 transgender applicant whose documents disagree with each other. TestNoOneIsShutOut
 asserts none of them is refused.
@@ -76,7 +76,7 @@ def _zipcrypt(zip_bytes: bytes, password: bytes) -> bytes:
     import struct
 
     # CRC-32 table, built from the polynomial rather than derived from
-    # binascii.crc32 — the library function applies an initial and final xor
+    # binascii.crc32 - the library function applies an initial and final xor
     # that a table lookup must not.
     table = []
     for i in range(256):
@@ -188,7 +188,7 @@ class TestMethodCatalogue:
         opts = options()
         assert len(opts) == len(METHODS)
         usable = [o["usable"] for o in opts]
-        # Usable methods first — an unusable one must never head the list.
+        # Usable methods first - an unusable one must never head the list.
         assert usable == sorted(usable, reverse=True)
         assert all("missingConfig" in o for o in opts)
 
@@ -210,7 +210,7 @@ class TestNoOneIsShutOut:
 
     def test_a_human_route_always_exists(self):
         """When every digital method has failed, someone must still be able to
-        stand in front of an official — the Aadhaar s7 proviso route."""
+        stand in front of an official - the Aadhaar s7 proviso route."""
         from kyc.methods import available_methods, Assurance as A
         human = [m for m in available_methods()
                  if m.channel in (Channel.ASSISTED, Channel.IN_PERSON)

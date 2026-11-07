@@ -1,4 +1,4 @@
-# SYSTEM DEPENDENCY (not installable via pip) — required for real government forms.
+# SYSTEM DEPENDENCY (not installable via pip) - required for real government forms.
 # Most Indian government forms are scanned images with no extractable text, so
 # OCR is the primary extraction path, not a fallback. Without tesseract those
 # PDFs yield zero fields.
@@ -110,6 +110,7 @@ pyparsing==3.3.2
 pypdfium2==5.5.0
 pytesseract==0.3.13
 pytest==9.0.2
+pytest-asyncio==1.4.1.post1
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.1
 python-jose==3.5.0
