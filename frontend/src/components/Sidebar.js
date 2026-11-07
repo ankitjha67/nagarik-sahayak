@@ -82,7 +82,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
                 <span className="text-sm font-semibold text-[#000080] font-['Nunito']">Analytics Dashboard</span>
                 <ExternalLink size={12} className="text-gray-400 flex-shrink-0" />
               </div>
-              <span className="text-xs text-gray-400 font-['Nunito']">Agnost AI</span>
+              <span className="text-xs text-gray-400 font-['Nunito']">App usage &amp; insights</span>
             </div>
             {analyticsStatus?.enabled && (
               <span data-testid="analytics-active-badge" className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
@@ -199,7 +199,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 px-5 py-4 border-t border-gray-100">
-          <p className="text-[10px] text-gray-400 font-['Nunito'] text-center">Powered by Agnost AI</p>
+          <p className="text-[10px] text-gray-400 font-['Nunito'] text-center">Digital India Initiative</p>
         </div>
       </div>
     </>

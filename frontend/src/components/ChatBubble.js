@@ -47,12 +47,19 @@ const EligibilityCard = ({ result }) => {
   );
 };
 
+// Human-readable labels for the internal step names, so a citizen sees what
+// happened ("Eligibility check") rather than engine jargon ("MCP Tool: ...").
+const STEP_LABELS = {
+  search_schemes: "Schemes searched",
+  eligibility_matcher: "Eligibility check",
+};
+
 const ToolCallTrace = ({ toolCall }) => (
-  <div data-testid="mcp-tool-trace" className="mb-2.5 rounded-xl border border-[#E6E6F2] bg-[#F8F8FC] overflow-hidden">
+  <div data-testid="scheme-trace" className="mb-2.5 rounded-xl border border-[#E6E6F2] bg-[#F8F8FC] overflow-hidden">
     <div className="flex items-center gap-2 px-3 py-1.5 bg-[#E6E6F2] border-b border-[#D4D4E8]">
       <FileSearch size={13} className="text-[#000080]" />
-      <span className="text-[11px] font-bold text-[#000080] font-['Mukta'] tracking-wide uppercase">
-        MCP Tool: {toolCall.tool_name}
+      <span className="text-[11px] font-bold text-[#000080] font-['Mukta'] tracking-wide">
+        {STEP_LABELS[toolCall.tool_name] || "Processed"}
       </span>
     </div>
     <div className="px-3 py-2 space-y-1">
@@ -622,7 +629,7 @@ export const ToolProgressIndicator = () => {
           <div className="w-1.5 h-1.5 rounded-full bg-[#FF9933]" />
           <span className="text-[11px] font-semibold text-[#000080] font-['Mukta']">{tx("app.name")}</span>
           <Loader2 size={12} className="ml-1 text-[#FF9933] animate-spin" />
-          <span data-testid="agent-thinking-text" className="text-[10px] text-[#FF9933] font-semibold font-['Mukta'] ml-0.5">Agent is thinking...</span>
+          <span data-testid="agent-thinking-text" className="text-[10px] text-[#FF9933] font-semibold font-['Mukta'] ml-0.5">तैयार हो रहा है… / Working…</span>
         </div>
         <div className="space-y-2">
           {TOOL_STEPS.map((step, i) => {
