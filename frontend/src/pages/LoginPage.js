@@ -67,9 +67,15 @@ export default function LoginPage({ onLogin }) {
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-10 animate-fade-in-up">
-          <div className="inline-flex items-center justify-center mb-4">
-            <img src="/logo.png" alt="Nagarik Sahayak" className="w-48 h-auto object-contain" />
+          <div className="inline-flex items-center justify-center mb-3">
+            <img src="/logo.png" alt="Nagarik Sahayak" className="w-44 h-auto object-contain" />
           </div>
+          <p className="text-sm text-gray-500 font-['Mukta'] px-4">
+            सरकारी योजनाओं में आपका साथी
+            <span className="block text-xs text-gray-400 font-['Nunito'] mt-0.5">
+              Your guide to government schemes
+            </span>
+          </p>
         </div>
 
         {step === "phone" ? (

@@ -33,7 +33,7 @@ export default function HomePage({ userId }) {
   };
 
   return (
-    <div data-testid="home-page" className="min-h-screen bg-gray-50 pb-20">
+    <div data-testid="home-page" className="min-h-screen bg-gray-50 pb-28">
       <AppHeader onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -92,7 +92,7 @@ export default function HomePage({ userId }) {
           >
             <Mic size={32} className="text-white" strokeWidth={2.5} />
           </button>
-          <p className="text-xs text-gray-400 mt-2 font-['Mukta']">
+          <p className="text-xs text-gray-500 mt-2 font-['Mukta']">
             {tx("home.askByVoice")}
           </p>
         </div>
