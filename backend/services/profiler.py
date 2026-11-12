@@ -154,15 +154,35 @@ async def generate_filled_form(user_id: str, scheme_id: str) -> dict:
 
     fill_method = "generated"
     if source_pdf_path:
+        # A per-form coordinate template, when one exists, places every field
+        # (including Yes/No ticks and choose-one options) exactly, instead of
+        # the generic label-matching that can only reach a third of the fields.
+        field_positions = None
+        fill_values = profile
+        try:
+            import form_templates
+            if form_templates.has_template(scheme.name):
+                import fitz
+                _doc = fitz.open(source_pdf_path)
+                positions, extra = form_templates.positions_for(scheme.name, _doc, profile)
+                _doc.close()
+                if positions:
+                    field_positions = positions
+                    fill_values = {**profile, **extra}
+        except Exception as e:
+            logger.warning(f"Template positions failed for {scheme.name}: {e}")
         try:
             fr = fill_pdf_form(
                 source_pdf_path=source_pdf_path, output_path=pdf_path,
-                field_values=profile, form_fields=form_fields,
+                field_values=fill_values, form_fields=form_fields,
+                field_positions=field_positions,
             )
             if fr.get("success"):
                 fill_method = fr.get("method", "filled")
-                logger.info("Filled real form for %s via %s (%d fields)",
-                            scheme.name, fill_method, fr.get("filled_count", 0))
+                logger.info("Filled real form for %s via %s%s (%d fields)",
+                            scheme.name, fill_method,
+                            " [template]" if field_positions else "",
+                            fr.get("filled_count", 0))
         except Exception as e:
             logger.warning(f"Real-form fill failed for {scheme.name}: {e}")
 
