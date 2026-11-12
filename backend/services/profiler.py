@@ -11,12 +11,16 @@ from services.eligibility import eligibility_matcher_prisma
 
 logger = logging.getLogger(__name__)
 
-PROFILE_FIELDS = ["name", "age", "income", "state"]
+PROFILE_FIELDS = ["name", "age", "income", "state", "is_income_tax_payer"]
 PROFILER_QUESTIONS = {
     "name": "आपका नाम क्या है?",
     "age": "आपकी उम्र कितनी है?",
     "income": "आपकी सालाना घरेलू आय कितनी है? (रुपये में)",
     "state": "आप किस राज्य में रहते हैं?",
+    # Income-tax status decides schemes like Atal Pension Yojana (income-tax
+    # payers are barred), so without it those schemes stay "incomplete" and
+    # their forms never surface. Asked as a plain yes/no.
+    "is_income_tax_payer": "क्या आप आयकर दाता हैं? (हाँ / नहीं)",
 }
 
 # India's 28 states + 8 union territories. Used to reject nonsense ("45",
@@ -85,6 +89,18 @@ def parse_profile_answer(field: str, text: str):
             return None, "कृपया भारत के किसी राज्य या केंद्र शासित प्रदेश का नाम बताएं (उदाहरण: बिहार / Bihar)।"
         # Store the canonical Title Case name so the form reads cleanly.
         return key.title(), None
+    elif field == "is_income_tax_payer":
+        low = text.lower().strip()
+        yes = {"yes", "y", "haan", "han", "हाँ", "हां", "ha", "yep", "true", "1"}
+        no = {"no", "n", "nahi", "nahin", "नहीं", "नही", "na", "nope", "false", "0"}
+        # Match whole words so "no" inside a sentence still reads, but an
+        # ambiguous answer is re-asked rather than guessed.
+        tokens = set(re.findall(r"[\wऀ-ॿ]+", low))
+        if tokens & yes:
+            return "Yes", None
+        if tokens & no:
+            return "No", None
+        return None, "कृपया 'हाँ' या 'नहीं' में उत्तर दें। (क्या आप आयकर दाता हैं?)"
     return None, "Invalid field"
 
 
