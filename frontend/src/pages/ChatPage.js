@@ -42,7 +42,12 @@ export default function ChatPage({ userId, language = "hi" }) {
     if (userId) {
       getChatHistory(userId)
         .then((r) => {
-          const history = r.data || [];
+          // Be strict: only an array is a message list. A non-array body (an
+          // error object, or a stringified payload from an interceptor) used to
+          // flow into state and later blow up `messages.map` with "a.map is not
+          // a function", taking the whole chat screen down with an error
+          // boundary. Coerce here so the chat always renders.
+          const history = Array.isArray(r.data) ? r.data : [];
           setMessages(history);
           // A reload must show the existing conversation. Messages only render
           // in a non-idle mode, so restore "chat" when history isn't empty -
@@ -97,11 +102,36 @@ export default function ChatPage({ userId, language = "hi" }) {
     try {
       const res = await sendMessage(userId, text, language);
       const { user_message, bot_message } = res.data;
+
+      // When the chat has just worked out eligibility, do NOT hand over the
+      // forms yet. They would be filled from only the four chat answers and
+      // leave most of each official form blank. Instead collect every detail
+      // the eligible forms ask for - saving each to the profile so a later form
+      // never asks twice - and generate the forms once the profile is complete.
+      // This is the same SmartProfiler collection the scheme-picker uses.
+      const eligible = (bot_message?.eligibility_results || [])
+        .filter((r) => r.eligible)
+        .map((r) => r.scheme);
+      if (bot_message?.type === "profiler_complete" && eligible.length > 0) {
+        // Show the eligibility summary, but strip the half-filled forms the
+        // backend pre-generated so the citizen only ever downloads the complete
+        // ones produced after their details are collected.
+        const summary = { ...bot_message, pdf_urls: [], pdf_url: "" };
+        setMessages((prev) => [
+          ...prev.filter((m) => m && m.id !== tempUserMsg.id),
+          user_message,
+          summary,
+        ].filter(Boolean));
+        setSelectedSchemes(eligible);
+        setV2Mode("profiling");
+        return;
+      }
+
       // Replace temp msg with real one (status=read) and add bot reply
-      setMessages((prev) => [...prev.filter((m) => m.id !== tempUserMsg.id), user_message, bot_message]);
+      setMessages((prev) => [...prev.filter((m) => m && m.id !== tempUserMsg.id), user_message, bot_message].filter(Boolean));
     } catch {
       // Mark temp as failed
-      setMessages((prev) => prev.map((m) => m.id === tempUserMsg.id ? { ...m, status: "sent" } : m));
+      setMessages((prev) => prev.map((m) => (m && m.id === tempUserMsg.id) ? { ...m, status: "sent" } : m));
       toast.error("Message failed to send");
     } finally {
       setLoading(false);
@@ -331,7 +361,7 @@ export default function ChatPage({ userId, language = "hi" }) {
         {v2Mode === "profiling" && (
           <div className="mb-4">
             <div className="space-y-3 stagger-children">
-              {messages.map((msg) => (
+              {(Array.isArray(messages) ? messages : []).filter(Boolean).map((msg) => (
                 <ChatBubble key={msg.id} message={msg} />
               ))}
             </div>
@@ -382,7 +412,7 @@ export default function ChatPage({ userId, language = "hi" }) {
         {/* Regular chat messages (legacy or v2 complete) */}
         {(v2Mode === "chat" || v2Mode === "complete") && (
           <div className="space-y-3 stagger-children">
-            {messages.map((msg) => (
+            {(Array.isArray(messages) ? messages : []).filter(Boolean).map((msg) => (
               <ChatBubble key={msg.id} message={msg} />
             ))}
           </div>

@@ -146,7 +146,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
               : tx("profiler.seeReasons")}
           </p>
         </div>
-        {pdfResults.pdf_urls.map((p, i) => (
+        {(pdfResults.pdf_urls || []).map((p, i) => (
           <a
             key={i}
             href={`${backendUrl}${p.pdf_url}`}
