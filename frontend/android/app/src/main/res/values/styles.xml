@@ -16,7 +16,15 @@
     </style>
 
 
+    <!-- On Android 12+ the system splash ignores the full-screen splash.png and
+         shows the app icon on windowSplashScreenBackground. Without these it fell
+         back to a dark/blue background, so the navy logo blended into it. Pin a
+         white background and a logo that reads clearly on it. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="windowSplashScreenIconBackgroundColor">@android:color/white</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:background">@drawable/splash</item>
     </style>
 </resources>
