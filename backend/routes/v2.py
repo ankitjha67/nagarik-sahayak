@@ -462,9 +462,27 @@ async def generate_real_filled_forms(req: dict = {}):
         # form - last four digits - never the full number (Aadhaar Act s29(4)).
         fill_detail: dict = {}
         if source_pdf_path:
+            # A per-form coordinate template places every field (and ticks the
+            # Yes/No and choose-one boxes) exactly; without one, the generic
+            # label-matching runs as before.
+            field_positions = None
+            values_for_fill = fill_profile
+            try:
+                import form_templates
+                if form_templates.has_template(sname):
+                    import fitz
+                    _d = fitz.open(source_pdf_path)
+                    positions, extra = form_templates.positions_for(sname, _d, fill_profile)
+                    _d.close()
+                    if positions:
+                        field_positions = positions
+                        values_for_fill = {**fill_profile, **extra}
+            except Exception as e:
+                logger.warning(f"Template positions failed for {sname}: {e}")
             fill_result = fill_pdf_form(
                 source_pdf_path=source_pdf_path, output_path=out_path,
-                field_values=fill_profile, form_fields=fields,
+                field_values=values_for_fill, form_fields=fields,
+                field_positions=field_positions,
             )
             if fill_result.get("success"):
                 fill_method = fill_result.get("method", "filled")
