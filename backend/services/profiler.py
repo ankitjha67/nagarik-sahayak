@@ -116,7 +116,17 @@ async def generate_filled_form(user_id: str, scheme_id: str) -> dict:
     if not user or not scheme:
         return {"success": False, "error": "User or Scheme not found"}
 
-    profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})
+    # Fill from the FULL profile, not just the chat's four answers. The V2
+    # profile flow maintains identity, address, bank and other fields in
+    # fullProfile; profile_store.load merges fullProfile over the chat profile
+    # so the official form gets every field the citizen has supplied, not only
+    # name/age. (Previously this read user.profile alone, so a real form like
+    # APY overlaid just name and age.)
+    from dpdp import profile_store
+    profile = profile_store.load(user)
+    # The chat flow maps income to "income"; some forms key on "annual_income".
+    if profile.get("income") and not profile.get("annual_income"):
+        profile["annual_income"] = profile["income"]
 
     pdf_id = str(uuid.uuid4())
     pdf_path = str(PDF_DIR / f"{pdf_id}.pdf")
