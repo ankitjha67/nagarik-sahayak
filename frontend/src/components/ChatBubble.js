@@ -232,32 +232,44 @@ const HindiVoiceBtn = ({ text }) => {
   const [speaking, setSpeaking] = useState(false);
   const utterRef = useRef(null);
 
+  // Many Android WebViews (including the one this app ships in) expose no
+  // speechSynthesis. Reading it unguarded threw on unmount - "Cannot read
+  // properties of undefined (reading 'cancel')" - and took the whole chat down
+  // with an error boundary the moment a bubble was removed.
+  const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
+  const canSpeak = !!synth && typeof window.SpeechSynthesisUtterance !== "undefined";
+
   const toggle = useCallback(() => {
+    if (!canSpeak) return;
     if (speaking) {
-      window.speechSynthesis.cancel();
+      try { synth.cancel(); } catch { /* unsupported */ }
       setSpeaking(false);
       return;
     }
     const plain = text.replace(/\[.*?\]/g, "").replace(/\n+/g, " ").trim();
     if (!plain) return;
-    const utter = new SpeechSynthesisUtterance(plain);
+    const utter = new window.SpeechSynthesisUtterance(plain);
     utter.lang = "hi-IN";
     utter.rate = 0.95;
     utter.pitch = 1;
     // Try to pick a Hindi voice
-    const voices = window.speechSynthesis.getVoices();
+    const voices = synth.getVoices() || [];
     const hiVoice = voices.find((v) => v.lang.startsWith("hi"));
     if (hiVoice) utter.voice = hiVoice;
     utter.onend = () => setSpeaking(false);
     utter.onerror = () => setSpeaking(false);
     utterRef.current = utter;
-    window.speechSynthesis.speak(utter);
+    try { synth.speak(utter); } catch { /* unsupported */ }
     setSpeaking(true);
-  }, [text, speaking]);
+  }, [text, speaking, canSpeak, synth]);
 
   useEffect(() => {
-    return () => window.speechSynthesis.cancel();
-  }, []);
+    return () => { try { synth && synth.cancel(); } catch { /* unsupported */ } };
+  }, [synth]);
+
+  // Nothing to offer where the platform can't speak - and rendering the button
+  // would only invite the crash above.
+  if (!canSpeak) return null;
 
   return (
     <button
