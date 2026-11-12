@@ -110,7 +110,21 @@ async def seed_from_catalog(overwrite: bool = False) -> dict:
                 where={"schemeName": entry["schemeName"]}
             )
             if existing and not overwrite:
-                skipped += 1
+                # The official form URL is owned by the curated catalog, not by
+                # the live-refresh / user-upload path (which only enriches
+                # extractedFields). So sync just that field onto an existing
+                # template - a newly added or corrected form link then reaches a
+                # database seeded before the change, on the next restart, without
+                # clobbering any live-extracted fields.
+                catalog_url = entry.get("official_pdf_url", "") or ""
+                if (existing.officialPdfUrl or "") != catalog_url:
+                    await prisma.formtemplate.update(
+                        where={"id": existing.id},
+                        data={"officialPdfUrl": catalog_url},
+                    )
+                    updated += 1
+                else:
+                    skipped += 1
             else:
                 # The catalog entry is not a Prisma payload - it carries
                 # snake_case keys (official_pdf_url, is_scanned) and raw lists

@@ -62,7 +62,11 @@ CENTRAL_SCHEMES: list[dict] = [
         "description": "Free LPG connection with deposit-free cylinder and first refill for women from poor households.",
         "descriptionHindi": "गरीब परिवारों की महिलाओं को निःशुल्क एलपीजी कनेक्शन, जमा-मुक्त सिलेंडर और पहली रिफिल।",
         "officialWebsite": "https://www.pmuy.gov.in/",
-        "official_pdf_url": "", "source_verified": "", "is_scanned": False,
+        # Official PMUY KYC application form from the scheme's own domain
+        # (pmuy.gov.in). Verified 200/application/pdf under strict TLS and fills
+        # via overlay (6 fields).
+        "official_pdf_url": "https://pmuy.gov.in/documents/Ujjwala-KYC_englishnew.pdf",
+        "source_verified": "2026-11-12", "is_scanned": False,
         "eligibilityCriteria": {
             "summary": "Adult woman from a poor household with no existing LPG connection in the household.",
             "summaryHindi": "गरीब परिवार की वयस्क महिला, जिसके घर में पहले से एलपीजी कनेक्शन न हो।",
@@ -100,7 +104,12 @@ CENTRAL_SCHEMES: list[dict] = [
         "description": "Cash incentive to pregnant women and nursing mothers for the first living child, to compensate wage loss and support nutrition.",
         "descriptionHindi": "पहले जीवित बच्चे हेतु गर्भवती एवं स्तनपान कराने वाली माताओं को मजदूरी हानि की भरपाई और पोषण सहायता।",
         "officialWebsite": "https://pmmvy.wcd.gov.in/",
-        "official_pdf_url": "", "source_verified": "", "is_scanned": False,
+        # The national PMMVY Form 1-A (bilingual). The central portal exposes no
+        # direct PDF, so this is the same standardised national form hosted on a
+        # government WCD domain (GNCT Delhi). Verified 200/application/pdf under
+        # strict TLS and fills via overlay.
+        "official_pdf_url": "https://wcd.delhi.gov.in/sites/default/files/WCD/generic_multiple_files/form1-a_pmmvy_bilingual_0.pdf",
+        "source_verified": "2026-11-12", "is_scanned": False,
         "eligibilityCriteria": {
             "summary": "Pregnant woman or nursing mother aged 19 or above, for the first living child. Government employees are excluded as they receive paid maternity leave.",
             "summaryHindi": "19 वर्ष या अधिक आयु की गर्भवती या स्तनपान कराने वाली माता, पहले जीवित बच्चे हेतु। सरकारी कर्मचारी अपात्र।",

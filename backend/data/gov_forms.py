@@ -366,14 +366,14 @@ GOV_FORM_CATALOG: list[dict] = [
         "description": "Small savings scheme for a girl child under 10 years, offering a high fixed interest rate with tax benefits under Section 80C.",
         "descriptionHindi": "10 वर्ष से कम आयु की बालिका के लिए उच्च ब्याज दर वाली लघु बचत योजना।",
         "officialWebsite": "https://www.indiapost.gov.in/Financial/Pages/Content/Post-Office-Saving-Schemes.aspx",
-        # The official India Post SSA notification PDF (indiapost.gov.in) verifies
-        # 200/application/pdf under strict TLS, but it is a gazette whose form is an
-        # annexure with no AcroForm fields and no label anchors our overlay can place
-        # onto - fill_pdf_form returns success=False, so wiring it here would only make
-        # the app fall back to a generated form. Left empty until a clean fillable SSA
-        # form (interactive AcroForm) is found. Do NOT re-add the notification URL.
-        "official_pdf_url": "",
-        "source_verified": "",
+        # The India Post POSB account-opening / purchase-of-certificate form - the
+        # actual form used at the counter to open a Sukanya Samriddhi Account (it
+        # names SSA Rules 2014 among the schemes it opens). Hosted on an India Post
+        # circle domain (haryanapost.gov.in). Verified 200/application/pdf under
+        # strict TLS and fills via overlay. (The earlier SSA gazette notification
+        # PDF had no placeable fields and was deliberately not used.)
+        "official_pdf_url": "https://haryanapost.gov.in/sdc/fru/form.pdf",
+        "source_verified": "2026-11-12",
         "is_scanned": False,
         "eligibilityCriteria": {
             "summary": "Account can be opened by a guardian for a girl child below 10 years of age. Maximum two accounts per family (three in case of twins).",
