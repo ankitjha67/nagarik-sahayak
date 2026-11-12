@@ -485,16 +485,25 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
           <span className="text-sm font-bold font-['Mukta'] block">
             {done ? tx("download.done") : downloading ? tx("download.inProgress") : `${tx("download.allPrefix")} ${pdfUrls.length} ${tx("download.allSuffix")}`}
           </span>
-          <ul className="mt-0.5">
-            {pdfUrls.map((p, i) => (
-              <li key={i} className="text-[10px] opacity-90 font-['Nunito'] leading-tight">
-                {i + 1}. {p.scheme_name}
-              </li>
-            ))}
-          </ul>
         </div>
         {!downloading && !done && <Download size={16} className="flex-shrink-0 opacity-80" />}
       </button>
+      {/* One download button per eligible scheme (the list only ever contains
+          schemes the citizen qualifies for), alongside the download-all above. */}
+      <div className="space-y-1">
+        {pdfUrls.map((p, i) => (
+          <button
+            key={i}
+            data-testid={`pdf-download-${i}`}
+            onClick={() => downloadPdfBlob(p.pdf_url, `${(p.scheme_name || "Form").replace(/\s+/g, "_")}_Form.pdf`).catch(() => toast.error(tx("download.failed")))}
+            className="w-full flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-left hover:border-[#16a34a] transition-colors"
+          >
+            <FileDown size={13} className="text-[#16a34a] flex-shrink-0" />
+            <span className="text-[11px] text-gray-700 font-['Nunito'] flex-1 truncate">{i + 1}. {p.scheme_name}</span>
+            <Download size={12} className="text-gray-400 flex-shrink-0" />
+          </button>
+        ))}
+      </div>
       {error && (
         <p data-testid="download-error-msg" className="text-xs text-red-600 font-['Mukta'] px-1">{error}</p>
       )}
