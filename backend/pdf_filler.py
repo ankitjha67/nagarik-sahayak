@@ -671,16 +671,23 @@ FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     # "father / husband" label still covers a form that prints the two
     # together; a husband-only form is left for the citizen to write, which is
     # the safe outcome for a field this ambiguous.
-    "father_husband_name": ("full name of father",
+    "father_husband_name": ("full name of father/husband/mother",
+                            "full name of father / husband / mother",
+                            "name of father/husband/mother",
+                            "full name of father",
                             "father's name", "fathers name", "father / husband",
                             "father's / husband's name",
                             "name of father", "पिता का नाम"),
     "mother_name": ("full name of mother", "mother's name", "mothers name",
                     "name of mother", "माता का नाम"),
     "guardian_name": ("guardian's name", "name of guardian"),
-    "name": ("name of the applicant", "name of applicant", "applicant's name",
-             "full name", "name of the student", "student's name",
-             "आवेदक का नाम", "पूरा नाम"),
+    "name": ("name of applicant in full", "name of the applicant in full",
+             "name of applicant/guardian", "name of the applicant",
+             "name of applicant", "applicant's name",
+             "name of beneficiary", "name of the beneficiary",
+             "full name of applicant", "full name",
+             "name of the student", "student's name",
+             "आवेदक का नाम", "लाभार्थी का नाम", "पूरा नाम"),
     "date_of_birth": ("date of birth", "dob", "जन्म तिथि", "जन्म दिनांक"),
     "gender": ("sex", "gender", "लिंग"),
     "category": ("category", "caste category", "श्रेणी", "जाति"),
@@ -719,9 +726,14 @@ FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "bank_name": ("name of the bank", "bank's name", "banks name",
                   "name of bank", "bank name", "बैंक का नाम"),
     "bank_account_number": ("saving bank account number", "bank account number",
+                            "bank a/c number", "bank a/c no", "a/c number",
                             "account no", "a/c no",
                             "account number", "खाता संख्या"),
     "ifsc_code": ("ifsc code", "ifsc", "आईएफएससी"),
+    # "bank branch" is deliberately absent: on the APY form it matched the
+    # "Bank Branch:" line in the bank-only ACKNOWLEDGEMENT slip at the foot of
+    # the page (a section the applicant must not fill) and left the real top
+    # field blank - a worse outcome than leaving it for the citizen.
     "branch_name": ("branch name", "name of branch", "शाखा"),
     "father_occupation": ("father's occupation", "fathers occupation",
                           "occupation of father", "पिता का व्यवसाय"),
@@ -743,6 +755,12 @@ FIELD_ALIASES: dict[str, tuple[str, ...]] = {
                                     "अधिवास प्रमाण"),
     "roll_number": ("roll no", "roll number", "enrollment no", "registration no"),
     "course_name": ("course", "class", "stream"),
+    # Maternity-benefit forms (PMMVY Form 1-A) ask for the last menstrual period
+    # date and the registration/MCP card details on a bilingual line.
+    "lmp_date": ("last menstrual period", "lmp date", "lmp",
+                 "मासिक धर्म की अंतिम"),
+    "mcp_card_number": ("mcp card", "mcp card number", "mother and child protection",
+                        "एमसीपी कार्ड"),
 }
 
 # A line is treated as a form label only if it looks like one. Without this a
