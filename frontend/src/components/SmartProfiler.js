@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   smartProfiler, updateUserFullProfile, generateRealFilledForms, verifyFields,
 } from "../lib/api";
@@ -19,12 +19,18 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
   const [pdfResults, setPdfResults] = useState(null);
   const [error, setError] = useState("");
   const [fieldWarning, setFieldWarning] = useState("");
+  // Collect the MANDATORY fields, then offer to generate. Asking for every
+  // optional field of every eligible scheme is a very long questionnaire; the
+  // citizen can still add the optional ones with "Edit", but is not forced to.
+  // A ref (not state) so the already-memoised fetch always reads the live value.
+  const addingOptionalRef = useRef(false);
 
   const fetchProfilerState = useCallback(async () => {
     try {
       const res = await smartProfiler(userId, schemeNames);
       setProfilerState(res.data);
-      if (res.data.allComplete) {
+      if (res.data.allComplete ||
+          (res.data.requiredComplete && !addingOptionalRef.current)) {
         setShowReview(true);
       }
     } catch (e) {
@@ -243,7 +249,9 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
             समीक्षा और पुष्टि करें / Review & Confirm
           </h3>
           <p className="text-xs text-gray-500 font-['Nunito']">
-            {tx("profiler.allFieldsFilled").replace("{n}", profilerState.totalFields)}
+            {profilerState.allComplete
+              ? tx("profiler.allFieldsFilled").replace("{n}", profilerState.totalFields)
+              : `${profilerState.filledCount}/${profilerState.totalFields} भरे • ज़रूरी जानकारी पूरी — अभी फॉर्म बनाएँ या "Edit" से और जोड़ें / Required details complete — generate now, or add optional ones with Edit`}
           </p>
         </div>
         <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
@@ -262,7 +270,7 @@ export const SmartProfiler = ({ userId, schemeNames, onComplete, onMessage }) =>
         <div className="flex gap-2 mt-3">
           <button
             data-testid="edit-profile-btn"
-            onClick={() => setShowReview(false)}
+            onClick={() => { addingOptionalRef.current = true; setShowReview(false); }}
             className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-xs font-bold font-['Mukta'] flex items-center justify-center gap-1"
           >
             <RotateCcw size={12} /> {tx("common.edit")}
