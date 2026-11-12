@@ -142,7 +142,11 @@ CENTRAL_SCHEMES: list[dict] = [
         "description": "Guaranteed monthly pension after age 60 for workers in the unorganised sector, funded by small regular contributions.",
         "descriptionHindi": "असंगठित क्षेत्र के श्रमिकों हेतु 60 वर्ष के बाद गारंटीशुदा मासिक पेंशन, छोटे नियमित अंशदान से।",
         "officialWebsite": "https://www.npscra.nsdl.co.in/scheme-details.php",
-        "official_pdf_url": "", "source_verified": "", "is_scanned": False,
+        # Canonical APY Subscriber Registration Form from Protean (the PFRDA-
+        # appointed CRA and the source banks distribute). Verified 200 /
+        # application/pdf under strict TLS; genuinely fillable (labelled fields).
+        "official_pdf_url": "https://www.npscra.proteantech.in/nsdl/forms/APY_Subscriber_Registration_Form.pdf",
+        "source_verified": "2026-11-12", "is_scanned": False,
         "eligibilityCriteria": {
             "summary": "Indian citizen aged 18 to 40 with a savings bank account. Income-tax payers are not eligible to join.",
             "summaryHindi": "18 से 40 वर्ष की आयु का भारतीय नागरिक, बचत बैंक खाते सहित। आयकर दाता पात्र नहीं।",
