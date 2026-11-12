@@ -101,16 +101,51 @@ async def generate_filled_form(user_id: str, scheme_id: str) -> dict:
         return {"success": False, "error": "User or Scheme not found"}
 
     profile = json.loads(user.profile) if isinstance(user.profile, str) and user.profile else (user.profile or {})
-    from pdf_generator import generate_filled_form_pdf
 
     pdf_id = str(uuid.uuid4())
     pdf_path = str(PDF_DIR / f"{pdf_id}.pdf")
 
-    generate_filled_form_pdf(
-        profile=profile, scheme_name=scheme.name,
-        scheme_criteria=scheme.eligibilityCriteriaText,
-        output_path=pdf_path,
-    )
+    # Fill onto the real published government form when one exists - the official
+    # PDF is fetched and cached from its URL, then filled (AcroForm fields by
+    # name, or text-overlaid beside the printed labels). Only when there is no
+    # live form to fill, or the fill fails, do we synthesise a generic one. This
+    # mirrors the v2 path so the chat hands the citizen the actual government
+    # form, filled, rather than an app-made template.
+    from pdf_generator import generate_filled_form_pdf
+    from pdf_filler import fill_pdf_form
+    from routes.v2 import _ensure_local_source
+
+    ft = await prisma.formtemplate.find_first(where={"schemeName": scheme.name})
+    form_fields = []
+    source_pdf_path = ""
+    if ft:
+        form_fields = ft.extractedFields if isinstance(ft.extractedFields, list) else (
+            json.loads(ft.extractedFields) if isinstance(ft.extractedFields, str) else [])
+        try:
+            source_pdf_path = _ensure_local_source(ft.officialPdfUrl or "")
+        except Exception as e:
+            logger.warning(f"Could not fetch official PDF for {scheme.name}: {e}")
+
+    fill_method = "generated"
+    if source_pdf_path:
+        try:
+            fr = fill_pdf_form(
+                source_pdf_path=source_pdf_path, output_path=pdf_path,
+                field_values=profile, form_fields=form_fields,
+            )
+            if fr.get("success"):
+                fill_method = fr.get("method", "filled")
+                logger.info("Filled real form for %s via %s (%d fields)",
+                            scheme.name, fill_method, fr.get("filled_count", 0))
+        except Exception as e:
+            logger.warning(f"Real-form fill failed for {scheme.name}: {e}")
+
+    if fill_method == "generated":
+        generate_filled_form_pdf(
+            profile=profile, scheme_name=scheme.name,
+            scheme_criteria=scheme.eligibilityCriteriaText,
+            output_path=pdf_path,
+        )
 
     # Encrypt at rest, and bind the document to the citizen who owns it.
     from dpdp import file_vault, ownership

@@ -3,6 +3,54 @@ import { CheckCheck, Check as CheckIcon, FileSearch, FileText, Check, X, Languag
 import api from "../lib/api";
 import { toast } from "sonner";
 import { useLanguage } from "../lib/i18n";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
+
+function _blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onloadend = () => resolve(String(r.result).split(",")[1] || "");
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+// Persist a PDF blob. On the web the classic anchor download works; inside the
+// Android WebView it does nothing (no download handler), so write the file with
+// Capacitor Filesystem and, for a single form, open the share sheet so the
+// citizen can view, save or forward it. Returns the saved file name.
+async function savePdf(blob, fileName, { openShare = false } = {}) {
+  if (!Capacitor.isNativePlatform()) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return fileName;
+  }
+  const data = await _blobToBase64(blob);
+  let uri;
+  try {
+    const w = await Filesystem.writeFile({ path: fileName, data, directory: Directory.Documents, recursive: true });
+    uri = w.uri;
+  } catch (e) {
+    // Documents can be unavailable; Cache always works and the share sheet can
+    // still read it so the citizen keeps a copy.
+    const w = await Filesystem.writeFile({ path: fileName, data, directory: Directory.Cache, recursive: true });
+    uri = w.uri;
+  }
+  if (openShare) {
+    try {
+      await Share.share({ title: fileName, url: uri });
+    } catch { /* share dismissed; the file is already saved */ }
+  }
+  return fileName;
+}
 
 function escapeHtml(str) {
   if (typeof str !== "string") return str;
@@ -356,19 +404,13 @@ const FlaggedBlock = ({ flagged }) => {
 // /api/pdf/{id} sends no Authorization header and 401s.
 async function downloadPdfBlob(pdfPath, fileName) {
   const resp = await api.get(pdfPath.replace(/^\/api/, ""), { responseType: "blob" });
-  const blobUrl = URL.createObjectURL(resp.data);
-  const link = document.createElement("a");
-  link.href = blobUrl;
-  link.download = fileName;
-  link.style.display = "none";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(blobUrl);
+  // Single form: save it and open the share sheet so the citizen can view or
+  // keep it (a bare anchor download is a no-op inside the Android WebView).
+  await savePdf(resp.data, fileName, { openShare: true });
 }
 
 const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
-  const { tx } = useLanguage();
+  const { tx, code } = useLanguage();
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
@@ -397,16 +439,7 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
           // are attached. pdf_url is "/api/...", and api's baseURL already ends
           // in "/api", so strip the leading "/api".
           const resp = await api.get(pdfItem.pdf_url.replace(/^\/api/, ""), { responseType: "blob" });
-          const blob = resp.data;
-          const blobUrl = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = blobUrl;
-          link.download = fileName;
-          link.style.display = "none";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(blobUrl);
+          await savePdf(resp.data, fileName);
           successCount++;
         } catch {
           // Individual file failed - continue, will fallback to zip
@@ -418,30 +451,26 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
       }
 
       if (successCount === pdfUrls.length) {
-        // All downloaded successfully
+        // All saved successfully
         setDone(true);
+        if (Capacitor.isNativePlatform()) {
+          toast.success(code === "hi"
+            ? `${pdfUrls.length} फॉर्म Documents में सहेजे गए`
+            : `${pdfUrls.length} forms saved to Documents`);
+        }
         // Track success
         try {
           await api.get(`/download-all?user_id=${userId || ""}&count=${pdfUrls.length}`);
         } catch {}
       } else {
-        // Some failed - fallback to zip download
+        // Some failed - fallback to a single zip the citizen can save/share.
         try {
           // Authenticated zip fallback (same reason as the per-file fetch).
           const resp = await api.get(
             `/download-all-zip?pdf_ids=${encodeURIComponent(pdfIds.join(","))}&user_id=${encodeURIComponent(userId || "")}`,
             { responseType: "blob" }
           );
-          const blob = resp.data;
-          const blobUrl = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.href = blobUrl;
-          link.download = "Nagarik_Sahayak_Forms.zip";
-          link.style.display = "none";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(blobUrl);
+          await savePdf(resp.data, "Nagarik_Sahayak_Forms.zip", { openShare: true });
           setDone(true);
         } catch {
           setError(tx("download.failed"));
@@ -485,16 +514,25 @@ const MultiPdfDownloadBlock = ({ pdfUrls, userId, backendUrl }) => {
           <span className="text-sm font-bold font-['Mukta'] block">
             {done ? tx("download.done") : downloading ? tx("download.inProgress") : `${tx("download.allPrefix")} ${pdfUrls.length} ${tx("download.allSuffix")}`}
           </span>
-          <ul className="mt-0.5">
-            {pdfUrls.map((p, i) => (
-              <li key={i} className="text-[10px] opacity-90 font-['Nunito'] leading-tight">
-                {i + 1}. {p.scheme_name}
-              </li>
-            ))}
-          </ul>
         </div>
         {!downloading && !done && <Download size={16} className="flex-shrink-0 opacity-80" />}
       </button>
+      {/* One download button per eligible scheme (the list only ever contains
+          schemes the citizen qualifies for), alongside the download-all above. */}
+      <div className="space-y-1">
+        {pdfUrls.map((p, i) => (
+          <button
+            key={i}
+            data-testid={`pdf-download-${i}`}
+            onClick={() => downloadPdfBlob(p.pdf_url, `${(p.scheme_name || "Form").replace(/\s+/g, "_")}_Form.pdf`).catch(() => toast.error(tx("download.failed")))}
+            className="w-full flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-left hover:border-[#16a34a] transition-colors"
+          >
+            <FileDown size={13} className="text-[#16a34a] flex-shrink-0" />
+            <span className="text-[11px] text-gray-700 font-['Nunito'] flex-1 truncate">{i + 1}. {p.scheme_name}</span>
+            <Download size={12} className="text-gray-400 flex-shrink-0" />
+          </button>
+        ))}
+      </div>
       {error && (
         <p data-testid="download-error-msg" className="text-xs text-red-600 font-['Mukta'] px-1">{error}</p>
       )}

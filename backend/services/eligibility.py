@@ -36,6 +36,16 @@ async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dic
     income_yearly = profile.get("income") or 0
     state = (profile.get("state") or "").lower()
 
+    # Full structured profile for the strict rule engine (the chat's four fields
+    # plus anything supplied elsewhere). Map the chat's "income" to the engine's
+    # "annual_income" so income rules can evaluate.
+    from dpdp import profile_store
+    from eligibility_engine import evaluate_scheme
+    from data.gov_forms import get_by_name
+    eng_profile = dict(profile_store.load(user) or profile or {})
+    if eng_profile.get("income") and not eng_profile.get("annual_income"):
+        eng_profile["annual_income"] = eng_profile["income"]
+
     await search_schemes_prisma("scholarship eligibility")
 
     vidyasiri = await prisma.scheme.find_first(where={"name": {"contains": "Vidyasiri"}})
@@ -50,43 +60,26 @@ async def eligibility_matcher_prisma(user_id: str, scheme_name: str = "") -> dic
     results = []
 
     for scheme in schemes:
-        criteria_text = scheme.eligibilityCriteriaText.lower()
-        eligible = True
-        reasons = []
-
-        income_matches = re.findall(r'(?:income\s*[<>]?\s*₹?|income\s*<?)\s*([\d,.]+)\s*(?:lakh|lac)', criteria_text)
-        if income_matches:
-            limit_lakh = float(income_matches[0].replace(",", ""))
-            limit_yearly = int(limit_lakh * 100000)
-            if income_yearly > limit_yearly:
-                eligible = False
-                reasons.append(f"सालाना आय ₹{income_yearly:,} - सीमा ₹{limit_yearly:,}/वर्ष (₹{limit_lakh} लाख) से अधिक")
-            else:
-                reasons.append(f"सालाना आय ₹{income_yearly:,} - सीमा ₹{limit_yearly:,}/वर्ष के अंदर - पात्र")
-
-        if "karnataka" in criteria_text:
-            if state and "karnataka" not in state:
-                eligible = False
-                reasons.append(f"राज्य {profile.get('state', '')} - कर्नाटक निवासी आवश्यक")
-            else:
-                reasons.append("कर्नाटक निवासी - पात्र")
-
-        if "10th" in criteria_text or "10th pass" in criteria_text:
-            reasons.append("10वीं पास या समकक्ष - आवश्यक")
-        if "12th pass" in criteria_text:
-            reasons.append("12वीं पास - आवश्यक")
-        if "bpl" in criteria_text:
-            reasons.append("बीपीएल श्रेणी - आवश्यक")
-        if "no pucca house" in criteria_text:
-            reasons.append("कोई पक्का मकान नहीं - आवश्यक")
-
-        if not reasons:
-            reasons.append("मानदंड मैच - विस्तार के लिए कार्यालय से संपर्क करें")
+        # Strict, rule-based verdict (ELIGIBLE / NOT_ELIGIBLE / INCOMPLETE). Only
+        # a definite ELIGIBLE is treated as eligible here, so a scheme whose
+        # rules cannot yet be decided ("needs more info") is NOT marked eligible
+        # and does not get a downloadable form - which is what gates downloads to
+        # schemes the citizen genuinely qualifies for.
+        entry = get_by_name(scheme.name)
+        if entry:
+            er = evaluate_scheme(eng_profile, entry)
+            eligible = er.is_eligible
+            verdict = er.verdict.value
+            reason = er.summary_hi or er.summary_en or ("पात्र" if eligible else "अपात्र")
+        else:
+            eligible = False
+            verdict = "incomplete"
+            reason = "पात्रता नियम उपलब्ध नहीं - विस्तार के लिए कार्यालय से संपर्क करें"
 
         results.append({
             "scheme": scheme.name, "scheme_hi": scheme.name, "scheme_id": scheme.id,
-            "eligible": eligible, "reasons": reasons,
-            "reason": "; ".join(reasons),
+            "eligible": eligible, "verdict": verdict,
+            "reasons": [reason], "reason": reason,
             "benefit": scheme.eligibilityCriteriaText,
         })
 
